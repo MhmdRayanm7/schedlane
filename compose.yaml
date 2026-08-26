@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: schedlane-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: schedlane
+      POSTGRES_USER: schedlane
+      POSTGRES_PASSWORD: schedlane
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U schedlane -d schedlane"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: schedlane-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: schedlane
+      RABBITMQ_DEFAULT_PASS: schedlane
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
