@@ -16,11 +16,15 @@ export const auth = betterAuth({
     sendOnSignUp: true,
 
     sendVerificationEmail: async ({ user, url }) => {
-      void emailService.send({
-        to: user.email,
-        subject: "Verify your Schedlane email",
-        text: `Verify your email by opening this link:\n${url}`,
-      });
+      void emailService
+        .send({
+          to: user.email,
+          subject: "Verify your Schedlane email",
+          text: `Verify your email by opening this link:\n${url}`,
+        })
+        .catch((error) => {
+          console.error("Failed to send verification email", error);
+        });
     },
   },
 

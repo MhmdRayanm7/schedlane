@@ -37,6 +37,25 @@ const configSchema = Type.Object({
   WEB_ORIGIN: Type.String({
     minLength: 1,
   }),
+
+  EMAIL_PROVIDER: Type.Union(
+    [Type.Literal("console"), Type.Literal("resend")],
+    {
+      default: "console",
+    },
+  ),
+
+  RESEND_API_KEY: Type.Optional(
+    Type.String({
+      minLength: 1,
+    }),
+  ),
+
+  EMAIL_FROM: Type.Optional(
+    Type.String({
+      minLength: 1,
+    }),
+  ),
 });
 
 export type Config = Type.Static<typeof configSchema>;
