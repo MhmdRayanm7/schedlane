@@ -4,6 +4,7 @@ import { sql } from "kysely";
 import { registerAuthRoutes } from "./auth-routes.js";
 import { config } from "./config.js";
 import { db } from "./db.js";
+import { organizationRoutes } from "./modules/organizations/organization-routes.js";
 
 const app = Fastify({
   logger: true,
@@ -15,6 +16,9 @@ await app.register(cors, {
 });
 
 registerAuthRoutes(app);
+
+await app.register(organizationRoutes);
+
 app.get("/health/live", async () => {
   return {
     status: "ok",
