@@ -4,7 +4,7 @@ import { config } from "./config.js";
 
 type Database = Record<never, never>;
 
-const pool = new Pool({
+export const pool = new Pool({
   connectionString: config.DATABASE_URL,
   max: 10,
 });

@@ -25,6 +25,18 @@ const configSchema = Type.Object({
   DATABASE_URL: Type.String({
     minLength: 1,
   }),
+
+  BETTER_AUTH_SECRET: Type.String({
+    minLength: 32,
+  }),
+
+  BETTER_AUTH_URL: Type.String({
+    minLength: 1,
+  }),
+
+  WEB_ORIGIN: Type.String({
+    minLength: 1,
+  }),
 });
 
 export type Config = Type.Static<typeof configSchema>;
