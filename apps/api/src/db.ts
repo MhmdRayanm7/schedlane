@@ -1,8 +1,7 @@
 import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import { config } from "./config.js";
-
-type Database = Record<never, never>;
+import type { Database } from "./db-types.js";
 
 export const pool = new Pool({
   connectionString: config.DATABASE_URL,
