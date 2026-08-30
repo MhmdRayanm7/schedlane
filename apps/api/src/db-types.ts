@@ -42,7 +42,18 @@ export interface MembershipTable {
   updated_at: Generated<Date>;
 }
 
+export interface AuthUserTable {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  image: string | null;
+  createdAt: Generated<Date>;
+  updatedAt: Generated<Date>;
+}
+
 export interface Database {
+  user: AuthUserTable;
   platform_admin: PlatformAdminTable;
   organization: OrganizationTable;
   organization_request: OrganizationRequestTable;

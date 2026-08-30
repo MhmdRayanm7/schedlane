@@ -3,6 +3,7 @@ import Type from "typebox";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
 import { approveOrganizationRequest } from "./organization-approval-service.js";
 import { rejectOrganizationRequest } from "./organization-rejection-service.js";
+import { listOrganizationRequests } from "./organization-request-query-service.js";
 import { createOrganizationRequest } from "./organization-request-service.js";
 
 const organizationRequestParams = Type.Object({
@@ -35,7 +36,71 @@ const rejectOrganizationRequestBody = Type.Object({
   ),
 });
 
+const listOrganizationRequestsQuery = Type.Object({
+  status: Type.Optional(
+    Type.Union([
+      Type.Literal("pending"),
+      Type.Literal("approved"),
+      Type.Literal("rejected"),
+    ]),
+  ),
+  limit: Type.Optional(
+    Type.Integer({
+      minimum: 1,
+      maximum: 100,
+    }),
+  ),
+  cursor: Type.Optional(
+    Type.String({
+      minLength: 1,
+    }),
+  ),
+});
+
 export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
+  app.get(
+    "/api/platform/organization-requests",
+    {
+      schema: {
+        querystring: listOrganizationRequestsQuery,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await listOrganizationRequests({
+        userId: user.id,
+        status: request.query.status,
+        limit: request.query.limit ?? 20,
+        cursor: request.query.cursor,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "platform_admin_required":
+            return reply.code(403).send({
+              code: "PLATFORM_ADMIN_REQUIRED",
+              message: "Platform administrator access required",
+              requestId: request.id,
+            });
+
+          case "invalid_cursor":
+            return reply.code(400).send({
+              code: "INVALID_CURSOR",
+              message: "The pagination cursor is invalid",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result);
+    },
+  );
+
   app.post(
     "/api/organization-requests",
     {
