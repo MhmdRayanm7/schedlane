@@ -1,9 +1,15 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
-import { fromNodeHeaders } from "better-auth/node";
 import Type from "typebox";
-import { auth } from "../../auth.js";
+import { requireVerifiedUser } from "../../http/auth-guard.js";
 import { approveOrganizationRequest } from "./organization-approval-service.js";
+import { rejectOrganizationRequest } from "./organization-rejection-service.js";
 import { createOrganizationRequest } from "./organization-request-service.js";
+
+const organizationRequestParams = Type.Object({
+  requestId: Type.String({
+    minLength: 1,
+  }),
+});
 
 const createOrganizationRequestBody = Type.Object({
   name: Type.String({
@@ -12,17 +18,21 @@ const createOrganizationRequestBody = Type.Object({
   }),
 });
 
-const approveOrganizationRequestParams = Type.Object({
-  requestId: Type.String({
-    minLength: 1,
-  }),
-});
-
 const approveOrganizationRequestBody = Type.Object({
   slug: Type.String({
     minLength: 1,
     pattern: "^[a-z0-9]+(-[a-z0-9]+)*$",
   }),
+});
+
+const rejectOrganizationRequestBody = Type.Object({
+  reason: Type.Optional(
+    Type.String({
+      minLength: 1,
+      maxLength: 500,
+      pattern: ".*\\S.*",
+    }),
+  ),
 });
 
 export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
@@ -34,28 +44,14 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const session = await auth.api.getSession({
-        headers: fromNodeHeaders(request.headers),
-      });
+      const user = await requireVerifiedUser(request, reply);
 
-      if (!session) {
-        return reply.code(401).send({
-          code: "UNAUTHORIZED",
-          message: "Authentication required",
-          requestId: request.id,
-        });
-      }
-
-      if (!session.user.emailVerified) {
-        return reply.code(403).send({
-          code: "EMAIL_NOT_VERIFIED",
-          message: "Email verification required",
-          requestId: request.id,
-        });
+      if (!user) {
+        return;
       }
 
       const organizationRequest = await createOrganizationRequest({
-        requestedByUserId: session.user.id,
+        requestedByUserId: user.id,
         name: request.body.name,
       });
 
@@ -67,34 +63,20 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/platform/organization-requests/:requestId/approve",
     {
       schema: {
-        params: approveOrganizationRequestParams,
+        params: organizationRequestParams,
         body: approveOrganizationRequestBody,
       },
     },
     async (request, reply) => {
-      const session = await auth.api.getSession({
-        headers: fromNodeHeaders(request.headers),
-      });
+      const user = await requireVerifiedUser(request, reply);
 
-      if (!session) {
-        return reply.code(401).send({
-          code: "UNAUTHORIZED",
-          message: "Authentication required",
-          requestId: request.id,
-        });
-      }
-
-      if (!session.user.emailVerified) {
-        return reply.code(403).send({
-          code: "EMAIL_NOT_VERIFIED",
-          message: "Email verification required",
-          requestId: request.id,
-        });
+      if (!user) {
+        return;
       }
 
       const result = await approveOrganizationRequest({
         requestId: request.params.requestId,
-        reviewedByUserId: session.user.id,
+        reviewedByUserId: user.id,
         slug: request.body.slug,
       });
 
@@ -125,6 +107,60 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             return reply.code(409).send({
               code: "ORGANIZATION_SLUG_TAKEN",
               message: "Organization slug is already in use",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result);
+    },
+  );
+
+  app.post(
+    "/api/platform/organization-requests/:requestId/reject",
+    {
+      schema: {
+        params: organizationRequestParams,
+        body: rejectOrganizationRequestBody,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await rejectOrganizationRequest({
+        requestId: request.params.requestId,
+        reviewedByUserId: user.id,
+        ...(request.body.reason !== undefined
+          ? {
+              reason: request.body.reason,
+            }
+          : {}),
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "platform_admin_required":
+            return reply.code(403).send({
+              code: "PLATFORM_ADMIN_REQUIRED",
+              message: "Platform administrator access required",
+              requestId: request.id,
+            });
+
+          case "request_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_REQUEST_NOT_FOUND",
+              message: "Organization request not found",
+              requestId: request.id,
+            });
+
+          case "request_not_pending":
+            return reply.code(409).send({
+              code: "ORGANIZATION_REQUEST_NOT_PENDING",
+              message: "Organization request is no longer pending",
               requestId: request.id,
             });
         }
