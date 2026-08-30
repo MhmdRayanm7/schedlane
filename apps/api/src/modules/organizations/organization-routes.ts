@@ -2,6 +2,7 @@ import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
 import { approveOrganizationRequest } from "./organization-approval-service.js";
+import { listUserOrganizations } from "./organization-query-service.js";
 import { rejectOrganizationRequest } from "./organization-rejection-service.js";
 import { listOrganizationRequests } from "./organization-request-query-service.js";
 import { createOrganizationRequest } from "./organization-request-service.js";
@@ -58,6 +59,21 @@ const listOrganizationRequestsQuery = Type.Object({
 });
 
 export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
+  app.get("/api/organizations", async (request, reply) => {
+    const user = await requireVerifiedUser(request, reply);
+
+    if (!user) {
+      return;
+    }
+
+    // Organization access is derived from the authenticated user's memberships.
+    const result = await listUserOrganizations({
+      userId: user.id,
+    });
+
+    return reply.code(200).send(result);
+  });
+
   app.get(
     "/api/platform/organization-requests",
     {
