@@ -13,6 +13,7 @@ import {
 import { rejectOrganizationRequest } from "./organization-rejection-service.js";
 import { listOrganizationRequests } from "./organization-request-query-service.js";
 import { createOrganizationRequest } from "./organization-request-service.js";
+import { updateStaffTeamVisibility } from "./organization-settings-service.js";
 import { renameOrganization } from "./organization-update-service.js";
 
 const organizationRequestParams = Type.Object({
@@ -79,6 +80,10 @@ const renameOrganizationBody = Type.Object({
     maxLength: 120,
     pattern: ".*\\S.*",
   }),
+});
+
+const updateStaffTeamVisibilityBody = Type.Object({
+  staffTeamVisibility: Type.Union([Type.Literal("team"), Type.Literal("self")]),
 });
 
 export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
@@ -211,6 +216,51 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       }
 
       return reply.code(200).send(result.organization);
+    },
+  );
+
+  app.patch(
+    "/api/organizations/:organizationId/settings/staff-team-visibility",
+    {
+      schema: {
+        params: organizationParams,
+        body: updateStaffTeamVisibilityBody,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await updateStaffTeamVisibility({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+        visibility: request.body.staffTeamVisibility,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "owner_required":
+            return reply.code(403).send({
+              code: "ORGANIZATION_OWNER_REQUIRED",
+              message: "Organization owner access required",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send({
+        staffTeamVisibility: result.staffTeamVisibility,
+      });
     },
   );
 

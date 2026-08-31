@@ -14,6 +14,7 @@ export interface OrganizationTable {
   id: Generated<string>;
   slug: string;
   name: string;
+  staff_team_visibility: Generated<StaffTeamVisibility>;
   published_at: Date | null;
   suspended_at: Date | null;
   archived_at: Date | null;
@@ -51,6 +52,8 @@ export interface AuthUserTable {
   createdAt: Generated<Date>;
   updatedAt: Generated<Date>;
 }
+
+export type StaffTeamVisibility = "team" | "self";
 
 export interface Database {
   user: AuthUserTable;
