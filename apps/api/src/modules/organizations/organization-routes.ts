@@ -2,7 +2,10 @@ import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
 import { approveOrganizationRequest } from "./organization-approval-service.js";
-import { listUserOrganizations } from "./organization-query-service.js";
+import {
+  getUserOrganization,
+  listUserOrganizations,
+} from "./organization-query-service.js";
 import { rejectOrganizationRequest } from "./organization-rejection-service.js";
 import { listOrganizationRequests } from "./organization-request-query-service.js";
 import { createOrganizationRequest } from "./organization-request-service.js";
@@ -35,6 +38,13 @@ const rejectOrganizationRequestBody = Type.Object({
       pattern: ".*\\S.*",
     }),
   ),
+});
+
+const organizationParams = Type.Object({
+  organizationId: Type.String({
+    pattern:
+      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+  }),
 });
 
 const listOrganizationRequestsQuery = Type.Object({
@@ -73,6 +83,37 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
 
     return reply.code(200).send(result);
   });
+
+  app.get(
+    "/api/organizations/:organizationId",
+    {
+      schema: {
+        params: organizationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const organization = await getUserOrganization({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!organization) {
+        return reply.code(404).send({
+          code: "ORGANIZATION_NOT_FOUND",
+          message: "Organization not found",
+          requestId: request.id,
+        });
+      }
+
+      return reply.code(200).send(organization);
+    },
+  );
 
   app.get(
     "/api/platform/organization-requests",
