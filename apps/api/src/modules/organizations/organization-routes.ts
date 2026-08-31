@@ -9,6 +9,7 @@ import {
 import { rejectOrganizationRequest } from "./organization-rejection-service.js";
 import { listOrganizationRequests } from "./organization-request-query-service.js";
 import { createOrganizationRequest } from "./organization-request-service.js";
+import { renameOrganization } from "./organization-update-service.js";
 
 const organizationRequestParams = Type.Object({
   requestId: Type.String({
@@ -66,6 +67,14 @@ const listOrganizationRequestsQuery = Type.Object({
       minLength: 1,
     }),
   ),
+});
+
+const renameOrganizationBody = Type.Object({
+  name: Type.String({
+    minLength: 1,
+    maxLength: 120,
+    pattern: ".*\\S.*",
+  }),
 });
 
 export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
@@ -155,6 +164,49 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       }
 
       return reply.code(200).send(result);
+    },
+  );
+
+  app.patch(
+    "/api/organizations/:organizationId",
+    {
+      schema: {
+        params: organizationParams,
+        body: renameOrganizationBody,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await renameOrganization({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+        name: request.body.name,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "insufficient_role":
+            return reply.code(403).send({
+              code: "INSUFFICIENT_ORGANIZATION_ROLE",
+              message: "Your organization role does not allow this action",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result.organization);
     },
   );
 
