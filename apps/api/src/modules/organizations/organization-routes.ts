@@ -3,6 +3,10 @@ import Type from "typebox";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
 import { approveOrganizationRequest } from "./organization-approval-service.js";
 import {
+  archiveOrganization,
+  restoreOrganization,
+} from "./organization-lifecycle-service.js";
+import {
   getUserOrganization,
   listUserOrganizations,
 } from "./organization-query-service.js";
@@ -201,6 +205,102 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             return reply.code(403).send({
               code: "INSUFFICIENT_ORGANIZATION_ROLE",
               message: "Your organization role does not allow this action",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result.organization);
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/archive",
+    {
+      schema: {
+        params: organizationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await archiveOrganization({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "owner_required":
+            return reply.code(403).send({
+              code: "ORGANIZATION_OWNER_REQUIRED",
+              message: "Organization owner access required",
+              requestId: request.id,
+            });
+
+          case "already_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ALREADY_ARCHIVED",
+              message: "Organization is already archived",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result.organization);
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/restore",
+    {
+      schema: {
+        params: organizationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await restoreOrganization({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "owner_required":
+            return reply.code(403).send({
+              code: "ORGANIZATION_OWNER_REQUIRED",
+              message: "Organization owner access required",
+              requestId: request.id,
+            });
+
+          case "not_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_NOT_ARCHIVED",
+              message: "Organization is not archived",
               requestId: request.id,
             });
         }
