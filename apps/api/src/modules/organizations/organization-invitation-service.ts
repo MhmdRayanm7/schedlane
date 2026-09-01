@@ -60,6 +60,32 @@ export type RevokeOrganizationInvitationResult =
       reason: RevokeOrganizationInvitationFailure;
     };
 
+type AcceptOrganizationInvitationInput = {
+  userId: string;
+  userEmail: string;
+  token: string;
+};
+
+type AcceptOrganizationInvitationFailure =
+  | "invitation_not_found"
+  | "invitation_revoked"
+  | "invitation_expired"
+  | "invitation_already_accepted"
+  | "email_mismatch"
+  | "already_member";
+
+export type AcceptOrganizationInvitationResult =
+  | {
+      ok: true;
+      organizationId: string;
+      role: MembershipRole;
+      acceptedAt: string;
+    }
+  | {
+      ok: false;
+      reason: AcceptOrganizationInvitationFailure;
+    };
+
 export async function createOrganizationInvitation(
   input: CreateOrganizationInvitationInput,
 ): Promise<CreateOrganizationInvitationResult> {
@@ -267,6 +293,117 @@ export async function revokeOrganizationInvitation(
         id: invitation.id,
         revokedAt: revokedAt.toISOString(),
       },
+    };
+  });
+}
+
+export async function acceptOrganizationInvitation(
+  input: AcceptOrganizationInvitationInput,
+): Promise<AcceptOrganizationInvitationResult> {
+  const email = input.userEmail.trim().toLowerCase();
+
+  // Hash the presented secret exactly as we did when the invitation was created.
+  const tokenHash = createHash("sha256").update(input.token).digest("hex");
+
+  return db.transaction().execute(async (trx) => {
+    // Acceptance and revocation compete for the same invitation state.
+    const invitation = await trx
+      .selectFrom("organization_invitation")
+      .select([
+        "id",
+        "organization_id",
+        "email",
+        "role",
+        "expires_at",
+        "accepted_at",
+        "revoked_at",
+      ])
+      .where("token_hash", "=", tokenHash)
+      .forUpdate()
+      .executeTakeFirst();
+
+    if (!invitation) {
+      return {
+        ok: false,
+        reason: "invitation_not_found",
+      };
+    }
+
+    // Evaluate time-dependent state only after acquiring the invitation lock.
+    const now = new Date();
+
+    if (invitation.revoked_at) {
+      return {
+        ok: false,
+        reason: "invitation_revoked",
+      };
+    }
+
+    if (invitation.accepted_at) {
+      return {
+        ok: false,
+        reason: "invitation_already_accepted",
+      };
+    }
+
+    if (invitation.expires_at <= now) {
+      return {
+        ok: false,
+        reason: "invitation_expired",
+      };
+    }
+
+    // An invitation can only be accepted by the verified account it was sent to.
+    if (invitation.email !== email) {
+      return {
+        ok: false,
+        reason: "email_mismatch",
+      };
+    }
+
+    const membership = await trx
+      .insertInto("membership")
+      .values({
+        organization_id: invitation.organization_id,
+        user_id: input.userId,
+        role: invitation.role,
+      })
+      .onConflict((oc) =>
+        oc.columns(["organization_id", "user_id"]).doNothing(),
+      )
+      .returning("id")
+      .executeTakeFirst();
+
+    if (!membership) {
+      // A concurrent or existing membership makes this invitation unnecessary.
+      await trx
+        .updateTable("organization_invitation")
+        .set({
+          revoked_at: now,
+        })
+        .where("id", "=", invitation.id)
+        .executeTakeFirstOrThrow();
+
+      return {
+        ok: false,
+        reason: "already_member",
+      };
+    }
+
+    await trx
+      .updateTable("organization_invitation")
+      .set({
+        accepted_by_user_id: input.userId,
+        accepted_at: now,
+      })
+      .where("id", "=", invitation.id)
+      .executeTakeFirstOrThrow();
+
+    return {
+      ok: true,
+      organizationId: invitation.organization_id,
+      role: invitation.role,
+      acceptedAt: now.toISOString(),
     };
   });
 }

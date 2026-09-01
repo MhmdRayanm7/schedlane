@@ -5,6 +5,7 @@ import { emailService } from "../../email/index.js";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
 import { approveOrganizationRequest } from "./organization-approval-service.js";
 import {
+  acceptOrganizationInvitation,
   createOrganizationInvitation,
   revokeInvitationAfterDeliveryFailure,
   revokeOrganizationInvitation,
@@ -114,6 +115,13 @@ const organizationInvitationParams = Type.Object({
   invitationId: Type.String({
     pattern:
       "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+  }),
+});
+
+const acceptOrganizationInvitationBody = Type.Object({
+  token: Type.String({
+    minLength: 1,
+    maxLength: 256,
   }),
 });
 
@@ -396,6 +404,80 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       }
 
       return reply.code(200).send(result.invitation);
+    },
+  );
+
+  app.post(
+    "/api/organization-invitations/accept",
+    {
+      schema: {
+        body: acceptOrganizationInvitationBody,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await acceptOrganizationInvitation({
+        userId: user.id,
+        userEmail: user.email,
+        token: request.body.token,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "invitation_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_INVITATION_NOT_FOUND",
+              message: "Organization invitation not found",
+              requestId: request.id,
+            });
+
+          case "invitation_revoked":
+            return reply.code(409).send({
+              code: "ORGANIZATION_INVITATION_REVOKED",
+              message: "The invitation has been revoked",
+              requestId: request.id,
+            });
+
+          case "invitation_expired":
+            return reply.code(409).send({
+              code: "ORGANIZATION_INVITATION_EXPIRED",
+              message: "The invitation has expired",
+              requestId: request.id,
+            });
+
+          case "invitation_already_accepted":
+            return reply.code(409).send({
+              code: "ORGANIZATION_INVITATION_ALREADY_ACCEPTED",
+              message: "The invitation has already been accepted",
+              requestId: request.id,
+            });
+
+          case "email_mismatch":
+            return reply.code(403).send({
+              code: "ORGANIZATION_INVITATION_EMAIL_MISMATCH",
+              message: "This invitation belongs to another account",
+              requestId: request.id,
+            });
+
+          case "already_member":
+            return reply.code(409).send({
+              code: "ORGANIZATION_MEMBER_ALREADY_EXISTS",
+              message: "You are already a member of this organization",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send({
+        organizationId: result.organizationId,
+        role: result.role,
+        acceptedAt: result.acceptedAt,
+      });
     },
   );
 
