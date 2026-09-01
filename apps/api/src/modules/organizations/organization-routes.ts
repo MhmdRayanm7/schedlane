@@ -1,7 +1,14 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
+import { config } from "../../config.js";
+import { emailService } from "../../email/index.js";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
 import { approveOrganizationRequest } from "./organization-approval-service.js";
+import {
+  createOrganizationInvitation,
+  revokeInvitationAfterDeliveryFailure,
+  revokeOrganizationInvitation,
+} from "./organization-invitation-service.js";
 import {
   archiveOrganization,
   restoreOrganization,
@@ -85,6 +92,29 @@ const renameOrganizationBody = Type.Object({
 
 const updateStaffTeamVisibilityBody = Type.Object({
   staffTeamVisibility: Type.Union([Type.Literal("team"), Type.Literal("self")]),
+});
+
+const createOrganizationInvitationBody = Type.Object({
+  email: Type.String({
+    format: "email",
+    maxLength: 254,
+  }),
+  role: Type.Union([
+    Type.Literal("owner"),
+    Type.Literal("manager"),
+    Type.Literal("staff"),
+  ]),
+});
+
+const organizationInvitationParams = Type.Object({
+  organizationId: Type.String({
+    pattern:
+      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+  }),
+  invitationId: Type.String({
+    pattern:
+      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+  }),
 });
 
 export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
@@ -207,6 +237,165 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       return reply.code(200).send({
         items: result.items,
       });
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/invitations",
+    {
+      schema: {
+        params: organizationParams,
+        body: createOrganizationInvitationBody,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await createOrganizationInvitation({
+        invitedByUserId: user.id,
+        organizationId: request.params.organizationId,
+        email: request.body.email,
+        role: request.body.role,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "insufficient_role":
+            return reply.code(403).send({
+              code: "ORGANIZATION_INVITATION_NOT_ALLOWED",
+              message: "Your organization role does not allow this invitation",
+              requestId: request.id,
+            });
+
+          case "already_member":
+            return reply.code(409).send({
+              code: "ORGANIZATION_MEMBER_ALREADY_EXISTS",
+              message: "This user is already an organization member",
+              requestId: request.id,
+            });
+
+          case "invitation_already_pending":
+            return reply.code(409).send({
+              code: "ORGANIZATION_INVITATION_ALREADY_PENDING",
+              message: "An active invitation already exists for this email",
+              requestId: request.id,
+            });
+        }
+      }
+
+      const invitationUrl = new URL("/invitations/accept", config.WEB_ORIGIN);
+
+      // The raw token is used only for delivery and is never exposed in the API response.
+      invitationUrl.searchParams.set("token", result.token);
+
+      try {
+        await emailService.send({
+          to: result.invitation.email,
+          subject: "You've been invited to Schedlane",
+          text: [
+            `You have been invited to join an organization as ${result.invitation.role}.`,
+            "",
+            `Accept the invitation: ${invitationUrl.toString()}`,
+            "",
+            `This invitation expires at ${result.invitation.expiresAt}.`,
+          ].join("\n"),
+        });
+      } catch (error) {
+        // Close the invite if delivery fails so a retry creates a fresh token.
+        await revokeInvitationAfterDeliveryFailure(result.invitation.id);
+
+        request.log.error(
+          {
+            err: error,
+            invitationId: result.invitation.id,
+          },
+          "Failed to deliver organization invitation",
+        );
+
+        return reply.code(502).send({
+          code: "INVITATION_EMAIL_DELIVERY_FAILED",
+          message: "The invitation email could not be delivered",
+          requestId: request.id,
+        });
+      }
+
+      return reply.code(201).send({
+        invitation: result.invitation,
+      });
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/invitations/:invitationId/revoke",
+    {
+      schema: {
+        params: organizationInvitationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await revokeOrganizationInvitation({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+        invitationId: request.params.invitationId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "invitation_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_INVITATION_NOT_FOUND",
+              message: "Organization invitation not found",
+              requestId: request.id,
+            });
+
+          case "insufficient_role":
+            return reply.code(403).send({
+              code: "ORGANIZATION_INVITATION_NOT_ALLOWED",
+              message: "Your organization role does not allow this action",
+              requestId: request.id,
+            });
+
+          case "invitation_already_accepted":
+            return reply.code(409).send({
+              code: "ORGANIZATION_INVITATION_ALREADY_ACCEPTED",
+              message: "The invitation has already been accepted",
+              requestId: request.id,
+            });
+
+          case "invitation_already_revoked":
+            return reply.code(409).send({
+              code: "ORGANIZATION_INVITATION_ALREADY_REVOKED",
+              message: "The invitation has already been revoked",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result.invitation);
     },
   );
 
