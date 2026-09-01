@@ -6,6 +6,7 @@ import {
   archiveOrganization,
   restoreOrganization,
 } from "./organization-lifecycle-service.js";
+import { listOrganizationMembers } from "./organization-member-query-service.js";
 import {
   getUserOrganization,
   listUserOrganizations,
@@ -173,6 +174,39 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       }
 
       return reply.code(200).send(result);
+    },
+  );
+
+  app.get(
+    "/api/organizations/:organizationId/members",
+    {
+      schema: {
+        params: organizationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await listOrganizationMembers({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!result.ok) {
+        return reply.code(404).send({
+          code: "ORGANIZATION_NOT_FOUND",
+          message: "Organization not found",
+          requestId: request.id,
+        });
+      }
+
+      return reply.code(200).send({
+        items: result.items,
+      });
     },
   );
 
