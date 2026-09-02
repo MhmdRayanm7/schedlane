@@ -16,7 +16,11 @@ import {
   restoreOrganization,
 } from "./organization-lifecycle-service.js";
 import { listOrganizationMembers } from "./organization-member-query-service.js";
-import { updateOrganizationMemberRole } from "./organization-membership-service.js";
+import {
+  leaveOrganization,
+  removeOrganizationMember,
+  updateOrganizationMemberRole,
+} from "./organization-membership-service.js";
 import {
   getUserOrganization,
   listUserOrganizations,
@@ -919,6 +923,103 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       }
 
       return reply.code(200).send(result);
+    },
+  );
+
+  app.delete(
+    "/api/organizations/:organizationId/members/:membershipId",
+    {
+      schema: {
+        params: organizationMembershipParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await removeOrganizationMember({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+        membershipId: request.params.membershipId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "member_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_MEMBER_NOT_FOUND",
+              message: "Organization member not found",
+              requestId: request.id,
+            });
+
+          case "insufficient_role":
+            return reply.code(403).send({
+              code: "ORGANIZATION_MEMBER_REMOVAL_NOT_ALLOWED",
+              message: "Your organization role does not allow this action",
+              requestId: request.id,
+            });
+
+          case "self_removal_requires_leave":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SELF_REMOVAL_REQUIRES_LEAVE",
+              message: "Use the organization leave action to remove yourself",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(204).send();
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/leave",
+    {
+      schema: {
+        params: organizationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await leaveOrganization({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "last_owner":
+            return reply.code(409).send({
+              code: "ORGANIZATION_LAST_OWNER_REQUIRED",
+              message: "The organization must keep at least one owner",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(204).send();
     },
   );
 };
