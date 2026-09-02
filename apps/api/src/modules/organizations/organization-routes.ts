@@ -4,6 +4,7 @@ import { config } from "../../config.js";
 import { emailService } from "../../email/index.js";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
 import { approveOrganizationRequest } from "./organization-approval-service.js";
+import { listOrganizationInvitations } from "./organization-invitation-query-service.js";
 import {
   acceptOrganizationInvitation,
   createOrganizationInvitation,
@@ -240,6 +241,50 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
           message: "Organization not found",
           requestId: request.id,
         });
+      }
+
+      return reply.code(200).send({
+        items: result.items,
+      });
+    },
+  );
+
+  app.get(
+    "/api/organizations/:organizationId/invitations",
+    {
+      schema: {
+        params: organizationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await listOrganizationInvitations({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "insufficient_role":
+            return reply.code(403).send({
+              code: "ORGANIZATION_INVITATION_NOT_ALLOWED",
+              message:
+                "Your organization role does not allow invitation management",
+              requestId: request.id,
+            });
+        }
       }
 
       return reply.code(200).send({
