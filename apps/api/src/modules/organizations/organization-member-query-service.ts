@@ -10,6 +10,7 @@ type OrganizationMemberDirectoryItem = {
   name: string;
   role: MembershipRole;
   isSelf: boolean;
+  membershipId?: string;
 };
 
 export type ListOrganizationMembersResult =
@@ -48,9 +49,11 @@ export async function listOrganizationMembers(
       "target_membership.organization_id",
     )
     .select([
+      "target_membership.id as membership_id",
       "target_membership.user_id",
       "target_membership.role",
       "target_user.name",
+      "viewer_membership.role as viewer_role",
     ])
     .where("target_membership.organization_id", "=", input.organizationId)
     .where((eb) =>
@@ -72,10 +75,21 @@ export async function listOrganizationMembers(
 
   return {
     ok: true,
-    items: rows.map((row) => ({
-      name: row.name,
-      role: row.role,
-      isSelf: row.user_id === input.userId,
-    })),
+    items: rows.map((row) => {
+      const canManageTarget =
+        row.viewer_role === "owner" ||
+        (row.viewer_role === "manager" && row.role === "staff");
+
+      return {
+        name: row.name,
+        role: row.role,
+        isSelf: row.user_id === input.userId,
+        ...(canManageTarget
+          ? {
+              membershipId: row.membership_id,
+            }
+          : {}),
+      };
+    }),
   };
 }

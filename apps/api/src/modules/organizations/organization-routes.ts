@@ -16,6 +16,7 @@ import {
   restoreOrganization,
 } from "./organization-lifecycle-service.js";
 import { listOrganizationMembers } from "./organization-member-query-service.js";
+import { updateOrganizationMemberRole } from "./organization-membership-service.js";
 import {
   getUserOrganization,
   listUserOrganizations,
@@ -124,6 +125,25 @@ const acceptOrganizationInvitationBody = Type.Object({
     minLength: 1,
     maxLength: 256,
   }),
+});
+
+const organizationMembershipParams = Type.Object({
+  organizationId: Type.String({
+    pattern:
+      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+  }),
+  membershipId: Type.String({
+    pattern:
+      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+  }),
+});
+
+const updateOrganizationMemberRoleBody = Type.Object({
+  role: Type.Union([
+    Type.Literal("owner"),
+    Type.Literal("manager"),
+    Type.Literal("staff"),
+  ]),
 });
 
 export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
@@ -246,6 +266,64 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       return reply.code(200).send({
         items: result.items,
       });
+    },
+  );
+
+  app.patch(
+    "/api/organizations/:organizationId/members/:membershipId/role",
+    {
+      schema: {
+        params: organizationMembershipParams,
+        body: updateOrganizationMemberRoleBody,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await updateOrganizationMemberRole({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+        membershipId: request.params.membershipId,
+        role: request.body.role,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "member_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_MEMBER_NOT_FOUND",
+              message: "Organization member not found",
+              requestId: request.id,
+            });
+
+          case "owner_required":
+            return reply.code(403).send({
+              code: "ORGANIZATION_OWNER_REQUIRED",
+              message: "Organization owner access required",
+              requestId: request.id,
+            });
+
+          case "last_owner":
+            return reply.code(409).send({
+              code: "ORGANIZATION_LAST_OWNER_REQUIRED",
+              message: "The organization must keep at least one owner",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result.membership);
     },
   );
 
