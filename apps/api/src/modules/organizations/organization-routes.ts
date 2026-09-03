@@ -324,6 +324,20 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
               message: "The organization must keep at least one owner",
               requestId: request.id,
             });
+
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
+              requestId: request.id,
+            });
         }
       }
 
@@ -1002,6 +1016,20 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
               message: "Use the organization leave action to remove yourself",
               requestId: request.id,
             });
+
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
+              requestId: request.id,
+            });
         }
       }
 
@@ -1041,6 +1069,20 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             return reply.code(409).send({
               code: "ORGANIZATION_LAST_OWNER_REQUIRED",
               message: "The organization must keep at least one owner",
+              requestId: request.id,
+            });
+
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
               requestId: request.id,
             });
         }

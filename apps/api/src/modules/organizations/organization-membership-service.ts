@@ -1,5 +1,9 @@
 import { db } from "../../db.js";
 import type { MembershipRole } from "../../db-types.js";
+import {
+  type OrganizationWriteStateFailure,
+  requireWritableOrganization,
+} from "./organization-write-policy.js";
 
 type UpdateOrganizationMemberRoleInput = {
   userId: string;
@@ -12,7 +16,8 @@ type UpdateOrganizationMemberRoleFailure =
   | "organization_not_found"
   | "member_not_found"
   | "owner_required"
-  | "last_owner";
+  | "last_owner"
+  | OrganizationWriteStateFailure;
 
 export type UpdateOrganizationMemberRoleResult =
   | {
@@ -37,7 +42,8 @@ type RemoveOrganizationMemberFailure =
   | "organization_not_found"
   | "member_not_found"
   | "insufficient_role"
-  | "self_removal_requires_leave";
+  | "self_removal_requires_leave"
+  | OrganizationWriteStateFailure;
 
 export type RemoveOrganizationMemberResult =
   | {
@@ -53,7 +59,10 @@ type LeaveOrganizationInput = {
   organizationId: string;
 };
 
-type LeaveOrganizationFailure = "organization_not_found" | "last_owner";
+type LeaveOrganizationFailure =
+  | "organization_not_found"
+  | "last_owner"
+  | OrganizationWriteStateFailure;
 
 export type LeaveOrganizationResult =
   | {
@@ -105,6 +114,15 @@ export async function updateOrganizationMemberRole(
         ok: false,
         reason: "member_not_found",
       };
+    }
+
+    const writeState = await requireWritableOrganization(
+      trx,
+      input.organizationId,
+    );
+
+    if (!writeState.ok) {
+      return writeState;
     }
 
     if (targetMembership.role === "owner" && input.role !== "owner") {
@@ -210,6 +228,15 @@ export async function removeOrganizationMember(
       };
     }
 
+    const writeState = await requireWritableOrganization(
+      trx,
+      input.organizationId,
+    );
+
+    if (!writeState.ok) {
+      return writeState;
+    }
+
     await trx
       .deleteFrom("membership")
       .where("id", "=", targetMembership.id)
@@ -243,6 +270,15 @@ export async function leaveOrganization(
         ok: false,
         reason: "organization_not_found",
       };
+    }
+
+    const writeState = await requireWritableOrganization(
+      trx,
+      input.organizationId,
+    );
+
+    if (!writeState.ok) {
+      return writeState;
     }
 
     if (membership.role === "owner") {
