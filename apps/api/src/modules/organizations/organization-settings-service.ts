@@ -1,5 +1,9 @@
 import { db } from "../../db.js";
 import type { StaffTeamVisibility } from "../../db-types.js";
+import {
+  type OrganizationWriteStateFailure,
+  requireWritableOrganization,
+} from "./organization-write-policy.js";
 
 type UpdateStaffTeamVisibilityInput = {
   userId: string;
@@ -9,7 +13,8 @@ type UpdateStaffTeamVisibilityInput = {
 
 type UpdateStaffTeamVisibilityFailure =
   | "organization_not_found"
-  | "owner_required";
+  | "owner_required"
+  | OrganizationWriteStateFailure;
 
 export type UpdateStaffTeamVisibilityResult =
   | {
@@ -46,6 +51,15 @@ export async function updateStaffTeamVisibility(
         ok: false,
         reason: "owner_required",
       };
+    }
+
+    const writeState = await requireWritableOrganization(
+      trx,
+      input.organizationId,
+    );
+
+    if (!writeState.ok) {
+      return writeState;
     }
 
     await trx

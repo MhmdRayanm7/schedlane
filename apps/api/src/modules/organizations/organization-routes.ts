@@ -644,6 +644,19 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
               message: "Your organization role does not allow this action",
               requestId: request.id,
             });
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
+              requestId: request.id,
+            });
         }
       }
 
@@ -685,6 +698,20 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             return reply.code(403).send({
               code: "ORGANIZATION_OWNER_REQUIRED",
               message: "Organization owner access required",
+              requestId: request.id,
+            });
+
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
               requestId: request.id,
             });
         }

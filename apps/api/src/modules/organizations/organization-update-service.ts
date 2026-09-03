@@ -1,4 +1,8 @@
 import { db } from "../../db.js";
+import {
+  type OrganizationWriteStateFailure,
+  requireWritableOrganization,
+} from "./organization-write-policy.js";
 
 type RenameOrganizationInput = {
   userId: string;
@@ -6,7 +10,10 @@ type RenameOrganizationInput = {
   name: string;
 };
 
-type RenameOrganizationFailure = "organization_not_found" | "insufficient_role";
+type RenameOrganizationFailure =
+  | "organization_not_found"
+  | "insufficient_role"
+  | OrganizationWriteStateFailure;
 
 export type RenameOrganizationResult =
   | {
@@ -48,6 +55,15 @@ export async function renameOrganization(
         ok: false,
         reason: "insufficient_role",
       };
+    }
+
+    const writeState = await requireWritableOrganization(
+      trx,
+      input.organizationId,
+    );
+
+    if (!writeState.ok) {
+      return writeState;
     }
 
     const updatedAt = new Date();
