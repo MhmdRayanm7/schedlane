@@ -440,6 +440,20 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
               message: "An active invitation already exists for this email",
               requestId: request.id,
             });
+
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
+              requestId: request.id,
+            });
         }
       }
 
@@ -541,6 +555,20 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
               message: "The invitation has already been revoked",
               requestId: request.id,
             });
+
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
+              requestId: request.id,
+            });
         }
       }
 
@@ -609,6 +637,19 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             return reply.code(409).send({
               code: "ORGANIZATION_MEMBER_ALREADY_EXISTS",
               message: "You are already a member of this organization",
+              requestId: request.id,
+            });
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
               requestId: request.id,
             });
         }

@@ -2,6 +2,10 @@ import { createHash, randomBytes } from "node:crypto";
 import { sql } from "kysely";
 import { db } from "../../db.js";
 import type { MembershipRole } from "../../db-types.js";
+import {
+  type OrganizationWriteStateFailure,
+  requireWritableOrganization,
+} from "./organization-write-policy.js";
 
 const INVITATION_TTL_DAYS = 7;
 
@@ -16,7 +20,8 @@ type CreateOrganizationInvitationFailure =
   | "organization_not_found"
   | "insufficient_role"
   | "already_member"
-  | "invitation_already_pending";
+  | "invitation_already_pending"
+  | OrganizationWriteStateFailure;
 
 export type CreateOrganizationInvitationResult =
   | {
@@ -45,7 +50,8 @@ type RevokeOrganizationInvitationFailure =
   | "invitation_not_found"
   | "insufficient_role"
   | "invitation_already_accepted"
-  | "invitation_already_revoked";
+  | "invitation_already_revoked"
+  | OrganizationWriteStateFailure;
 
 export type RevokeOrganizationInvitationResult =
   | {
@@ -72,7 +78,8 @@ type AcceptOrganizationInvitationFailure =
   | "invitation_expired"
   | "invitation_already_accepted"
   | "email_mismatch"
-  | "already_member";
+  | "already_member"
+  | OrganizationWriteStateFailure;
 
 export type AcceptOrganizationInvitationResult =
   | {
@@ -90,7 +97,6 @@ export async function createOrganizationInvitation(
   input: CreateOrganizationInvitationInput,
 ): Promise<CreateOrganizationInvitationResult> {
   const email = input.email.trim().toLowerCase();
-  const now = new Date();
 
   return db.transaction().execute(async (trx) => {
     // Lock the inviter's membership while its role is used for authorization.
@@ -119,6 +125,17 @@ export async function createOrganizationInvitation(
         reason: "insufficient_role",
       };
     }
+
+    const writeState = await requireWritableOrganization(
+      trx,
+      input.organizationId,
+    );
+
+    if (!writeState.ok) {
+      return writeState;
+    }
+
+    const now = new Date();
 
     const existingMember = await trx
       .selectFrom("membership")
@@ -263,6 +280,15 @@ export async function revokeOrganizationInvitation(
       };
     }
 
+    const writeState = await requireWritableOrganization(
+      trx,
+      input.organizationId,
+    );
+
+    if (!writeState.ok) {
+      return writeState;
+    }
+
     if (invitation.accepted_at) {
       return {
         ok: false,
@@ -306,6 +332,30 @@ export async function acceptOrganizationInvitation(
   const tokenHash = createHash("sha256").update(input.token).digest("hex");
 
   return db.transaction().execute(async (trx) => {
+    // Resolve the organization first without locking so every invitation write
+    // can acquire locks in organization -> invitation order.
+    const invitationReference = await trx
+      .selectFrom("organization_invitation")
+      .select("organization_id")
+      .where("token_hash", "=", tokenHash)
+      .executeTakeFirst();
+
+    if (!invitationReference) {
+      return {
+        ok: false,
+        reason: "invitation_not_found",
+      };
+    }
+
+    const writeState = await requireWritableOrganization(
+      trx,
+      invitationReference.organization_id,
+    );
+
+    if (!writeState.ok) {
+      return writeState;
+    }
+
     // Acceptance and revocation compete for the same invitation state.
     const invitation = await trx
       .selectFrom("organization_invitation")
@@ -319,6 +369,7 @@ export async function acceptOrganizationInvitation(
         "revoked_at",
       ])
       .where("token_hash", "=", tokenHash)
+      .where("organization_id", "=", invitationReference.organization_id)
       .forUpdate()
       .executeTakeFirst();
 
@@ -358,6 +409,29 @@ export async function acceptOrganizationInvitation(
       return {
         ok: false,
         reason: "email_mismatch",
+      };
+    }
+
+    const existingMembership = await trx
+      .selectFrom("membership")
+      .select("id")
+      .where("organization_id", "=", invitation.organization_id)
+      .where("user_id", "=", input.userId)
+      .executeTakeFirst();
+
+    if (existingMembership) {
+      // The invitation is no longer needed once this user already belongs to the organization.
+      await trx
+        .updateTable("organization_invitation")
+        .set({
+          revoked_at: now,
+        })
+        .where("id", "=", invitation.id)
+        .executeTakeFirstOrThrow();
+
+      return {
+        ok: false,
+        reason: "already_member",
       };
     }
 
