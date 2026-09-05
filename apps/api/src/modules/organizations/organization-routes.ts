@@ -29,6 +29,10 @@ import { rejectOrganizationRequest } from "./organization-rejection-service.js";
 import { listOrganizationRequests } from "./organization-request-query-service.js";
 import { createOrganizationRequest } from "./organization-request-service.js";
 import { updateStaffTeamVisibility } from "./organization-settings-service.js";
+import {
+  suspendOrganization,
+  unsuspendOrganization,
+} from "./organization-suspension-service.js";
 import { renameOrganization } from "./organization-update-service.js";
 
 const organizationRequestParams = Type.Object({
@@ -151,6 +155,291 @@ const updateOrganizationMemberRoleBody = Type.Object({
 });
 
 export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
+  // ---------------------------------------------------------------------------
+  // Platform administration
+  // ---------------------------------------------------------------------------
+
+  app.get(
+    "/api/platform/organization-requests",
+    {
+      schema: {
+        querystring: listOrganizationRequestsQuery,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await listOrganizationRequests({
+        userId: user.id,
+        status: request.query.status,
+        limit: request.query.limit ?? 20,
+        cursor: request.query.cursor,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "platform_admin_required":
+            return reply.code(403).send({
+              code: "PLATFORM_ADMIN_REQUIRED",
+              message: "Platform administrator access required",
+              requestId: request.id,
+            });
+
+          case "invalid_cursor":
+            return reply.code(400).send({
+              code: "INVALID_CURSOR",
+              message: "The pagination cursor is invalid",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result);
+    },
+  );
+
+  app.post(
+    "/api/platform/organization-requests/:requestId/approve",
+    {
+      schema: {
+        params: organizationRequestParams,
+        body: approveOrganizationRequestBody,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await approveOrganizationRequest({
+        requestId: request.params.requestId,
+        reviewedByUserId: user.id,
+        slug: request.body.slug,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "platform_admin_required":
+            return reply.code(403).send({
+              code: "PLATFORM_ADMIN_REQUIRED",
+              message: "Platform administrator access required",
+              requestId: request.id,
+            });
+
+          case "request_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_REQUEST_NOT_FOUND",
+              message: "Organization request not found",
+              requestId: request.id,
+            });
+
+          case "request_not_pending":
+            return reply.code(409).send({
+              code: "ORGANIZATION_REQUEST_NOT_PENDING",
+              message: "Organization request is no longer pending",
+              requestId: request.id,
+            });
+
+          case "slug_taken":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SLUG_TAKEN",
+              message: "Organization slug is already in use",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result);
+    },
+  );
+
+  app.post(
+    "/api/platform/organization-requests/:requestId/reject",
+    {
+      schema: {
+        params: organizationRequestParams,
+        body: rejectOrganizationRequestBody,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await rejectOrganizationRequest({
+        requestId: request.params.requestId,
+        reviewedByUserId: user.id,
+        ...(request.body.reason !== undefined
+          ? {
+              reason: request.body.reason,
+            }
+          : {}),
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "platform_admin_required":
+            return reply.code(403).send({
+              code: "PLATFORM_ADMIN_REQUIRED",
+              message: "Platform administrator access required",
+              requestId: request.id,
+            });
+
+          case "request_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_REQUEST_NOT_FOUND",
+              message: "Organization request not found",
+              requestId: request.id,
+            });
+
+          case "request_not_pending":
+            return reply.code(409).send({
+              code: "ORGANIZATION_REQUEST_NOT_PENDING",
+              message: "Organization request is no longer pending",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result);
+    },
+  );
+
+  app.post(
+    "/api/platform/organizations/:organizationId/suspend",
+    {
+      schema: {
+        params: organizationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await suspendOrganization({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "platform_admin_required":
+            return reply.code(403).send({
+              code: "PLATFORM_ADMIN_REQUIRED",
+              message: "Platform administrator access required",
+              requestId: request.id,
+            });
+
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "already_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ALREADY_SUSPENDED",
+              message: "Organization is already suspended",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result.organization);
+    },
+  );
+
+  app.post(
+    "/api/platform/organizations/:organizationId/unsuspend",
+    {
+      schema: {
+        params: organizationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await unsuspendOrganization({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "platform_admin_required":
+            return reply.code(403).send({
+              code: "PLATFORM_ADMIN_REQUIRED",
+              message: "Platform administrator access required",
+              requestId: request.id,
+            });
+
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "not_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_NOT_SUSPENDED",
+              message: "Organization is not suspended",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result.organization);
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Organization requests
+  // ---------------------------------------------------------------------------
+
+  app.post(
+    "/api/organization-requests",
+    {
+      schema: {
+        body: createOrganizationRequestBody,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const organizationRequest = await createOrganizationRequest({
+        requestedByUserId: user.id,
+        name: request.body.name,
+      });
+
+      return reply.code(201).send(organizationRequest);
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Organization access, settings, and lifecycle
+  // ---------------------------------------------------------------------------
+
   app.get("/api/organizations", async (request, reply) => {
     const user = await requireVerifiedUser(request, reply);
 
@@ -197,11 +486,12 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     },
   );
 
-  app.get(
-    "/api/platform/organization-requests",
+  app.patch(
+    "/api/organizations/:organizationId",
     {
       schema: {
-        querystring: listOrganizationRequestsQuery,
+        params: organizationParams,
+        body: renameOrganizationBody,
       },
     },
     async (request, reply) => {
@@ -211,34 +501,220 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
         return;
       }
 
-      const result = await listOrganizationRequests({
+      const result = await renameOrganization({
         userId: user.id,
-        status: request.query.status,
-        limit: request.query.limit ?? 20,
-        cursor: request.query.cursor,
+        organizationId: request.params.organizationId,
+        name: request.body.name,
       });
 
       if (!result.ok) {
         switch (result.reason) {
-          case "platform_admin_required":
-            return reply.code(403).send({
-              code: "PLATFORM_ADMIN_REQUIRED",
-              message: "Platform administrator access required",
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
               requestId: request.id,
             });
 
-          case "invalid_cursor":
-            return reply.code(400).send({
-              code: "INVALID_CURSOR",
-              message: "The pagination cursor is invalid",
+          case "insufficient_role":
+            return reply.code(403).send({
+              code: "INSUFFICIENT_ORGANIZATION_ROLE",
+              message: "Your organization role does not allow this action",
+              requestId: request.id,
+            });
+
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
               requestId: request.id,
             });
         }
       }
 
-      return reply.code(200).send(result);
+      return reply.code(200).send(result.organization);
     },
   );
+
+  app.patch(
+    "/api/organizations/:organizationId/settings/staff-team-visibility",
+    {
+      schema: {
+        params: organizationParams,
+        body: updateStaffTeamVisibilityBody,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await updateStaffTeamVisibility({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+        visibility: request.body.staffTeamVisibility,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "owner_required":
+            return reply.code(403).send({
+              code: "ORGANIZATION_OWNER_REQUIRED",
+              message: "Organization owner access required",
+              requestId: request.id,
+            });
+
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send({
+        staffTeamVisibility: result.staffTeamVisibility,
+      });
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/archive",
+    {
+      schema: {
+        params: organizationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await archiveOrganization({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "owner_required":
+            return reply.code(403).send({
+              code: "ORGANIZATION_OWNER_REQUIRED",
+              message: "Organization owner access required",
+              requestId: request.id,
+            });
+
+          case "already_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ALREADY_ARCHIVED",
+              message: "Organization is already archived",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result.organization);
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/restore",
+    {
+      schema: {
+        params: organizationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await restoreOrganization({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "owner_required":
+            return reply.code(403).send({
+              code: "ORGANIZATION_OWNER_REQUIRED",
+              message: "Organization owner access required",
+              requestId: request.id,
+            });
+
+          case "not_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_NOT_ARCHIVED",
+              message: "Organization is not archived",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result.organization);
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Organization memberships
+  // ---------------------------------------------------------------------------
 
   app.get(
     "/api/organizations/:organizationId/members",
@@ -344,6 +820,135 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       return reply.code(200).send(result.membership);
     },
   );
+
+  app.delete(
+    "/api/organizations/:organizationId/members/:membershipId",
+    {
+      schema: {
+        params: organizationMembershipParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await removeOrganizationMember({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+        membershipId: request.params.membershipId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "member_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_MEMBER_NOT_FOUND",
+              message: "Organization member not found",
+              requestId: request.id,
+            });
+
+          case "insufficient_role":
+            return reply.code(403).send({
+              code: "ORGANIZATION_MEMBER_REMOVAL_NOT_ALLOWED",
+              message: "Your organization role does not allow this action",
+              requestId: request.id,
+            });
+
+          case "self_removal_requires_leave":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SELF_REMOVAL_REQUIRES_LEAVE",
+              message: "Use the organization leave action to remove yourself",
+              requestId: request.id,
+            });
+
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(204).send();
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/leave",
+    {
+      schema: {
+        params: organizationParams,
+      },
+    },
+    async (request, reply) => {
+      const user = await requireVerifiedUser(request, reply);
+
+      if (!user) {
+        return;
+      }
+
+      const result = await leaveOrganization({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "last_owner":
+            return reply.code(409).send({
+              code: "ORGANIZATION_LAST_OWNER_REQUIRED",
+              message: "The organization must keep at least one owner",
+              requestId: request.id,
+            });
+
+          case "organization_archived":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ARCHIVED",
+              message: "Restore the organization before making changes",
+              requestId: request.id,
+            });
+
+          case "organization_suspended":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SUSPENDED",
+              message: "The organization is suspended and read-only",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(204).send();
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Organization invitations
+  // ---------------------------------------------------------------------------
 
   app.get(
     "/api/organizations/:organizationId/invitations",
@@ -459,7 +1064,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
 
       const invitationUrl = new URL("/invitations/accept", config.WEB_ORIGIN);
 
-      // The raw token is used only for delivery and is never exposed in the API response.
+      // Raw invitation tokens are used only for delivery.
       invitationUrl.searchParams.set("token", result.token);
 
       try {
@@ -475,7 +1080,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
           ].join("\n"),
         });
       } catch (error) {
-        // Close the invite if delivery fails so a retry creates a fresh token.
+        // Failed delivery must not leave an undisclosed active invitation.
         await revokeInvitationAfterDeliveryFailure(result.invitation.id);
 
         request.log.error(
@@ -639,6 +1244,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
               message: "You are already a member of this organization",
               requestId: request.id,
             });
+
           case "organization_archived":
             return reply.code(409).send({
               code: "ORGANIZATION_ARCHIVED",
@@ -660,476 +1266,6 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
         role: result.role,
         acceptedAt: result.acceptedAt,
       });
-    },
-  );
-
-  app.patch(
-    "/api/organizations/:organizationId",
-    {
-      schema: {
-        params: organizationParams,
-        body: renameOrganizationBody,
-      },
-    },
-    async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
-
-      const result = await renameOrganization({
-        userId: user.id,
-        organizationId: request.params.organizationId,
-        name: request.body.name,
-      });
-
-      if (!result.ok) {
-        switch (result.reason) {
-          case "organization_not_found":
-            return reply.code(404).send({
-              code: "ORGANIZATION_NOT_FOUND",
-              message: "Organization not found",
-              requestId: request.id,
-            });
-
-          case "insufficient_role":
-            return reply.code(403).send({
-              code: "INSUFFICIENT_ORGANIZATION_ROLE",
-              message: "Your organization role does not allow this action",
-              requestId: request.id,
-            });
-          case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
-          case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
-        }
-      }
-
-      return reply.code(200).send(result.organization);
-    },
-  );
-
-  app.patch(
-    "/api/organizations/:organizationId/settings/staff-team-visibility",
-    {
-      schema: {
-        params: organizationParams,
-        body: updateStaffTeamVisibilityBody,
-      },
-    },
-    async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
-
-      const result = await updateStaffTeamVisibility({
-        userId: user.id,
-        organizationId: request.params.organizationId,
-        visibility: request.body.staffTeamVisibility,
-      });
-
-      if (!result.ok) {
-        switch (result.reason) {
-          case "organization_not_found":
-            return reply.code(404).send({
-              code: "ORGANIZATION_NOT_FOUND",
-              message: "Organization not found",
-              requestId: request.id,
-            });
-
-          case "owner_required":
-            return reply.code(403).send({
-              code: "ORGANIZATION_OWNER_REQUIRED",
-              message: "Organization owner access required",
-              requestId: request.id,
-            });
-
-          case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
-          case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
-        }
-      }
-
-      return reply.code(200).send({
-        staffTeamVisibility: result.staffTeamVisibility,
-      });
-    },
-  );
-
-  app.post(
-    "/api/organizations/:organizationId/archive",
-    {
-      schema: {
-        params: organizationParams,
-      },
-    },
-    async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
-
-      const result = await archiveOrganization({
-        userId: user.id,
-        organizationId: request.params.organizationId,
-      });
-
-      if (!result.ok) {
-        switch (result.reason) {
-          case "organization_not_found":
-            return reply.code(404).send({
-              code: "ORGANIZATION_NOT_FOUND",
-              message: "Organization not found",
-              requestId: request.id,
-            });
-
-          case "owner_required":
-            return reply.code(403).send({
-              code: "ORGANIZATION_OWNER_REQUIRED",
-              message: "Organization owner access required",
-              requestId: request.id,
-            });
-
-          case "already_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ALREADY_ARCHIVED",
-              message: "Organization is already archived",
-              requestId: request.id,
-            });
-        }
-      }
-
-      return reply.code(200).send(result.organization);
-    },
-  );
-
-  app.post(
-    "/api/organizations/:organizationId/restore",
-    {
-      schema: {
-        params: organizationParams,
-      },
-    },
-    async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
-
-      const result = await restoreOrganization({
-        userId: user.id,
-        organizationId: request.params.organizationId,
-      });
-
-      if (!result.ok) {
-        switch (result.reason) {
-          case "organization_not_found":
-            return reply.code(404).send({
-              code: "ORGANIZATION_NOT_FOUND",
-              message: "Organization not found",
-              requestId: request.id,
-            });
-
-          case "owner_required":
-            return reply.code(403).send({
-              code: "ORGANIZATION_OWNER_REQUIRED",
-              message: "Organization owner access required",
-              requestId: request.id,
-            });
-
-          case "not_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_NOT_ARCHIVED",
-              message: "Organization is not archived",
-              requestId: request.id,
-            });
-        }
-      }
-
-      return reply.code(200).send(result.organization);
-    },
-  );
-
-  app.post(
-    "/api/organization-requests",
-    {
-      schema: {
-        body: createOrganizationRequestBody,
-      },
-    },
-    async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
-
-      const organizationRequest = await createOrganizationRequest({
-        requestedByUserId: user.id,
-        name: request.body.name,
-      });
-
-      return reply.code(201).send(organizationRequest);
-    },
-  );
-
-  app.post(
-    "/api/platform/organization-requests/:requestId/approve",
-    {
-      schema: {
-        params: organizationRequestParams,
-        body: approveOrganizationRequestBody,
-      },
-    },
-    async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
-
-      const result = await approveOrganizationRequest({
-        requestId: request.params.requestId,
-        reviewedByUserId: user.id,
-        slug: request.body.slug,
-      });
-
-      if (!result.ok) {
-        switch (result.reason) {
-          case "platform_admin_required":
-            return reply.code(403).send({
-              code: "PLATFORM_ADMIN_REQUIRED",
-              message: "Platform administrator access required",
-              requestId: request.id,
-            });
-
-          case "request_not_found":
-            return reply.code(404).send({
-              code: "ORGANIZATION_REQUEST_NOT_FOUND",
-              message: "Organization request not found",
-              requestId: request.id,
-            });
-
-          case "request_not_pending":
-            return reply.code(409).send({
-              code: "ORGANIZATION_REQUEST_NOT_PENDING",
-              message: "Organization request is no longer pending",
-              requestId: request.id,
-            });
-
-          case "slug_taken":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SLUG_TAKEN",
-              message: "Organization slug is already in use",
-              requestId: request.id,
-            });
-        }
-      }
-
-      return reply.code(200).send(result);
-    },
-  );
-
-  app.post(
-    "/api/platform/organization-requests/:requestId/reject",
-    {
-      schema: {
-        params: organizationRequestParams,
-        body: rejectOrganizationRequestBody,
-      },
-    },
-    async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
-
-      const result = await rejectOrganizationRequest({
-        requestId: request.params.requestId,
-        reviewedByUserId: user.id,
-        ...(request.body.reason !== undefined
-          ? {
-              reason: request.body.reason,
-            }
-          : {}),
-      });
-
-      if (!result.ok) {
-        switch (result.reason) {
-          case "platform_admin_required":
-            return reply.code(403).send({
-              code: "PLATFORM_ADMIN_REQUIRED",
-              message: "Platform administrator access required",
-              requestId: request.id,
-            });
-
-          case "request_not_found":
-            return reply.code(404).send({
-              code: "ORGANIZATION_REQUEST_NOT_FOUND",
-              message: "Organization request not found",
-              requestId: request.id,
-            });
-
-          case "request_not_pending":
-            return reply.code(409).send({
-              code: "ORGANIZATION_REQUEST_NOT_PENDING",
-              message: "Organization request is no longer pending",
-              requestId: request.id,
-            });
-        }
-      }
-
-      return reply.code(200).send(result);
-    },
-  );
-
-  app.delete(
-    "/api/organizations/:organizationId/members/:membershipId",
-    {
-      schema: {
-        params: organizationMembershipParams,
-      },
-    },
-    async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
-
-      const result = await removeOrganizationMember({
-        userId: user.id,
-        organizationId: request.params.organizationId,
-        membershipId: request.params.membershipId,
-      });
-
-      if (!result.ok) {
-        switch (result.reason) {
-          case "organization_not_found":
-            return reply.code(404).send({
-              code: "ORGANIZATION_NOT_FOUND",
-              message: "Organization not found",
-              requestId: request.id,
-            });
-
-          case "member_not_found":
-            return reply.code(404).send({
-              code: "ORGANIZATION_MEMBER_NOT_FOUND",
-              message: "Organization member not found",
-              requestId: request.id,
-            });
-
-          case "insufficient_role":
-            return reply.code(403).send({
-              code: "ORGANIZATION_MEMBER_REMOVAL_NOT_ALLOWED",
-              message: "Your organization role does not allow this action",
-              requestId: request.id,
-            });
-
-          case "self_removal_requires_leave":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SELF_REMOVAL_REQUIRES_LEAVE",
-              message: "Use the organization leave action to remove yourself",
-              requestId: request.id,
-            });
-
-          case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
-          case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
-        }
-      }
-
-      return reply.code(204).send();
-    },
-  );
-
-  app.post(
-    "/api/organizations/:organizationId/leave",
-    {
-      schema: {
-        params: organizationParams,
-      },
-    },
-    async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
-
-      const result = await leaveOrganization({
-        userId: user.id,
-        organizationId: request.params.organizationId,
-      });
-
-      if (!result.ok) {
-        switch (result.reason) {
-          case "organization_not_found":
-            return reply.code(404).send({
-              code: "ORGANIZATION_NOT_FOUND",
-              message: "Organization not found",
-              requestId: request.id,
-            });
-
-          case "last_owner":
-            return reply.code(409).send({
-              code: "ORGANIZATION_LAST_OWNER_REQUIRED",
-              message: "The organization must keep at least one owner",
-              requestId: request.id,
-            });
-
-          case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
-          case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
-        }
-      }
-
-      return reply.code(204).send();
     },
   );
 };
