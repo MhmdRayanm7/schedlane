@@ -8,7 +8,8 @@ type ArchiveOrganizationInput = {
 type ArchiveOrganizationFailure =
   | "organization_not_found"
   | "owner_required"
-  | "already_archived";
+  | "already_archived"
+  | "organization_suspended";
 
 export type ArchiveOrganizationResult =
   | {
@@ -31,7 +32,8 @@ type RestoreOrganizationInput = {
 type RestoreOrganizationFailure =
   | "organization_not_found"
   | "owner_required"
-  | "not_archived";
+  | "not_archived"
+  | "organization_suspended";
 
 export type RestoreOrganizationResult =
   | {
@@ -74,10 +76,18 @@ export async function archiveOrganization(
 
     const organization = await trx
       .selectFrom("organization")
-      .select(["id", "archived_at"])
+      .select(["id", "archived_at", "suspended_at"])
       .where("id", "=", input.organizationId)
       .forUpdate()
       .executeTakeFirstOrThrow();
+
+    // Platform suspension takes precedence over owner-managed lifecycle actions.
+    if (organization.suspended_at) {
+      return {
+        ok: false,
+        reason: "organization_suspended",
+      };
+    }
 
     if (organization.archived_at) {
       return {
@@ -96,7 +106,7 @@ export async function archiveOrganization(
         updated_at: archivedAt,
       })
       .where("id", "=", input.organizationId)
-      .execute();
+      .executeTakeFirstOrThrow();
 
     return {
       ok: true,
@@ -136,10 +146,18 @@ export async function restoreOrganization(
 
     const organization = await trx
       .selectFrom("organization")
-      .select(["id", "archived_at"])
+      .select(["id", "archived_at", "suspended_at"])
       .where("id", "=", input.organizationId)
       .forUpdate()
       .executeTakeFirstOrThrow();
+
+    // Suspended organizations remain fully controlled by the platform.
+    if (organization.suspended_at) {
+      return {
+        ok: false,
+        reason: "organization_suspended",
+      };
+    }
 
     if (!organization.archived_at) {
       return {
@@ -157,7 +175,7 @@ export async function restoreOrganization(
         updated_at: updatedAt,
       })
       .where("id", "=", input.organizationId)
-      .execute();
+      .executeTakeFirstOrThrow();
 
     return {
       ok: true,
