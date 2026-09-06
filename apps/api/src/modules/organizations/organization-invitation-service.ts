@@ -253,7 +253,17 @@ export async function revokeOrganizationInvitation(
       };
     }
 
-    // Lock the invitation because acceptance and revocation are competing state changes.
+    const writeState = await requireWritableOrganization(
+      trx,
+      input.organizationId,
+    );
+
+    if (!writeState.ok) {
+      return writeState;
+    }
+
+    // Lock the invitation after the organization so invitation writes share
+    // the same organization -> invitation lock order.
     const invitation = await trx
       .selectFrom("organization_invitation")
       .select(["id", "role", "accepted_at", "revoked_at"])
@@ -278,15 +288,6 @@ export async function revokeOrganizationInvitation(
         ok: false,
         reason: "insufficient_role",
       };
-    }
-
-    const writeState = await requireWritableOrganization(
-      trx,
-      input.organizationId,
-    );
-
-    if (!writeState.ok) {
-      return writeState;
     }
 
     if (invitation.accepted_at) {
