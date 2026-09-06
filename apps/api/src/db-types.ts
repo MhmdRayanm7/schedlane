@@ -72,6 +72,16 @@ export interface AuthUserTable {
   updatedAt: Generated<Date>;
 }
 
+export interface ResourceTable {
+  id: Generated<string>;
+  organization_id: string;
+  user_id: string | null;
+  name: string;
+  deactivated_at: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 export interface Database {
   user: AuthUserTable;
   platform_admin: PlatformAdminTable;
@@ -79,4 +89,5 @@ export interface Database {
   organization_request: OrganizationRequestTable;
   membership: MembershipTable;
   organization_invitation: OrganizationInvitationTable;
+  resource: ResourceTable;
 }
