@@ -51,6 +51,7 @@ export interface OrganizationInvitationTable {
   invited_by_user_id: string;
   email: string;
   role: MembershipRole;
+  resource_id: string | null;
 
   // Raw invitation tokens are never persisted.
   token_hash: string;

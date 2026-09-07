@@ -12,6 +12,7 @@ type OrganizationInvitationListItem = {
   id: string;
   email: string;
   role: MembershipRole;
+  resourceId: string | null;
   status: OrganizationInvitationStatus;
   invitedByName: string;
   expiresAt: string;
@@ -67,6 +68,7 @@ export async function listOrganizationInvitations(
       "organization_invitation.id",
       "organization_invitation.email",
       "organization_invitation.role",
+      "organization_invitation.resource_id",
       "organization_invitation.expires_at",
       "organization_invitation.created_at",
       "inviter.name as invited_by_name",
@@ -75,7 +77,7 @@ export async function listOrganizationInvitations(
     .where("organization_invitation.accepted_at", "is", null)
     .where("organization_invitation.revoked_at", "is", null);
 
-  // Managers may manage staff invitations but not higher organization roles.
+  // Managers may manage Staff invitations but not higher organization roles.
   if (membership.role === "manager") {
     query = query.where("organization_invitation.role", "=", "staff");
   }
@@ -92,6 +94,7 @@ export async function listOrganizationInvitations(
       id: row.id,
       email: row.email,
       role: row.role,
+      resourceId: row.resource_id,
       status: row.expires_at <= now ? "expired" : "pending",
       invitedByName: row.invited_by_name,
       expiresAt: row.expires_at.toISOString(),

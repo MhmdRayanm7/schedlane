@@ -14,6 +14,7 @@ type CreateOrganizationInvitationInput = {
   organizationId: string;
   email: string;
   role: MembershipRole;
+  resourceId?: string;
 };
 
 type CreateOrganizationInvitationFailure =
@@ -21,6 +22,12 @@ type CreateOrganizationInvitationFailure =
   | "insufficient_role"
   | "already_member"
   | "invitation_already_pending"
+  | "resource_required"
+  | "resource_not_allowed"
+  | "resource_not_found"
+  | "resource_deactivated"
+  | "resource_already_linked"
+  | "resource_invitation_already_pending"
   | OrganizationWriteStateFailure;
 
 export type CreateOrganizationInvitationResult =
@@ -30,6 +37,7 @@ export type CreateOrganizationInvitationResult =
         id: string;
         email: string;
         role: MembershipRole;
+        resourceId: string | null;
         expiresAt: string;
       };
       token: string;
@@ -79,6 +87,10 @@ type AcceptOrganizationInvitationFailure =
   | "invitation_already_accepted"
   | "email_mismatch"
   | "already_member"
+  | "resource_not_found"
+  | "resource_deactivated"
+  | "resource_already_linked"
+  | "user_resource_already_linked"
   | OrganizationWriteStateFailure;
 
 export type AcceptOrganizationInvitationResult =
@@ -86,6 +98,7 @@ export type AcceptOrganizationInvitationResult =
       ok: true;
       organizationId: string;
       role: MembershipRole;
+      resourceId: string | null;
       acceptedAt: string;
     }
   | {
@@ -97,6 +110,22 @@ export async function createOrganizationInvitation(
   input: CreateOrganizationInvitationInput,
 ): Promise<CreateOrganizationInvitationResult> {
   const email = input.email.trim().toLowerCase();
+
+  if (input.role === "staff" && !input.resourceId) {
+    return {
+      ok: false,
+      reason: "resource_required",
+    };
+  }
+
+  if (input.role !== "staff" && input.resourceId !== undefined) {
+    return {
+      ok: false,
+      reason: "resource_not_allowed",
+    };
+  }
+
+  const resourceId = input.resourceId ?? null;
 
   return db.transaction().execute(async (trx) => {
     // Lock the inviter's membership while its role is used for authorization.
@@ -133,6 +162,39 @@ export async function createOrganizationInvitation(
 
     if (!writeState.ok) {
       return writeState;
+    }
+
+    // Resource-backed Staff invitations share the organization -> resource
+    // -> invitation lock order with invitation acceptance.
+    if (resourceId) {
+      const resource = await trx
+        .selectFrom("resource")
+        .select(["id", "user_id", "deactivated_at"])
+        .where("id", "=", resourceId)
+        .where("organization_id", "=", input.organizationId)
+        .forUpdate()
+        .executeTakeFirst();
+
+      if (!resource) {
+        return {
+          ok: false,
+          reason: "resource_not_found",
+        };
+      }
+
+      if (resource.deactivated_at) {
+        return {
+          ok: false,
+          reason: "resource_deactivated",
+        };
+      }
+
+      if (resource.user_id) {
+        return {
+          ok: false,
+          reason: "resource_already_linked",
+        };
+      }
     }
 
     const now = new Date();
@@ -177,7 +239,36 @@ export async function createOrganizationInvitation(
           revoked_at: now,
         })
         .where("id", "=", existingInvitation.id)
-        .execute();
+        .executeTakeFirstOrThrow();
+    }
+
+    if (resourceId) {
+      const existingResourceInvitation = await trx
+        .selectFrom("organization_invitation")
+        .select(["id", "expires_at"])
+        .where("resource_id", "=", resourceId)
+        .where("accepted_at", "is", null)
+        .where("revoked_at", "is", null)
+        .forUpdate()
+        .executeTakeFirst();
+
+      if (existingResourceInvitation) {
+        if (existingResourceInvitation.expires_at > now) {
+          return {
+            ok: false,
+            reason: "resource_invitation_already_pending",
+          };
+        }
+
+        // Expired invitations must not keep a Resource reserved indefinitely.
+        await trx
+          .updateTable("organization_invitation")
+          .set({
+            revoked_at: now,
+          })
+          .where("id", "=", existingResourceInvitation.id)
+          .executeTakeFirstOrThrow();
+      }
     }
 
     const token = randomBytes(32).toString("base64url");
@@ -196,24 +287,36 @@ export async function createOrganizationInvitation(
         invited_by_user_id: input.invitedByUserId,
         email,
         role: input.role,
+        resource_id: resourceId,
         token_hash: tokenHash,
         expires_at: expiresAt,
         accepted_by_user_id: null,
         accepted_at: null,
         revoked_at: null,
       })
-      // The partial unique index is the final guard against concurrent duplicate invites.
-      .onConflict((oc) =>
-        oc
-          .columns(["organization_id", "email"])
-          .where("accepted_at", "is", null)
-          .where("revoked_at", "is", null)
-          .doNothing(),
-      )
-      .returning(["id", "email", "role", "expires_at"])
+      // Database uniqueness remains the final guard for concurrent invitation creation.
+      .onConflict((oc) => oc.doNothing())
+      .returning(["id", "email", "role", "resource_id", "expires_at"])
       .executeTakeFirst();
 
     if (!invitation) {
+      if (resourceId) {
+        const conflictingResourceInvitation = await trx
+          .selectFrom("organization_invitation")
+          .select("id")
+          .where("resource_id", "=", resourceId)
+          .where("accepted_at", "is", null)
+          .where("revoked_at", "is", null)
+          .executeTakeFirst();
+
+        if (conflictingResourceInvitation) {
+          return {
+            ok: false,
+            reason: "resource_invitation_already_pending",
+          };
+        }
+      }
+
       return {
         ok: false,
         reason: "invitation_already_pending",
@@ -226,6 +329,7 @@ export async function createOrganizationInvitation(
         id: invitation.id,
         email: invitation.email,
         role: invitation.role,
+        resourceId: invitation.resource_id,
         expiresAt: invitation.expires_at.toISOString(),
       },
       token,
@@ -333,11 +437,10 @@ export async function acceptOrganizationInvitation(
   const tokenHash = createHash("sha256").update(input.token).digest("hex");
 
   return db.transaction().execute(async (trx) => {
-    // Resolve the organization first without locking so every invitation write
-    // can acquire locks in organization -> invitation order.
+    // Resolve lock dependencies first without locking the invitation itself.
     const invitationReference = await trx
       .selectFrom("organization_invitation")
-      .select("organization_id")
+      .select(["organization_id", "resource_id"])
       .where("token_hash", "=", tokenHash)
       .executeTakeFirst();
 
@@ -357,6 +460,16 @@ export async function acceptOrganizationInvitation(
       return writeState;
     }
 
+    const targetResource = invitationReference.resource_id
+      ? await trx
+          .selectFrom("resource")
+          .select(["id", "user_id", "deactivated_at"])
+          .where("id", "=", invitationReference.resource_id)
+          .where("organization_id", "=", invitationReference.organization_id)
+          .forUpdate()
+          .executeTakeFirst()
+      : undefined;
+
     // Acceptance and revocation compete for the same invitation state.
     const invitation = await trx
       .selectFrom("organization_invitation")
@@ -365,6 +478,7 @@ export async function acceptOrganizationInvitation(
         "organization_id",
         "email",
         "role",
+        "resource_id",
         "expires_at",
         "accepted_at",
         "revoked_at",
@@ -413,6 +527,47 @@ export async function acceptOrganizationInvitation(
       };
     }
 
+    const staffResourceId =
+      invitation.role === "staff" ? invitation.resource_id : null;
+
+    if (invitation.role === "staff") {
+      // Legacy Staff invitations created before Resource targeting cannot be accepted.
+      if (!staffResourceId || !targetResource) {
+        return {
+          ok: false,
+          reason: "resource_not_found",
+        };
+      }
+
+      if (targetResource.deactivated_at) {
+        return {
+          ok: false,
+          reason: "resource_deactivated",
+        };
+      }
+
+      if (targetResource.user_id) {
+        return {
+          ok: false,
+          reason: "resource_already_linked",
+        };
+      }
+
+      const existingLinkedResource = await trx
+        .selectFrom("resource")
+        .select("id")
+        .where("organization_id", "=", invitation.organization_id)
+        .where("user_id", "=", input.userId)
+        .executeTakeFirst();
+
+      if (existingLinkedResource) {
+        return {
+          ok: false,
+          reason: "user_resource_already_linked",
+        };
+      }
+    }
+
     const existingMembership = await trx
       .selectFrom("membership")
       .select("id")
@@ -450,7 +605,7 @@ export async function acceptOrganizationInvitation(
       .executeTakeFirst();
 
     if (!membership) {
-      // A concurrent or existing membership makes this invitation unnecessary.
+      // A concurrent membership makes the invitation unnecessary.
       await trx
         .updateTable("organization_invitation")
         .set({
@@ -463,6 +618,19 @@ export async function acceptOrganizationInvitation(
         ok: false,
         reason: "already_member",
       };
+    }
+
+    if (staffResourceId) {
+      // Membership and Resource linkage commit atomically with invitation acceptance.
+      await trx
+        .updateTable("resource")
+        .set({
+          user_id: input.userId,
+          updated_at: now,
+        })
+        .where("id", "=", staffResourceId)
+        .where("user_id", "is", null)
+        .executeTakeFirstOrThrow();
     }
 
     await trx
@@ -478,6 +646,7 @@ export async function acceptOrganizationInvitation(
       ok: true,
       organizationId: invitation.organization_id,
       role: invitation.role,
+      resourceId: staffResourceId,
       acceptedAt: now.toISOString(),
     };
   });

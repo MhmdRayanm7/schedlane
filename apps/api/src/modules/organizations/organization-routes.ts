@@ -35,6 +35,9 @@ import {
 } from "./organization-suspension-service.js";
 import { renameOrganization } from "./organization-update-service.js";
 
+const uuidPattern =
+  "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+
 const organizationRequestParams = Type.Object({
   requestId: Type.String({
     minLength: 1,
@@ -67,8 +70,7 @@ const rejectOrganizationRequestBody = Type.Object({
 
 const organizationParams = Type.Object({
   organizationId: Type.String({
-    pattern:
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    pattern: uuidPattern,
   }),
 });
 
@@ -115,16 +117,19 @@ const createOrganizationInvitationBody = Type.Object({
     Type.Literal("manager"),
     Type.Literal("staff"),
   ]),
+  resourceId: Type.Optional(
+    Type.String({
+      pattern: uuidPattern,
+    }),
+  ),
 });
 
 const organizationInvitationParams = Type.Object({
   organizationId: Type.String({
-    pattern:
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    pattern: uuidPattern,
   }),
   invitationId: Type.String({
-    pattern:
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    pattern: uuidPattern,
   }),
 });
 
@@ -137,12 +142,10 @@ const acceptOrganizationInvitationBody = Type.Object({
 
 const organizationMembershipParams = Type.Object({
   organizationId: Type.String({
-    pattern:
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    pattern: uuidPattern,
   }),
   membershipId: Type.String({
-    pattern:
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    pattern: uuidPattern,
   }),
 });
 
@@ -1014,6 +1017,11 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
         organizationId: request.params.organizationId,
         email: request.body.email,
         role: request.body.role,
+        ...(request.body.resourceId !== undefined
+          ? {
+              resourceId: request.body.resourceId,
+            }
+          : {}),
       });
 
       if (!result.ok) {
@@ -1043,6 +1051,48 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             return reply.code(409).send({
               code: "ORGANIZATION_INVITATION_ALREADY_PENDING",
               message: "An active invitation already exists for this email",
+              requestId: request.id,
+            });
+
+          case "resource_required":
+            return reply.code(400).send({
+              code: "STAFF_INVITATION_RESOURCE_REQUIRED",
+              message: "A Staff invitation must target a Resource",
+              requestId: request.id,
+            });
+
+          case "resource_not_allowed":
+            return reply.code(400).send({
+              code: "INVITATION_RESOURCE_NOT_ALLOWED",
+              message: "Only Staff invitations may target a Resource",
+              requestId: request.id,
+            });
+
+          case "resource_not_found":
+            return reply.code(404).send({
+              code: "RESOURCE_NOT_FOUND",
+              message: "Resource not found",
+              requestId: request.id,
+            });
+
+          case "resource_deactivated":
+            return reply.code(409).send({
+              code: "RESOURCE_DEACTIVATED",
+              message: "The Resource is deactivated",
+              requestId: request.id,
+            });
+
+          case "resource_already_linked":
+            return reply.code(409).send({
+              code: "RESOURCE_ALREADY_LINKED",
+              message: "The Resource is already linked to a user",
+              requestId: request.id,
+            });
+
+          case "resource_invitation_already_pending":
+            return reply.code(409).send({
+              code: "RESOURCE_INVITATION_ALREADY_PENDING",
+              message: "An active invitation already targets this Resource",
               requestId: request.id,
             });
 
@@ -1245,6 +1295,35 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
               requestId: request.id,
             });
 
+          case "resource_not_found":
+            return reply.code(409).send({
+              code: "INVITATION_RESOURCE_UNAVAILABLE",
+              message: "The invitation no longer has an available Resource",
+              requestId: request.id,
+            });
+
+          case "resource_deactivated":
+            return reply.code(409).send({
+              code: "RESOURCE_DEACTIVATED",
+              message: "The Resource is deactivated",
+              requestId: request.id,
+            });
+
+          case "resource_already_linked":
+            return reply.code(409).send({
+              code: "RESOURCE_ALREADY_LINKED",
+              message: "The Resource is already linked to another user",
+              requestId: request.id,
+            });
+
+          case "user_resource_already_linked":
+            return reply.code(409).send({
+              code: "USER_RESOURCE_ALREADY_LINKED",
+              message:
+                "You are already linked to a Resource in this organization",
+              requestId: request.id,
+            });
+
           case "organization_archived":
             return reply.code(409).send({
               code: "ORGANIZATION_ARCHIVED",
@@ -1264,6 +1343,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       return reply.code(200).send({
         organizationId: result.organizationId,
         role: result.role,
+        resourceId: result.resourceId,
         acceptedAt: result.acceptedAt,
       });
     },
