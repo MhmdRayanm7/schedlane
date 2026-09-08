@@ -1,5 +1,6 @@
+import type { Transaction } from "kysely";
 import { db } from "../../db.js";
-import type { MembershipRole } from "../../db-types.js";
+import type { Database, MembershipRole } from "../../db-types.js";
 import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
@@ -72,6 +73,24 @@ export type LeaveOrganizationResult =
       ok: false;
       reason: LeaveOrganizationFailure;
     };
+
+async function unlinkUserResource(
+  trx: Transaction<Database>,
+  organizationId: string,
+  userId: string,
+  updatedAt: Date,
+): Promise<void> {
+  // Membership removal detaches the account but preserves the Resource and its history.
+  await trx
+    .updateTable("resource")
+    .set({
+      user_id: null,
+      updated_at: updatedAt,
+    })
+    .where("organization_id", "=", organizationId)
+    .where("user_id", "=", userId)
+    .execute();
+}
 
 export async function updateOrganizationMemberRole(
   input: UpdateOrganizationMemberRoleInput,
@@ -171,7 +190,7 @@ export async function removeOrganizationMember(
   input: RemoveOrganizationMemberInput,
 ): Promise<RemoveOrganizationMemberResult> {
   return db.transaction().execute(async (trx) => {
-    // Lock the membership set because removal can affect the last-owner invariant.
+    // Serialize membership management changes within the organization.
     const memberships = await trx
       .selectFrom("membership")
       .select(["id", "user_id", "role"])
@@ -237,6 +256,15 @@ export async function removeOrganizationMember(
       return writeState;
     }
 
+    const now = new Date();
+
+    await unlinkUserResource(
+      trx,
+      input.organizationId,
+      targetMembership.user_id,
+      now,
+    );
+
     await trx
       .deleteFrom("membership")
       .where("id", "=", targetMembership.id)
@@ -293,6 +321,15 @@ export async function leaveOrganization(
         };
       }
     }
+
+    const now = new Date();
+
+    await unlinkUserResource(
+      trx,
+      input.organizationId,
+      membership.user_id,
+      now,
+    );
 
     await trx
       .deleteFrom("membership")
