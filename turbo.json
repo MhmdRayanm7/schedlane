@@ -13,6 +13,9 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },
+    "@schedlane/api#test": {
+      "cache": false
+    },
     "typecheck": {
       "dependsOn": ["^typecheck"]
     }
