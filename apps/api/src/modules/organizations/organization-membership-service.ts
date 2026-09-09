@@ -1,6 +1,7 @@
 import type { Transaction } from "kysely";
 import { db } from "../../db.js";
 import type { Database, MembershipRole } from "../../db-types.js";
+import { lockOrganizationMemberships } from "./organization-membership-lock.js";
 import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
@@ -97,13 +98,10 @@ export async function updateOrganizationMemberRole(
 ): Promise<UpdateOrganizationMemberRoleResult> {
   return db.transaction().execute(async (trx) => {
     // Membership management is serialized per organization to protect cross-row invariants.
-    const memberships = await trx
-      .selectFrom("membership")
-      .select(["id", "user_id", "role"])
-      .where("organization_id", "=", input.organizationId)
-      .orderBy("id", "asc")
-      .forUpdate()
-      .execute();
+    const memberships = await lockOrganizationMemberships(
+      trx,
+      input.organizationId,
+    );
 
     const actorMembership = memberships.find(
       (membership) => membership.user_id === input.userId,
@@ -191,13 +189,10 @@ export async function removeOrganizationMember(
 ): Promise<RemoveOrganizationMemberResult> {
   return db.transaction().execute(async (trx) => {
     // Serialize membership management changes within the organization.
-    const memberships = await trx
-      .selectFrom("membership")
-      .select(["id", "user_id", "role"])
-      .where("organization_id", "=", input.organizationId)
-      .orderBy("id", "asc")
-      .forUpdate()
-      .execute();
+    const memberships = await lockOrganizationMemberships(
+      trx,
+      input.organizationId,
+    );
 
     const actorMembership = memberships.find(
       (membership) => membership.user_id === input.userId,
@@ -281,13 +276,10 @@ export async function leaveOrganization(
 ): Promise<LeaveOrganizationResult> {
   return db.transaction().execute(async (trx) => {
     // Self-leave also locks the membership set to preserve the last-owner invariant.
-    const memberships = await trx
-      .selectFrom("membership")
-      .select(["id", "user_id", "role"])
-      .where("organization_id", "=", input.organizationId)
-      .orderBy("id", "asc")
-      .forUpdate()
-      .execute();
+    const memberships = await lockOrganizationMemberships(
+      trx,
+      input.organizationId,
+    );
 
     const membership = memberships.find(
       (item) => item.user_id === input.userId,

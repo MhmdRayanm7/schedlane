@@ -1,4 +1,5 @@
 import { db } from "../../db.js";
+import { lockOrganizationMemberships } from "../organizations/organization-membership-lock.js";
 import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
@@ -147,13 +148,10 @@ export async function linkResourceToMember(
 ): Promise<LinkResourceToMemberResult> {
   return db.transaction().execute(async (trx) => {
     // Serialize membership-dependent Resource changes within the organization.
-    const memberships = await trx
-      .selectFrom("membership")
-      .select(["id", "user_id", "role"])
-      .where("organization_id", "=", input.organizationId)
-      .orderBy("id", "asc")
-      .forUpdate()
-      .execute();
+    const memberships = await lockOrganizationMemberships(
+      trx,
+      input.organizationId,
+    );
 
     const actorMembership = memberships.find(
       (membership) => membership.user_id === input.userId,
@@ -310,13 +308,10 @@ export async function unlinkResource(
   input: UnlinkResourceInput,
 ): Promise<UnlinkResourceResult> {
   return db.transaction().execute(async (trx) => {
-    const memberships = await trx
-      .selectFrom("membership")
-      .select(["id", "user_id", "role"])
-      .where("organization_id", "=", input.organizationId)
-      .orderBy("id", "asc")
-      .forUpdate()
-      .execute();
+    const memberships = await lockOrganizationMemberships(
+      trx,
+      input.organizationId,
+    );
 
     const actorMembership = memberships.find(
       (membership) => membership.user_id === input.userId,
