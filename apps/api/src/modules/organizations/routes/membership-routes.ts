@@ -1,12 +1,12 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
+import { sendOrganizationWriteStateError } from "../organization-http-errors.js";
 import { listOrganizationMembers } from "../organization-member-query-service.js";
 import {
   leaveOrganization,
   removeOrganizationMember,
   updateOrganizationMemberRole,
 } from "../organization-membership-service.js";
-import { sendOrganizationWriteStateError } from "./errors.js";
 import {
   organizationMembershipParamsSchema,
   organizationParamsSchema,

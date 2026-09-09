@@ -1,6 +1,8 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
+import { uuidSchema } from "../../http/schemas.js";
+import { sendOrganizationWriteStateError } from "../organizations/organization-http-errors.js";
 import { listOrganizationResources } from "./resource-query-service.js";
 import {
   createResource,
@@ -9,28 +11,16 @@ import {
 } from "./resource-service.js";
 
 const organizationParams = Type.Object({
-  organizationId: Type.String({
-    pattern:
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-  }),
+  organizationId: uuidSchema,
 });
 
 const resourceParams = Type.Object({
-  organizationId: Type.String({
-    pattern:
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-  }),
-  resourceId: Type.String({
-    pattern:
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-  }),
+  organizationId: uuidSchema,
+  resourceId: uuidSchema,
 });
 
 const linkResourceBody = Type.Object({
-  membershipId: Type.String({
-    pattern:
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-  }),
+  membershipId: uuidSchema,
 });
 
 const createResourceBody = Type.Object({
@@ -120,18 +110,12 @@ export const resourceRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
@@ -219,18 +203,12 @@ export const resourceRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
@@ -279,18 +257,12 @@ export const resourceRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 

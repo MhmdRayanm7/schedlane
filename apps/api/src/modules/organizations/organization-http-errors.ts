@@ -1,5 +1,5 @@
 import type { FastifyReply } from "fastify";
-import type { OrganizationWriteStateFailure } from "../organization-write-policy.js";
+import type { OrganizationWriteStateFailure } from "./organization-write-policy.js";
 
 export function sendOrganizationWriteStateError(
   reply: FastifyReply,

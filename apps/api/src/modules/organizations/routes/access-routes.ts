@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
+import { sendOrganizationWriteStateError } from "../organization-http-errors.js";
 import {
   archiveOrganization,
   restoreOrganization,
@@ -10,7 +11,6 @@ import {
 } from "../organization-query-service.js";
 import { updateStaffTeamVisibility } from "../organization-settings-service.js";
 import { renameOrganization } from "../organization-update-service.js";
-import { sendOrganizationWriteStateError } from "./errors.js";
 import { organizationParamsSchema } from "./schemas.js";
 
 const renameOrganizationBody = Type.Object({

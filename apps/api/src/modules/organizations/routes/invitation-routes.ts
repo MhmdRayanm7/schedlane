@@ -2,6 +2,8 @@ import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
 import { config } from "../../../config.js";
 import { emailService } from "../../../email/index.js";
+import { uuidSchema } from "../../../http/schemas.js";
+import { sendOrganizationWriteStateError } from "../organization-http-errors.js";
 import { listOrganizationInvitations } from "../organization-invitation-query-service.js";
 import {
   acceptOrganizationInvitation,
@@ -9,11 +11,9 @@ import {
   revokeInvitationAfterDeliveryFailure,
   revokeOrganizationInvitation,
 } from "../organization-invitation-service.js";
-import { sendOrganizationWriteStateError } from "./errors.js";
 import {
   organizationInvitationParamsSchema,
   organizationParamsSchema,
-  uuidSchema,
 } from "./schemas.js";
 
 const createOrganizationInvitationBody = Type.Object({
