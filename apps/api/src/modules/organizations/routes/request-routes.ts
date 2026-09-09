@@ -1,6 +1,5 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
-import { requireVerifiedUser } from "../../../http/auth-guard.js";
 import { createOrganizationRequest } from "../organization-request-service.js";
 
 const createOrganizationRequestBody = Type.Object({
@@ -23,11 +22,7 @@ export const requestRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const organizationRequest = await createOrganizationRequest({
         requestedByUserId: user.id,

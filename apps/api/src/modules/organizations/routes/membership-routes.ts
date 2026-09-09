@@ -1,6 +1,5 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
-import { requireVerifiedUser } from "../../../http/auth-guard.js";
 import { listOrganizationMembers } from "../organization-member-query-service.js";
 import {
   leaveOrganization,
@@ -34,11 +33,7 @@ export const membershipRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await listOrganizationMembers({
         userId: user.id,
@@ -68,11 +63,7 @@ export const membershipRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await updateOrganizationMemberRole({
         userId: user.id,
@@ -133,11 +124,7 @@ export const membershipRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await removeOrganizationMember({
         userId: user.id,
@@ -197,11 +184,7 @@ export const membershipRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await leaveOrganization({
         userId: user.id,

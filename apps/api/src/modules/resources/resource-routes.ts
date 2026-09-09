@@ -42,6 +42,9 @@ const createResourceBody = Type.Object({
 });
 
 export const resourceRoutes: FastifyPluginAsyncTypebox = async (app) => {
+  app.decorateRequest("verifiedUser");
+  app.addHook("preHandler", requireVerifiedUser);
+
   app.get(
     "/api/organizations/:organizationId/resources",
     {
@@ -50,11 +53,7 @@ export const resourceRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await listOrganizationResources({
         userId: user.id,
@@ -95,11 +94,7 @@ export const resourceRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await createResource({
         userId: user.id,
@@ -153,11 +148,7 @@ export const resourceRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await linkResourceToMember({
         userId: user.id,
@@ -255,11 +246,7 @@ export const resourceRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await unlinkResource({
         userId: user.id,

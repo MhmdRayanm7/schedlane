@@ -2,7 +2,6 @@ import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
 import { config } from "../../../config.js";
 import { emailService } from "../../../email/index.js";
-import { requireVerifiedUser } from "../../../http/auth-guard.js";
 import { listOrganizationInvitations } from "../organization-invitation-query-service.js";
 import {
   acceptOrganizationInvitation,
@@ -50,11 +49,7 @@ export const invitationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await listOrganizationInvitations({
         userId: user.id,
@@ -95,11 +90,7 @@ export const invitationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await createOrganizationInvitation({
         invitedByUserId: user.id,
@@ -245,11 +236,7 @@ export const invitationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await revokeOrganizationInvitation({
         userId: user.id,
@@ -316,11 +303,7 @@ export const invitationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await acceptOrganizationInvitation({
         userId: user.id,

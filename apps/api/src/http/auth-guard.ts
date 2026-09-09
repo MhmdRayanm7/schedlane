@@ -2,40 +2,43 @@ import { fromNodeHeaders } from "better-auth/node";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { auth } from "../auth.js";
 
-type VerifiedUser = {
+export type VerifiedUser = {
   id: string;
   email: string;
 };
 
+declare module "fastify" {
+  interface FastifyRequest {
+    // Populated by the verified-user preHandler before protected handlers run.
+    verifiedUser: VerifiedUser;
+  }
+}
+
 export async function requireVerifiedUser(
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<VerifiedUser | null> {
+) {
   const session = await auth.api.getSession({
     headers: fromNodeHeaders(request.headers),
   });
 
   if (!session) {
-    await reply.code(401).send({
+    return reply.code(401).send({
       code: "UNAUTHORIZED",
       message: "Authentication required",
       requestId: request.id,
     });
-
-    return null;
   }
 
   if (!session.user.emailVerified) {
-    await reply.code(403).send({
+    return reply.code(403).send({
       code: "EMAIL_NOT_VERIFIED",
       message: "Email verification required",
       requestId: request.id,
     });
-
-    return null;
   }
 
-  return {
+  request.verifiedUser = {
     id: session.user.id,
     email: session.user.email,
   };

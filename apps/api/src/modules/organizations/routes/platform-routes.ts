@@ -1,6 +1,5 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
-import { requireVerifiedUser } from "../../../http/auth-guard.js";
 import { approveOrganizationRequest } from "../organization-approval-service.js";
 import { rejectOrganizationRequest } from "../organization-rejection-service.js";
 import { listOrganizationRequests } from "../organization-request-query-service.js";
@@ -64,11 +63,7 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await listOrganizationRequests({
         userId: user.id,
@@ -108,11 +103,7 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await approveOrganizationRequest({
         requestId: request.params.requestId,
@@ -165,11 +156,7 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await rejectOrganizationRequest({
         requestId: request.params.requestId,
@@ -218,11 +205,7 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await suspendOrganization({
         userId: user.id,
@@ -266,11 +249,7 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await unsuspendOrganization({
         userId: user.id,

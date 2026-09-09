@@ -1,6 +1,5 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
-import { requireVerifiedUser } from "../../../http/auth-guard.js";
 import {
   archiveOrganization,
   restoreOrganization,
@@ -32,11 +31,7 @@ export const accessRoutes: FastifyPluginAsyncTypebox = async (app) => {
   // ---------------------------------------------------------------------------
 
   app.get("/api/organizations", async (request, reply) => {
-    const user = await requireVerifiedUser(request, reply);
-
-    if (!user) {
-      return;
-    }
+    const user = request.verifiedUser;
 
     // Organization access is derived from the authenticated user's memberships.
     const result = await listUserOrganizations({
@@ -54,11 +49,7 @@ export const accessRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const organization = await getUserOrganization({
         userId: user.id,
@@ -86,11 +77,7 @@ export const accessRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await renameOrganization({
         userId: user.id,
@@ -137,11 +124,7 @@ export const accessRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await updateStaffTeamVisibility({
         userId: user.id,
@@ -189,11 +172,7 @@ export const accessRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await archiveOrganization({
         userId: user.id,
@@ -244,11 +223,7 @@ export const accessRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await requireVerifiedUser(request, reply);
-
-      if (!user) {
-        return;
-      }
+      const user = request.verifiedUser;
 
       const result = await restoreOrganization({
         userId: user.id,
