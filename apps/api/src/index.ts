@@ -4,7 +4,7 @@ import { sql } from "kysely";
 import { registerAuthRoutes } from "./auth-routes.js";
 import { config } from "./config.js";
 import { db } from "./db.js";
-import { organizationRoutes } from "./modules/organizations/organization-routes.js";
+import { organizationRoutes } from "./modules/organizations/routes/index.js";
 import { resourceRoutes } from "./modules/resources/resource-routes.js";
 
 const app = Fastify({
