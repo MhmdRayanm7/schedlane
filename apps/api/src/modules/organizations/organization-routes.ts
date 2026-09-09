@@ -34,15 +34,14 @@ import {
   unsuspendOrganization,
 } from "./organization-suspension-service.js";
 import { renameOrganization } from "./organization-update-service.js";
-
-const uuidPattern =
-  "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
-
-const organizationRequestParams = Type.Object({
-  requestId: Type.String({
-    minLength: 1,
-  }),
-});
+import { sendOrganizationWriteStateError } from "./routes/errors.js";
+import {
+  organizationInvitationParamsSchema,
+  organizationMembershipParamsSchema,
+  organizationParamsSchema,
+  organizationRequestParamsSchema,
+  uuidSchema,
+} from "./routes/schemas.js";
 
 const createOrganizationRequestBody = Type.Object({
   name: Type.String({
@@ -66,12 +65,6 @@ const rejectOrganizationRequestBody = Type.Object({
       pattern: ".*\\S.*",
     }),
   ),
-});
-
-const organizationParams = Type.Object({
-  organizationId: Type.String({
-    pattern: uuidPattern,
-  }),
 });
 
 const listOrganizationRequestsQuery = Type.Object({
@@ -117,35 +110,13 @@ const createOrganizationInvitationBody = Type.Object({
     Type.Literal("manager"),
     Type.Literal("staff"),
   ]),
-  resourceId: Type.Optional(
-    Type.String({
-      pattern: uuidPattern,
-    }),
-  ),
-});
-
-const organizationInvitationParams = Type.Object({
-  organizationId: Type.String({
-    pattern: uuidPattern,
-  }),
-  invitationId: Type.String({
-    pattern: uuidPattern,
-  }),
+  resourceId: Type.Optional(uuidSchema),
 });
 
 const acceptOrganizationInvitationBody = Type.Object({
   token: Type.String({
     minLength: 1,
     maxLength: 256,
-  }),
-});
-
-const organizationMembershipParams = Type.Object({
-  organizationId: Type.String({
-    pattern: uuidPattern,
-  }),
-  membershipId: Type.String({
-    pattern: uuidPattern,
   }),
 });
 
@@ -209,7 +180,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/platform/organization-requests/:requestId/approve",
     {
       schema: {
-        params: organizationRequestParams,
+        params: organizationRequestParamsSchema,
         body: approveOrganizationRequestBody,
       },
     },
@@ -266,7 +237,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/platform/organization-requests/:requestId/reject",
     {
       schema: {
-        params: organizationRequestParams,
+        params: organizationRequestParamsSchema,
         body: rejectOrganizationRequestBody,
       },
     },
@@ -320,7 +291,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/platform/organizations/:organizationId/suspend",
     {
       schema: {
-        params: organizationParams,
+        params: organizationParamsSchema,
       },
     },
     async (request, reply) => {
@@ -368,7 +339,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/platform/organizations/:organizationId/unsuspend",
     {
       schema: {
-        params: organizationParams,
+        params: organizationParamsSchema,
       },
     },
     async (request, reply) => {
@@ -462,7 +433,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId",
     {
       schema: {
-        params: organizationParams,
+        params: organizationParamsSchema,
       },
     },
     async (request, reply) => {
@@ -493,7 +464,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId",
     {
       schema: {
-        params: organizationParams,
+        params: organizationParamsSchema,
         body: renameOrganizationBody,
       },
     },
@@ -527,18 +498,12 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
@@ -550,7 +515,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId/settings/staff-team-visibility",
     {
       schema: {
-        params: organizationParams,
+        params: organizationParamsSchema,
         body: updateStaffTeamVisibilityBody,
       },
     },
@@ -584,18 +549,12 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
@@ -609,7 +568,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId/archive",
     {
       schema: {
-        params: organizationParams,
+        params: organizationParamsSchema,
       },
     },
     async (request, reply) => {
@@ -648,11 +607,11 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
@@ -664,7 +623,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId/restore",
     {
       schema: {
-        params: organizationParams,
+        params: organizationParamsSchema,
       },
     },
     async (request, reply) => {
@@ -703,11 +662,11 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
@@ -723,7 +682,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId/members",
     {
       schema: {
-        params: organizationParams,
+        params: organizationParamsSchema,
       },
     },
     async (request, reply) => {
@@ -756,7 +715,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId/members/:membershipId/role",
     {
       schema: {
-        params: organizationMembershipParams,
+        params: organizationMembershipParamsSchema,
         body: updateOrganizationMemberRoleBody,
       },
     },
@@ -805,18 +764,12 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
@@ -828,7 +781,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId/members/:membershipId",
     {
       schema: {
-        params: organizationMembershipParams,
+        params: organizationMembershipParamsSchema,
       },
     },
     async (request, reply) => {
@@ -875,18 +828,12 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
@@ -898,7 +845,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId/leave",
     {
       schema: {
-        params: organizationParams,
+        params: organizationParamsSchema,
       },
     },
     async (request, reply) => {
@@ -930,18 +877,12 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
@@ -957,7 +898,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId/invitations",
     {
       schema: {
-        params: organizationParams,
+        params: organizationParamsSchema,
       },
     },
     async (request, reply) => {
@@ -1001,7 +942,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId/invitations",
     {
       schema: {
-        params: organizationParams,
+        params: organizationParamsSchema,
         body: createOrganizationInvitationBody,
       },
     },
@@ -1097,18 +1038,12 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
@@ -1158,7 +1093,7 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
     "/api/organizations/:organizationId/invitations/:invitationId/revoke",
     {
       schema: {
-        params: organizationInvitationParams,
+        params: organizationInvitationParamsSchema,
       },
     },
     async (request, reply) => {
@@ -1212,18 +1147,12 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
@@ -1325,18 +1254,12 @@ export const organizationRoutes: FastifyPluginAsyncTypebox = async (app) => {
             });
 
           case "organization_archived":
-            return reply.code(409).send({
-              code: "ORGANIZATION_ARCHIVED",
-              message: "Restore the organization before making changes",
-              requestId: request.id,
-            });
-
           case "organization_suspended":
-            return reply.code(409).send({
-              code: "ORGANIZATION_SUSPENDED",
-              message: "The organization is suspended and read-only",
-              requestId: request.id,
-            });
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
         }
       }
 
