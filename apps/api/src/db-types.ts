@@ -17,6 +17,7 @@ export interface OrganizationTable {
   slug: string;
   name: string;
   staff_team_visibility: Generated<StaffTeamVisibility>;
+  pricing_enabled: Generated<boolean>;
   published_at: Date | null;
   suspended_at: Date | null;
   archived_at: Date | null;
@@ -83,6 +84,19 @@ export interface ResourceTable {
   updated_at: Generated<Date>;
 }
 
+export interface ServiceTable {
+  id: Generated<string>;
+  organization_id: string;
+  name: string;
+  duration_minutes: number;
+  price_agorot: number | null;
+  buffer_after_minutes: Generated<number>;
+  display_order: number;
+  deactivated_at: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 export interface Database {
   user: AuthUserTable;
   platform_admin: PlatformAdminTable;
@@ -91,4 +105,5 @@ export interface Database {
   membership: MembershipTable;
   organization_invitation: OrganizationInvitationTable;
   resource: ResourceTable;
+  service: ServiceTable;
 }
