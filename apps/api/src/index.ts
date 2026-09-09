@@ -6,6 +6,7 @@ import { config } from "./config.js";
 import { db } from "./db.js";
 import { organizationRoutes } from "./modules/organizations/routes/index.js";
 import { resourceRoutes } from "./modules/resources/resource-routes.js";
+import { serviceRoutes } from "./modules/services/service-routes.js";
 
 const app = Fastify({
   logger: true,
@@ -20,6 +21,7 @@ registerAuthRoutes(app);
 
 await app.register(organizationRoutes);
 await app.register(resourceRoutes);
+await app.register(serviceRoutes);
 
 app.get("/health/live", async () => {
   return {
