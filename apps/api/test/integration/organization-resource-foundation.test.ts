@@ -15,7 +15,9 @@ import {
 import { suspendOrganization } from "../../src/modules/organizations/organization-suspension-service.js";
 import {
   createResource,
+  deactivateResource,
   linkResourceToMember,
+  reactivateResource,
 } from "../../src/modules/resources/resource-service.js";
 
 async function createTestUser(name: string) {
@@ -378,5 +380,261 @@ describe("organization / membership / invitation / resource foundation", () => {
       { id: first.id, user_id: owner.id },
       { id: second.id, user_id: null },
     ]);
+  });
+});
+
+it("deactivates and reactivates a linked Resource without removing its member link", async () => {
+  const { organization, owner } = await createTestOrganization();
+
+  const staff = await createTestUser("Lifecycle Staff");
+
+  const staffMembership = await createMembership(
+    organization.id,
+    staff.id,
+    "staff",
+  );
+
+  const resource = await createTestResource(
+    organization.id,
+    owner.id,
+    "Lifecycle Resource",
+  );
+
+  expect(
+    await linkResourceToMember({
+      organizationId: organization.id,
+      userId: owner.id,
+      resourceId: resource.id,
+      membershipId: staffMembership.id,
+    }),
+  ).toEqual({
+    ok: true,
+    resource: {
+      id: resource.id,
+      linkedMembershipId: staffMembership.id,
+    },
+  });
+
+  const firstDeactivation = await deactivateResource({
+    organizationId: organization.id,
+    userId: owner.id,
+    resourceId: resource.id,
+  });
+
+  expect(firstDeactivation).toEqual({
+    ok: true,
+    resource: {
+      id: resource.id,
+      deactivatedAt: expect.any(String),
+    },
+  });
+
+  if (!firstDeactivation.ok) {
+    throw new Error(firstDeactivation.reason);
+  }
+
+  const secondDeactivation = await deactivateResource({
+    organizationId: organization.id,
+    userId: owner.id,
+    resourceId: resource.id,
+  });
+
+  expect(secondDeactivation).toEqual(firstDeactivation);
+
+  const storedDeactivatedResource = await db
+    .selectFrom("resource")
+    .select(["user_id", "deactivated_at"])
+    .where("id", "=", resource.id)
+    .executeTakeFirstOrThrow();
+
+  expect(storedDeactivatedResource).toEqual({
+    user_id: staff.id,
+    deactivated_at: expect.any(Date),
+  });
+
+  expect(storedDeactivatedResource.deactivated_at?.toISOString()).toBe(
+    firstDeactivation.resource.deactivatedAt,
+  );
+
+  expect(
+    await reactivateResource({
+      organizationId: organization.id,
+      userId: owner.id,
+      resourceId: resource.id,
+    }),
+  ).toEqual({
+    ok: true,
+    resource: {
+      id: resource.id,
+      deactivatedAt: null,
+    },
+  });
+
+  expect(
+    await reactivateResource({
+      organizationId: organization.id,
+      userId: owner.id,
+      resourceId: resource.id,
+    }),
+  ).toEqual({
+    ok: true,
+    resource: {
+      id: resource.id,
+      deactivatedAt: null,
+    },
+  });
+
+  expect(
+    await db
+      .selectFrom("resource")
+      .select(["user_id", "deactivated_at"])
+      .where("id", "=", resource.id)
+      .executeTakeFirstOrThrow(),
+  ).toEqual({
+    user_id: staff.id,
+    deactivated_at: null,
+  });
+});
+
+it("allows a Manager to deactivate and reactivate a Staff-linked Resource", async () => {
+  const { organization, owner } = await createTestOrganization();
+
+  const manager = await createTestUser("Lifecycle Manager");
+  await createMembership(organization.id, manager.id, "manager");
+
+  const staff = await createTestUser("Managed Staff");
+  const staffMembership = await createMembership(
+    organization.id,
+    staff.id,
+    "staff",
+  );
+
+  const resource = await createTestResource(
+    organization.id,
+    owner.id,
+    "Managed Staff Resource",
+  );
+
+  expect(
+    (
+      await linkResourceToMember({
+        organizationId: organization.id,
+        userId: owner.id,
+        resourceId: resource.id,
+        membershipId: staffMembership.id,
+      })
+    ).ok,
+  ).toBe(true);
+
+  expect(
+    (
+      await deactivateResource({
+        organizationId: organization.id,
+        userId: manager.id,
+        resourceId: resource.id,
+      })
+    ).ok,
+  ).toBe(true);
+
+  expect(
+    await reactivateResource({
+      organizationId: organization.id,
+      userId: manager.id,
+      resourceId: resource.id,
+    }),
+  ).toEqual({
+    ok: true,
+    resource: {
+      id: resource.id,
+      deactivatedAt: null,
+    },
+  });
+});
+
+it("rejects a Manager managing a Resource linked to another Manager", async () => {
+  const { organization, owner } = await createTestOrganization();
+
+  const actorManager = await createTestUser("Actor Manager");
+  await createMembership(organization.id, actorManager.id, "manager");
+
+  const targetManager = await createTestUser("Target Manager");
+  const targetMembership = await createMembership(
+    organization.id,
+    targetManager.id,
+    "manager",
+  );
+
+  const resource = await createTestResource(
+    organization.id,
+    owner.id,
+    "Manager Resource",
+  );
+
+  expect(
+    (
+      await linkResourceToMember({
+        organizationId: organization.id,
+        userId: owner.id,
+        resourceId: resource.id,
+        membershipId: targetMembership.id,
+      })
+    ).ok,
+  ).toBe(true);
+
+  expect(
+    await deactivateResource({
+      organizationId: organization.id,
+      userId: actorManager.id,
+      resourceId: resource.id,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "insufficient_role",
+  });
+
+  expect(
+    await db
+      .selectFrom("resource")
+      .select(["user_id", "deactivated_at"])
+      .where("id", "=", resource.id)
+      .executeTakeFirstOrThrow(),
+  ).toEqual({
+    user_id: targetManager.id,
+    deactivated_at: null,
+  });
+});
+
+it("rejects Staff Resource lifecycle management", async () => {
+  const { organization, owner } = await createTestOrganization();
+
+  const staff = await createTestUser("Lifecycle Staff Actor");
+  await createMembership(organization.id, staff.id, "staff");
+
+  const resource = await createTestResource(
+    organization.id,
+    owner.id,
+    "Protected Resource",
+  );
+
+  expect(
+    await deactivateResource({
+      organizationId: organization.id,
+      userId: staff.id,
+      resourceId: resource.id,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "insufficient_role",
+  });
+
+  expect(
+    await reactivateResource({
+      organizationId: organization.id,
+      userId: staff.id,
+      resourceId: resource.id,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "insufficient_role",
   });
 });
