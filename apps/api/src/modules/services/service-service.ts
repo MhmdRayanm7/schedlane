@@ -326,3 +326,128 @@ export async function reactivateService(
     };
   });
 }
+
+type UpdateServiceInput = {
+  userId: string;
+  organizationId: string;
+  serviceId: string;
+  name?: string;
+  durationMinutes?: number;
+  priceAgorot?: number | null;
+  bufferAfterMinutes?: number;
+};
+
+type UpdateServiceFailure =
+  | "organization_not_found"
+  | "service_not_found"
+  | "insufficient_role"
+  | "price_required"
+  | "pricing_disabled"
+  | OrganizationWriteStateFailure;
+
+export type UpdateServiceResult =
+  | {
+      ok: true;
+      service: {
+        id: string;
+        name: string;
+        durationMinutes: number;
+        priceAgorot: number | null;
+        bufferAfterMinutes: number;
+        displayOrder: number;
+        deactivatedAt: string | null;
+        createdAt: string;
+        updatedAt: string;
+      };
+    }
+  | { ok: false; reason: UpdateServiceFailure };
+
+export async function updateService(
+  input: UpdateServiceInput,
+): Promise<UpdateServiceResult> {
+  return db.transaction().execute(async (trx) => {
+    const membership = await trx
+      .selectFrom("membership")
+      .select("role")
+      .where("organization_id", "=", input.organizationId)
+      .where("user_id", "=", input.userId)
+      .forUpdate()
+      .executeTakeFirst();
+
+    if (!membership) {
+      return { ok: false, reason: "organization_not_found" };
+    }
+    if (membership.role === "staff") {
+      return { ok: false, reason: "insufficient_role" };
+    }
+
+    const writeState = await requireWritableOrganization(
+      trx,
+      input.organizationId,
+    );
+    if (!writeState.ok) return writeState;
+
+    const organization = await trx
+      .selectFrom("organization")
+      .select("pricing_enabled")
+      .where("id", "=", input.organizationId)
+      .executeTakeFirstOrThrow();
+
+    const currentService = await trx
+      .selectFrom("service")
+      .selectAll()
+      .where("id", "=", input.serviceId)
+      .where("organization_id", "=", input.organizationId)
+      .forUpdate()
+      .executeTakeFirst();
+
+    if (!currentService) {
+      return { ok: false, reason: "service_not_found" };
+    }
+
+    // Explicit null clears the price; omission preserves the locked row's price.
+    const effectivePrice =
+      input.priceAgorot !== undefined
+        ? input.priceAgorot
+        : currentService.price_agorot;
+    if (organization.pricing_enabled && effectivePrice === null) {
+      return { ok: false, reason: "price_required" };
+    }
+    if (!organization.pricing_enabled && effectivePrice !== null) {
+      return { ok: false, reason: "pricing_disabled" };
+    }
+
+    const service = await trx
+      .updateTable("service")
+      .set({
+        name: input.name?.trim() ?? currentService.name,
+        duration_minutes:
+          input.durationMinutes ?? currentService.duration_minutes,
+        price_agorot: effectivePrice,
+        buffer_after_minutes:
+          input.bufferAfterMinutes ?? currentService.buffer_after_minutes,
+        updated_at: new Date(
+          Math.max(Date.now(), currentService.updated_at.getTime() + 1),
+        ),
+      })
+      .where("id", "=", currentService.id)
+      .where("organization_id", "=", input.organizationId)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    return {
+      ok: true,
+      service: {
+        id: service.id,
+        name: service.name,
+        durationMinutes: service.duration_minutes,
+        priceAgorot: service.price_agorot,
+        bufferAfterMinutes: service.buffer_after_minutes,
+        displayOrder: service.display_order,
+        deactivatedAt: service.deactivated_at?.toISOString() ?? null,
+        createdAt: service.created_at.toISOString(),
+        updatedAt: service.updated_at.toISOString(),
+      },
+    };
+  });
+}
