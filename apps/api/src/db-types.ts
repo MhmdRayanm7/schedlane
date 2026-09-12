@@ -104,6 +104,13 @@ export interface ResourceServiceTable {
   created_at: Generated<Date>;
 }
 
+export interface OrganizationWeeklyHoursTable {
+  organization_id: string;
+  weekday: number;
+  start_minute: number;
+  end_minute: number;
+}
+
 export interface Database {
   user: AuthUserTable;
   platform_admin: PlatformAdminTable;
@@ -114,4 +121,5 @@ export interface Database {
   resource: ResourceTable;
   service: ServiceTable;
   resource_service: ResourceServiceTable;
+  organization_weekly_hours: OrganizationWeeklyHoursTable;
 }
