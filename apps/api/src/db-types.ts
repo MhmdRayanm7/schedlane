@@ -97,6 +97,13 @@ export interface ServiceTable {
   updated_at: Generated<Date>;
 }
 
+export interface ResourceServiceTable {
+  organization_id: string;
+  resource_id: string;
+  service_id: string;
+  created_at: Generated<Date>;
+}
+
 export interface Database {
   user: AuthUserTable;
   platform_admin: PlatformAdminTable;
@@ -106,4 +113,5 @@ export interface Database {
   organization_invitation: OrganizationInvitationTable;
   resource: ResourceTable;
   service: ServiceTable;
+  resource_service: ResourceServiceTable;
 }
