@@ -5,35 +5,38 @@ import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../organizations/organization-write-policy.js";
-import { canManageResourceAvailability } from "./resource-availability-policy.js";
 import {
-  emptyResourceWeeklyHours,
-  normalizeResourceWeeklyHours,
-  type ResourceWeeklyHours,
-  type ResourceWeeklyHoursDay,
-} from "./resource-weekly-hours.js";
+  type DateOverrideConfiguration,
+  isLocalDate,
+  normalizeDateOverride,
+  type OrganizationDateOverride,
+} from "./organization-date-overrides.js";
+import { canManageResourceAvailability } from "./resource-availability-policy.js";
 
-type ResourceWeeklyHoursInput = {
+type ResourceDateOverride = OrganizationDateOverride & { resourceId: string };
+
+type DateOverrideInput = {
+  resourceId: string;
   userId: string;
   organizationId: string;
-  resourceId: string;
+  date: string;
 };
-export type ResourceWeeklyHoursResult =
-  | { ok: true; weeklyHours: ResourceWeeklyHours }
+export type ResourceDateOverrideResult =
+  | { ok: true; override: ResourceDateOverride }
   | {
       ok: false;
       reason:
         | "organization_not_found"
         | "resource_not_found"
         | "insufficient_role"
-        | "invalid_weekly_hours"
+        | "invalid_date_override"
         | OrganizationWriteStateFailure;
     };
 
-export async function getResourceWeeklyHours(
-  input: ResourceWeeklyHoursInput,
-): Promise<ResourceWeeklyHoursResult> {
-  // One snapshot keeps permissions, override days and intervals consistent during replacements.
+export async function getResourceDateOverride(
+  input: DateOverrideInput,
+): Promise<ResourceDateOverrideResult> {
+  // Read authorization and both configuration tables from one consistent snapshot.
   return db
     .transaction()
     .setIsolationLevel("repeatable read")
@@ -56,37 +59,53 @@ export async function getResourceWeeklyHours(
       if (!resource) return { ok: false, reason: "resource_not_found" };
       if (!canManageResourceAvailability(actor, resource.user_id, memberships))
         return { ok: false, reason: "insufficient_role" };
-      const overrides = await trx
-        .selectFrom("resource_weekly_hours_override")
-        .select("weekday")
+      if (!isLocalDate(input.date))
+        return { ok: false, reason: "invalid_date_override" };
+      const parent = await trx
+        .selectFrom("resource_date_override")
+        .select("local_date")
         .where("organization_id", "=", input.organizationId)
         .where("resource_id", "=", input.resourceId)
-        .execute();
-      const intervals = await trx
-        .selectFrom("resource_weekly_hours_interval")
-        .select(["weekday", "start_minute", "end_minute"])
+        .where("local_date", "=", input.date)
+        .executeTakeFirst();
+      if (!parent)
+        return {
+          ok: true,
+          override: {
+            timezone: "Asia/Jerusalem",
+            resourceId: input.resourceId,
+            date: input.date,
+            mode: "inherit",
+            intervals: [],
+          },
+        };
+      const rows = await trx
+        .selectFrom("resource_date_override_interval")
+        .select(["start_minute", "end_minute"])
         .where("organization_id", "=", input.organizationId)
         .where("resource_id", "=", input.resourceId)
+        .where("local_date", "=", input.date)
         .orderBy("start_minute")
         .execute();
-      const weeklyHours = emptyResourceWeeklyHours(input.resourceId);
-      for (const day of weeklyHours.days) {
-        if (!overrides.some((row) => row.weekday === day.weekday)) continue;
-        day.intervals = intervals
-          .filter((row) => row.weekday === day.weekday)
-          .map((row) => ({
+      return {
+        ok: true,
+        override: {
+          timezone: "Asia/Jerusalem",
+          resourceId: input.resourceId,
+          date: parent.local_date,
+          mode: rows.length ? "custom" : "closed",
+          intervals: rows.map((row) => ({
             startMinute: row.start_minute,
             endMinute: row.end_minute,
-          }));
-        day.mode = day.intervals.length ? "custom" : "closed";
-      }
-      return { ok: true, weeklyHours };
+          })),
+        },
+      };
     });
 }
 
-export async function replaceResourceWeeklyHours(
-  input: ResourceWeeklyHoursInput & { days: ResourceWeeklyHoursDay[] },
-): Promise<ResourceWeeklyHoursResult> {
+export async function replaceResourceDateOverride(
+  input: DateOverrideInput & DateOverrideConfiguration,
+): Promise<ResourceDateOverrideResult> {
   try {
     return await db.transaction().execute(async (trx) => {
       // Memberships in deterministic order -> Organization -> tenant-scoped Resource.
@@ -113,55 +132,55 @@ export async function replaceResourceWeeklyHours(
       if (!resource) return { ok: false, reason: "resource_not_found" };
       if (!canManageResourceAvailability(actor, resource.user_id, memberships))
         return { ok: false, reason: "insufficient_role" };
-      const weeklyHours = normalizeResourceWeeklyHours(
-        input.resourceId,
-        input.days,
-      );
-      if (!weeklyHours) return { ok: false, reason: "invalid_weekly_hours" };
-      const overrides = weeklyHours.days
-        .filter((day) => day.mode !== "inherit")
-        .map((day) => ({
-          organization_id: input.organizationId,
-          resource_id: input.resourceId,
-          weekday: day.weekday,
-        }));
-      const intervals = weeklyHours.days.flatMap((day) =>
-        day.intervals.map((interval) => ({
-          organization_id: input.organizationId,
-          resource_id: input.resourceId,
-          weekday: day.weekday,
-          start_minute: interval.startMinute,
-          end_minute: interval.endMinute,
-        })),
-      );
+      const override = normalizeDateOverride(input.date, input);
+      if (!override) return { ok: false, reason: "invalid_date_override" };
+
       await trx
-        .deleteFrom("resource_weekly_hours_override")
+        .deleteFrom("resource_date_override")
         .where("organization_id", "=", input.organizationId)
         .where("resource_id", "=", input.resourceId)
+        .where("local_date", "=", input.date)
         .execute();
-      if (overrides.length)
+      if (override.mode !== "inherit") {
         await trx
-          .insertInto("resource_weekly_hours_override")
-          .values(overrides)
+          .insertInto("resource_date_override")
+          .values({
+            organization_id: input.organizationId,
+            resource_id: input.resourceId,
+            local_date: input.date,
+          })
           .execute();
-      if (intervals.length)
+      }
+      if (override.intervals.length) {
         await trx
-          .insertInto("resource_weekly_hours_interval")
-          .values(intervals)
+          .insertInto("resource_date_override_interval")
+          .values(
+            override.intervals.map((interval) => ({
+              organization_id: input.organizationId,
+              resource_id: input.resourceId,
+              local_date: input.date,
+              start_minute: interval.startMinute,
+              end_minute: interval.endMinute,
+            })),
+          )
           .execute();
-      return { ok: true, weeklyHours };
+      }
+      return {
+        ok: true,
+        override: { ...override, resourceId: input.resourceId },
+      };
     });
   } catch (error) {
-    // Translate validation constraints only after rollback restores both tables.
+    // Translate only after rollback has restored the previous parent and intervals.
     if (
       error instanceof DatabaseError &&
-      (error.table === "resource_weekly_hours_override" ||
-        error.table === "resource_weekly_hours_interval") &&
+      (error.table === "resource_date_override" ||
+        error.table === "resource_date_override_interval") &&
       (error.code === "23P01" ||
         error.code === "23514" ||
         error.code === "23505")
     )
-      return { ok: false, reason: "invalid_weekly_hours" };
+      return { ok: false, reason: "invalid_date_override" };
     throw error;
   }
 }

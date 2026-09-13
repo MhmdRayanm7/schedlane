@@ -7,6 +7,7 @@ import { sendAvailabilityError } from "./availability-http-errors.js";
 import { getOrganizationWeeklyHours } from "./availability-query-service.js";
 import { replaceOrganizationWeeklyHours } from "./availability-service.js";
 import { organizationDateOverrideRoutes } from "./organization-date-overrides-routes.js";
+import { resourceDateOverrideRoutes } from "./resource-date-overrides-routes.js";
 
 import {
   getResourceWeeklyHours,
@@ -74,6 +75,7 @@ export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
   app.decorateRequest("verifiedUser");
   app.addHook("preHandler", requireVerifiedUser);
   await app.register(organizationDateOverrideRoutes);
+  await app.register(resourceDateOverrideRoutes);
 
   app.get(
     "/api/organizations/:organizationId/availability/weekly-hours",
