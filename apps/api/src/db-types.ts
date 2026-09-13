@@ -111,6 +111,18 @@ export interface OrganizationWeeklyHoursTable {
   end_minute: number;
 }
 
+export interface ResourceWeeklyHoursOverrideTable {
+  organization_id: string;
+  resource_id: string;
+  weekday: number;
+}
+
+export interface ResourceWeeklyHoursIntervalTable
+  extends ResourceWeeklyHoursOverrideTable {
+  start_minute: number;
+  end_minute: number;
+}
+
 export interface Database {
   user: AuthUserTable;
   platform_admin: PlatformAdminTable;
@@ -122,4 +134,6 @@ export interface Database {
   service: ServiceTable;
   resource_service: ResourceServiceTable;
   organization_weekly_hours: OrganizationWeeklyHoursTable;
+  resource_weekly_hours_override: ResourceWeeklyHoursOverrideTable;
+  resource_weekly_hours_interval: ResourceWeeklyHoursIntervalTable;
 }

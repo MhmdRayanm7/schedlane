@@ -11,6 +11,11 @@ import {
   replaceOrganizationWeeklyHours,
 } from "./availability-service.js";
 
+import {
+  getResourceWeeklyHours,
+  replaceResourceWeeklyHours,
+} from "./resource-weekly-hours-service.js";
+
 const organizationParams = Type.Object({ organizationId: uuidSchema });
 const interval = Type.Object(
   {
@@ -35,13 +40,37 @@ const weeklyHoursBody = Type.Object(
   { additionalProperties: Type.Never() },
 );
 
+const resourceParams = Type.Object({
+  organizationId: uuidSchema,
+  resourceId: uuidSchema,
+});
+const resourceWeeklyHoursBody = Type.Object(
+  {
+    days: Type.Array(
+      Type.Object(
+        {
+          weekday: Type.Integer({ minimum: 1, maximum: 7 }),
+          mode: Type.Union([
+            Type.Literal("inherit"),
+            Type.Literal("closed"),
+            Type.Literal("custom"),
+          ]),
+          intervals: Type.Array(interval),
+        },
+        { additionalProperties: Type.Never() },
+      ),
+      { minItems: 7, maxItems: 7 },
+    ),
+  },
+  { additionalProperties: Type.Never() },
+);
+
 function sendAvailabilityError(
   reply: FastifyReply,
   requestId: string,
-  reason: Extract<
-    ReplaceOrganizationWeeklyHoursResult,
-    { ok: false }
-  >["reason"],
+  reason:
+    | Extract<ReplaceOrganizationWeeklyHoursResult, { ok: false }>["reason"]
+    | "resource_not_found",
 ) {
   if (
     reason === "organization_archived" ||
@@ -50,6 +79,7 @@ function sendAvailabilityError(
     return sendOrganizationWriteStateError(reply, requestId, reason);
   }
   const errors = {
+    resource_not_found: [404, "RESOURCE_NOT_FOUND", "Resource not found"],
     organization_not_found: [
       404,
       "ORGANIZATION_NOT_FOUND",
@@ -118,6 +148,45 @@ export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
       const result = await replaceOrganizationWeeklyHours({
         userId: request.verifiedUser.id,
         organizationId: request.params.organizationId,
+        days: request.body.days,
+      });
+      if (!result.ok)
+        return sendAvailabilityError(reply, request.id, result.reason);
+      return reply.code(200).send(result.weeklyHours);
+    },
+  );
+  app.get(
+    "/api/organizations/:organizationId/resources/:resourceId/availability/weekly-hours",
+    { schema: { params: resourceParams } },
+    async (request, reply) => {
+      const result = await getResourceWeeklyHours({
+        userId: request.verifiedUser.id,
+        ...request.params,
+      });
+      if (!result.ok)
+        return sendAvailabilityError(reply, request.id, result.reason);
+      return reply.code(200).send(result.weeklyHours);
+    },
+  );
+  app.put(
+    "/api/organizations/:organizationId/resources/:resourceId/availability/weekly-hours",
+    {
+      schema: { params: resourceParams, body: resourceWeeklyHoursBody },
+      attachValidation: true,
+    },
+    async (request, reply) => {
+      if (request.validationError) {
+        if (request.validationError.validationContext === "body")
+          return sendAvailabilityError(
+            reply,
+            request.id,
+            "invalid_weekly_hours",
+          );
+        throw request.validationError;
+      }
+      const result = await replaceResourceWeeklyHours({
+        userId: request.verifiedUser.id,
+        ...request.params,
         days: request.body.days,
       });
       if (!result.ok)

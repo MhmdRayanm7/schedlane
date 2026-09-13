@@ -6,6 +6,10 @@ import { db } from "../../src/db.js";
 import type { MembershipRole } from "../../src/db-types.js";
 import { down, up } from "../../src/migrations/0010_create_resource_service.js";
 import {
+  down as downResourceWeeklyHours,
+  up as upResourceWeeklyHours,
+} from "../../src/migrations/0012_create_resource_weekly_hours_overrides.js";
+import {
   createResource,
   deactivateResource,
 } from "../../src/modules/resources/resource-service.js";
@@ -418,6 +422,8 @@ describe("Resource-Service assignments", () => {
     await db.transaction().execute(async (trx) => {
       // Migrations deliberately erase the application schema type as tables change.
       const migrationDb = trx as unknown as Kysely<unknown>;
+      // Remove the later dependency before dropping the Resource composite key.
+      await downResourceWeeklyHours(migrationDb);
       await down(migrationDb);
       const { rows } = await sql<{
         table_name: string | null;
@@ -442,6 +448,7 @@ describe("Resource-Service assignments", () => {
         service,
       );
       await up(migrationDb);
+      await upResourceWeeklyHours(migrationDb);
       await trx
         .insertInto("resource_service")
         .values({
