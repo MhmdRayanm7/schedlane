@@ -1,15 +1,12 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
-import type { FastifyReply } from "fastify";
 import Type, { type TSchema } from "typebox";
 import { Check } from "typebox/value";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
 import { uuidSchema } from "../../http/schemas.js";
-import { sendOrganizationWriteStateError } from "../organizations/organization-http-errors.js";
+import { sendAvailabilityError } from "./availability-http-errors.js";
 import { getOrganizationWeeklyHours } from "./availability-query-service.js";
-import {
-  type ReplaceOrganizationWeeklyHoursResult,
-  replaceOrganizationWeeklyHours,
-} from "./availability-service.js";
+import { replaceOrganizationWeeklyHours } from "./availability-service.js";
+import { organizationDateOverrideRoutes } from "./organization-date-overrides-routes.js";
 
 import {
   getResourceWeeklyHours,
@@ -65,41 +62,6 @@ const resourceWeeklyHoursBody = Type.Object(
   { additionalProperties: Type.Never() },
 );
 
-function sendAvailabilityError(
-  reply: FastifyReply,
-  requestId: string,
-  reason:
-    | Extract<ReplaceOrganizationWeeklyHoursResult, { ok: false }>["reason"]
-    | "resource_not_found",
-) {
-  if (
-    reason === "organization_archived" ||
-    reason === "organization_suspended"
-  ) {
-    return sendOrganizationWriteStateError(reply, requestId, reason);
-  }
-  const errors = {
-    resource_not_found: [404, "RESOURCE_NOT_FOUND", "Resource not found"],
-    organization_not_found: [
-      404,
-      "ORGANIZATION_NOT_FOUND",
-      "Organization not found",
-    ],
-    insufficient_role: [
-      403,
-      "AVAILABILITY_MANAGEMENT_NOT_ALLOWED",
-      "Your organization role does not allow Availability management",
-    ],
-    invalid_weekly_hours: [
-      400,
-      "INVALID_WEEKLY_HOURS",
-      "Weekly hours contain invalid or overlapping intervals",
-    ],
-  } as const;
-  const [status, code, message] = errors[reason];
-  return reply.code(status).send({ code, message, requestId });
-}
-
 export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
   // Validate without coercing null, booleans, or strings into minute values.
   app.setValidatorCompiler(
@@ -111,6 +73,7 @@ export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
   );
   app.decorateRequest("verifiedUser");
   app.addHook("preHandler", requireVerifiedUser);
+  await app.register(organizationDateOverrideRoutes);
 
   app.get(
     "/api/organizations/:organizationId/availability/weekly-hours",

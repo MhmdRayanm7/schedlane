@@ -123,6 +123,17 @@ export interface ResourceWeeklyHoursIntervalTable
   end_minute: number;
 }
 
+export interface OrganizationDateOverrideTable {
+  organization_id: string;
+  local_date: string;
+}
+
+export interface OrganizationDateOverrideIntervalTable
+  extends OrganizationDateOverrideTable {
+  start_minute: number;
+  end_minute: number;
+}
+
 export interface Database {
   user: AuthUserTable;
   platform_admin: PlatformAdminTable;
@@ -136,4 +147,6 @@ export interface Database {
   organization_weekly_hours: OrganizationWeeklyHoursTable;
   resource_weekly_hours_override: ResourceWeeklyHoursOverrideTable;
   resource_weekly_hours_interval: ResourceWeeklyHoursIntervalTable;
+  organization_date_override: OrganizationDateOverrideTable;
+  organization_date_override_interval: OrganizationDateOverrideIntervalTable;
 }
