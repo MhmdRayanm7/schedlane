@@ -14,6 +14,10 @@ import {
   up as upResourceDateOverrides,
 } from "../../src/migrations/0014_create_resource_date_overrides.js";
 import {
+  down as downTimeBlocks,
+  up as upTimeBlocks,
+} from "../../src/migrations/0015_create_resource_time_block.js";
+import {
   createResource,
   deactivateResource,
 } from "../../src/modules/resources/resource-service.js";
@@ -427,6 +431,7 @@ describe("Resource-Service assignments", () => {
       // Migrations deliberately erase the application schema type as tables change.
       const migrationDb = trx as unknown as Kysely<unknown>;
       // Remove the later dependency before dropping the Resource composite key.
+      await downTimeBlocks(migrationDb);
       await downResourceDateOverrides(migrationDb);
       await downResourceWeeklyHours(migrationDb);
       await down(migrationDb);
@@ -455,6 +460,7 @@ describe("Resource-Service assignments", () => {
       await up(migrationDb);
       await upResourceWeeklyHours(migrationDb);
       await upResourceDateOverrides(migrationDb);
+      await upTimeBlocks(migrationDb);
       await trx
         .insertInto("resource_service")
         .values({

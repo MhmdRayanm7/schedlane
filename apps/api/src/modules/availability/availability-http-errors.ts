@@ -8,7 +8,10 @@ export function sendAvailabilityError(
   reason:
     | Extract<ReplaceOrganizationWeeklyHoursResult, { ok: false }>["reason"]
     | "resource_not_found"
-    | "invalid_date_override",
+    | "invalid_date_override"
+    | "invalid_time_block"
+    | "time_block_not_found"
+    | "time_block_overlap",
 ) {
   if (
     reason === "organization_archived" ||
@@ -17,6 +20,13 @@ export function sendAvailabilityError(
     return sendOrganizationWriteStateError(reply, requestId, reason);
   }
   const errors = {
+    invalid_time_block: [400, "INVALID_TIME_BLOCK", "Time Block is invalid"],
+    time_block_not_found: [404, "TIME_BLOCK_NOT_FOUND", "Time Block not found"],
+    time_block_overlap: [
+      409,
+      "TIME_BLOCK_OVERLAP",
+      "Time Block overlaps an existing Time Block",
+    ],
     invalid_date_override: [
       400,
       "INVALID_DATE_OVERRIDE",

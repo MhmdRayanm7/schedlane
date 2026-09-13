@@ -146,6 +146,16 @@ export interface ResourceDateOverrideIntervalTable
   end_minute: number;
 }
 
+export interface ResourceTimeBlockTable {
+  id: Generated<string>;
+  organization_id: string;
+  resource_id: string;
+  local_date: string;
+  start_minute: number;
+  end_minute: number;
+  created_at: Generated<Date>;
+}
+
 export interface Database {
   user: AuthUserTable;
   platform_admin: PlatformAdminTable;
@@ -163,4 +173,5 @@ export interface Database {
   organization_date_override_interval: OrganizationDateOverrideIntervalTable;
   resource_date_override: ResourceDateOverrideTable;
   resource_date_override_interval: ResourceDateOverrideIntervalTable;
+  resource_time_block: ResourceTimeBlockTable;
 }
