@@ -35,6 +35,11 @@ const serviceResourceParams = Type.Object({
   resourceId: uuidSchema,
 });
 
+const servicePriceSchema = Type.Unsafe<number | null>({
+  type: ["integer", "null"],
+  minimum: 0,
+});
+
 function sendAssignmentError(
   reply: FastifyReply,
   requestId: string,
@@ -79,12 +84,7 @@ const createServiceBody = Type.Object({
   durationMinutes: Type.Integer({
     minimum: 1,
   }),
-  priceAgorot: Type.Union([
-    Type.Integer({
-      minimum: 0,
-    }),
-    Type.Null(),
-  ]),
+  priceAgorot: servicePriceSchema,
   bufferAfterMinutes: Type.Optional(
     Type.Integer({
       minimum: 0,
@@ -98,10 +98,7 @@ const updateServiceBody = Type.Object(
     durationMinutes: Type.Optional(
       createServiceBody.properties.durationMinutes,
     ),
-    // A single nullable type avoids coercing null to zero inside an anyOf branch.
-    priceAgorot: Type.Optional(
-      Type.Unsafe<number | null>({ type: ["integer", "null"], minimum: 0 }),
-    ),
+    priceAgorot: Type.Optional(servicePriceSchema),
     bufferAfterMinutes: createServiceBody.properties.bufferAfterMinutes,
   },
   {
