@@ -1,8 +1,11 @@
+import { sql } from "kysely";
 import { db } from "../../db.js";
 import type { OrganizationRequestStatus } from "../../db-types.js";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CURSOR_TIMESTAMP_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{6})Z$/;
 
 type ListOrganizationRequestsInput = {
   userId: string;
@@ -12,7 +15,7 @@ type ListOrganizationRequestsInput = {
 };
 
 type OrganizationRequestCursor = {
-  createdAt: Date;
+  createdAt: string;
   id: string;
   status: OrganizationRequestStatus | null;
 };
@@ -52,17 +55,56 @@ function isOrganizationRequestStatus(
 }
 
 function encodeCursor(
-  createdAt: Date,
+  createdAt: string,
   id: string,
   status: OrganizationRequestStatus | undefined,
 ): string {
   const payload = {
-    createdAt: createdAt.toISOString(),
+    createdAt,
     id,
     status: status ?? null,
   };
 
   return Buffer.from(JSON.stringify(payload)).toString("base64url");
+}
+
+function isCursorTimestamp(value: string): boolean {
+  const match = CURSOR_TIMESTAMP_PATTERN.exec(value);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  if (
+    year < 1 ||
+    month < 1 ||
+    month > 12 ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
+  ) {
+    return false;
+  }
+
+  const daysInMonth = [
+    31,
+    (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ];
+  const maxDay = daysInMonth[month - 1];
+  return maxDay !== undefined && day >= 1 && day <= maxDay;
 }
 
 function decodeCursor(cursor: string): OrganizationRequestCursor | null {
@@ -79,6 +121,7 @@ function decodeCursor(cursor: string): OrganizationRequestCursor | null {
 
     if (
       typeof value.createdAt !== "string" ||
+      !isCursorTimestamp(value.createdAt) ||
       typeof value.id !== "string" ||
       !UUID_PATTERN.test(value.id)
     ) {
@@ -89,14 +132,8 @@ function decodeCursor(cursor: string): OrganizationRequestCursor | null {
       return null;
     }
 
-    const createdAt = new Date(value.createdAt);
-
-    if (Number.isNaN(createdAt.getTime())) {
-      return null;
-    }
-
     return {
-      createdAt,
+      createdAt: value.createdAt,
       id: value.id,
       status: value.status,
     };
@@ -148,6 +185,9 @@ export async function listOrganizationRequests(
       "organization_request.organization_id",
       "organization_request.rejection_reason",
       "organization_request.created_at",
+      sql<string>`to_char(organization_request.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`.as(
+        "created_at_cursor",
+      ),
       "organization_request.decided_at",
       "organization_request.requested_by_user_id",
       "user.name as requester_name",
@@ -162,14 +202,12 @@ export async function listOrganizationRequests(
   }
 
   if (cursor) {
-    query = query.where((eb) =>
-      eb.or([
-        eb("organization_request.created_at", "<", cursor.createdAt),
-        eb.and([
-          eb("organization_request.created_at", "=", cursor.createdAt),
-          eb("organization_request.id", "<", cursor.id),
-        ]),
-      ]),
+    query = query.where(
+      sql<boolean>`organization_request.created_at < ${cursor.createdAt}::timestamptz
+        OR (
+          organization_request.created_at = ${cursor.createdAt}::timestamptz
+          AND organization_request.id < ${cursor.id}::uuid
+        )`,
     );
   }
 
@@ -182,7 +220,7 @@ export async function listOrganizationRequests(
 
   const nextCursor =
     hasMore && lastRow
-      ? encodeCursor(lastRow.created_at, lastRow.id, input.status)
+      ? encodeCursor(lastRow.created_at_cursor, lastRow.id, input.status)
       : null;
 
   return {

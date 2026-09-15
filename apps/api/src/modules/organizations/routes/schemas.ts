@@ -16,7 +16,5 @@ export const organizationMembershipParamsSchema = Type.Object({
 });
 
 export const organizationRequestParamsSchema = Type.Object({
-  requestId: Type.String({
-    minLength: 1,
-  }),
+  requestId: uuidSchema,
 });
