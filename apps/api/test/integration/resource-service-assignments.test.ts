@@ -17,16 +17,17 @@ import {
   down as downTimeBlocks,
   up as upTimeBlocks,
 } from "../../src/migrations/0015_create_resource_time_block.js";
-import {
-  createResource,
-  deactivateResource,
-} from "../../src/modules/resources/resource-service.js";
+import { deactivateResource } from "../../src/modules/resources/resource-service.js";
 import { assignResourceToService } from "../../src/modules/services/resource-service-assignment-service.js";
 import { serviceRoutes } from "../../src/modules/services/service-routes.js";
+import { deactivateService } from "../../src/modules/services/service-service.js";
 import {
-  createService,
-  deactivateService,
-} from "../../src/modules/services/service-service.js";
+  addTestMembership,
+  createTestOrganization,
+  createTestResource,
+  createTestService,
+  createTestUser,
+} from "../helpers/factories.js";
 
 // Stub only authentication; HTTP validation, domain operations and PostgreSQL are real.
 vi.mock("../../src/http/auth-guard.js", () => ({
@@ -43,53 +44,26 @@ await app.register(serviceRoutes);
 afterAll(() => app.close());
 
 async function fixture() {
-  const userId = randomUUID();
-  await db
-    .insertInto("user")
-    .values({
-      id: userId,
-      name: "Owner",
-      email: `${userId}@example.test`,
-      emailVerified: true,
-      image: null,
-    })
-    .execute();
-  const organization = await db
-    .insertInto("organization")
-    .values({
-      slug: `assignments-${randomUUID()}`,
-      name: "Assignment organization",
-      published_at: null,
-      archived_at: null,
-      suspended_at: null,
-    })
-    .returningAll()
-    .executeTakeFirstOrThrow();
+  const user = await createTestUser({ name: "Owner" });
+  const userId = user.id;
+  const organization = await createTestOrganization({
+    name: "Assignment organization",
+  });
   const organizationId = organization.id;
-  await db
-    .insertInto("membership")
-    .values({
-      organization_id: organizationId,
-      user_id: userId,
-      role: "owner",
-    })
-    .execute();
+  await addTestMembership({ organizationId, userId, role: "owner" });
   const addService = async () => {
-    const result = await createService({
-      userId,
+    const service = await createTestService({
       organizationId,
       name: "Consultation",
       durationMinutes: 30,
       priceAgorot: null,
       bufferAfterMinutes: 0,
     });
-    if (!result.ok) throw new Error(result.reason);
-    return result.service.id;
+    return service.id;
   };
   const addResource = async (name = "Resource") => {
-    const result = await createResource({ userId, organizationId, name });
-    if (!result.ok) throw new Error(result.reason);
-    return result.resource.id;
+    const resource = await createTestResource({ organizationId, name });
+    return resource.id;
   };
   const serviceId = await addService();
   const resourceId = await addResource();

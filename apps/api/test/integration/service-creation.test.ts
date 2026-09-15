@@ -1,8 +1,12 @@
-import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { db } from "../../src/db.js";
 import { serviceRoutes } from "../../src/modules/services/service-routes.js";
+import {
+  addTestMembership,
+  createTestOrganization,
+  createTestUser,
+} from "../helpers/factories.js";
 
 // Stub only authentication; HTTP validation, authorization and PostgreSQL are real.
 vi.mock("../../src/http/auth-guard.js", () => ({
@@ -22,43 +26,22 @@ await app.register(serviceRoutes);
 afterAll(() => app.close());
 
 async function fixture(pricingEnabled: boolean) {
-  const userId = randomUUID();
-  await db
-    .insertInto("user")
-    .values({
-      id: userId,
-      name: "Owner",
-      email: `${userId}@example.test`,
-      emailVerified: true,
-      image: null,
-    })
-    .execute();
-  const organization = await db
-    .insertInto("organization")
-    .values({
-      slug: `service-creation-${randomUUID()}`,
-      name: "Service creation organization",
-      pricing_enabled: pricingEnabled,
-      published_at: null,
-      archived_at: null,
-      suspended_at: null,
-    })
-    .returning("id")
-    .executeTakeFirstOrThrow();
-  await db
-    .insertInto("membership")
-    .values({
-      organization_id: organization.id,
-      user_id: userId,
-      role: "owner",
-    })
-    .execute();
+  const user = await createTestUser({ name: "Owner" });
+  const organization = await createTestOrganization({
+    name: "Service creation organization",
+    pricingEnabled,
+  });
+  await addTestMembership({
+    organizationId: organization.id,
+    userId: user.id,
+    role: "owner",
+  });
 
   const post = (priceAgorot: number | null) =>
     app.inject({
       method: "POST",
       url: `/api/organizations/${organization.id}/services`,
-      headers: { "x-test-user": userId },
+      headers: { "x-test-user": user.id },
       payload: {
         name: "Haircut",
         durationMinutes: 30,

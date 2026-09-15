@@ -8,6 +8,11 @@ import {
   createService,
   deactivateService,
 } from "../../src/modules/services/service-service.js";
+import {
+  addTestMembership,
+  createTestOrganization,
+  createTestUser,
+} from "../helpers/factories.js";
 
 // Stub only authentication; routes, authorization, transactions and storage are real.
 vi.mock("../../src/http/auth-guard.js", () => ({
@@ -27,37 +32,17 @@ await app.register(serviceRoutes);
 afterAll(() => app.close());
 
 async function fixture(pricingEnabled = false) {
-  const userId = randomUUID();
-  await db
-    .insertInto("user")
-    .values({
-      id: userId,
-      name: "Owner",
-      email: `${userId}@example.test`,
-      emailVerified: true,
-      image: null,
-    })
-    .execute();
-  const organization = await db
-    .insertInto("organization")
-    .values({
-      slug: `service-${randomUUID()}`,
-      name: "Service organization",
-      pricing_enabled: pricingEnabled,
-      published_at: null,
-      archived_at: null,
-      suspended_at: null,
-    })
-    .returningAll()
-    .executeTakeFirstOrThrow();
-  await db
-    .insertInto("membership")
-    .values({
-      organization_id: organization.id,
-      user_id: userId,
-      role: "owner",
-    })
-    .execute();
+  const user = await createTestUser({ name: "Owner" });
+  const userId = user.id;
+  const organization = await createTestOrganization({
+    name: "Service organization",
+    pricingEnabled,
+  });
+  await addTestMembership({
+    organizationId: organization.id,
+    userId,
+    role: "owner",
+  });
   const created = await createService({
     userId,
     organizationId: organization.id,
