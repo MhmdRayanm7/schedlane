@@ -37,3 +37,41 @@ export async function getOrganizationWeeklyHours(
       return { ok: true, weeklyHours: projectOrganizationWeeklyHours(rows) };
     });
 }
+
+type OrganizationAvailabilitySettingsInput = {
+  userId: string;
+  organizationId: string;
+};
+
+export type GetOrganizationAvailabilitySettingsResult =
+  | { ok: true; settings: { slotIntervalMinutes: number } }
+  | { ok: false; reason: "organization_not_found" | "insufficient_role" };
+
+export async function getOrganizationAvailabilitySettings(
+  input: OrganizationAvailabilitySettingsInput,
+): Promise<GetOrganizationAvailabilitySettingsResult> {
+  return db
+    .transaction()
+    .setIsolationLevel("repeatable read")
+    .execute(async (trx) => {
+      const membership = await trx
+        .selectFrom("membership")
+        .select("role")
+        .where("organization_id", "=", input.organizationId)
+        .where("user_id", "=", input.userId)
+        .executeTakeFirst();
+      if (!membership) return { ok: false, reason: "organization_not_found" };
+      if (membership.role === "staff")
+        return { ok: false, reason: "insufficient_role" };
+      const organization = await trx
+        .selectFrom("organization")
+        .select("slot_interval_minutes")
+        .where("id", "=", input.organizationId)
+        .executeTakeFirst();
+      if (!organization) return { ok: false, reason: "organization_not_found" };
+      return {
+        ok: true,
+        settings: { slotIntervalMinutes: organization.slot_interval_minutes },
+      };
+    });
+}

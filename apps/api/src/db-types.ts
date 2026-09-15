@@ -18,6 +18,7 @@ export interface OrganizationTable {
   name: string;
   staff_team_visibility: Generated<StaffTeamVisibility>;
   pricing_enabled: Generated<boolean>;
+  slot_interval_minutes: Generated<number>;
   published_at: Date | null;
   suspended_at: Date | null;
   archived_at: Date | null;

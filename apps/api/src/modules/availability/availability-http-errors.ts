@@ -10,6 +10,7 @@ export function sendAvailabilityError(
     | "resource_not_found"
     | "invalid_date_override"
     | "invalid_time_block"
+    | "invalid_availability_settings"
     | "time_block_not_found"
     | "time_block_overlap",
 ) {
@@ -20,6 +21,11 @@ export function sendAvailabilityError(
     return sendOrganizationWriteStateError(reply, requestId, reason);
   }
   const errors = {
+    invalid_availability_settings: [
+      400,
+      "INVALID_AVAILABILITY_SETTINGS",
+      "Availability settings are invalid",
+    ],
     invalid_time_block: [400, "INVALID_TIME_BLOCK", "Time Block is invalid"],
     time_block_not_found: [404, "TIME_BLOCK_NOT_FOUND", "Time Block not found"],
     time_block_overlap: [

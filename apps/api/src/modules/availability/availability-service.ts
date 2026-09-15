@@ -86,3 +86,54 @@ export async function replaceOrganizationWeeklyHours(
     throw error;
   }
 }
+
+type UpdateOrganizationAvailabilitySettingsInput = {
+  userId: string;
+  organizationId: string;
+  slotIntervalMinutes: number;
+};
+
+export type UpdateOrganizationAvailabilitySettingsResult =
+  | { ok: true; settings: { slotIntervalMinutes: number } }
+  | {
+      ok: false;
+      reason:
+        | "organization_not_found"
+        | "insufficient_role"
+        | OrganizationWriteStateFailure;
+    };
+
+export async function updateOrganizationAvailabilitySettings(
+  input: UpdateOrganizationAvailabilitySettingsInput,
+): Promise<UpdateOrganizationAvailabilitySettingsResult> {
+  return db.transaction().execute(async (trx) => {
+    const membership = await trx
+      .selectFrom("membership")
+      .select("role")
+      .where("organization_id", "=", input.organizationId)
+      .where("user_id", "=", input.userId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!membership) return { ok: false, reason: "organization_not_found" };
+    if (membership.role === "staff")
+      return { ok: false, reason: "insufficient_role" };
+    const writeState = await requireWritableOrganization(
+      trx,
+      input.organizationId,
+    );
+    if (!writeState.ok) return writeState;
+    const organization = await trx
+      .updateTable("organization")
+      .set({
+        slot_interval_minutes: input.slotIntervalMinutes,
+        updated_at: new Date(),
+      })
+      .where("id", "=", input.organizationId)
+      .returning("slot_interval_minutes")
+      .executeTakeFirstOrThrow();
+    return {
+      ok: true,
+      settings: { slotIntervalMinutes: organization.slot_interval_minutes },
+    };
+  });
+}

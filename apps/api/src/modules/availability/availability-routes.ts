@@ -3,14 +3,20 @@ import Type, { type TSchema } from "typebox";
 import { Check } from "typebox/value";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
 import { sendAvailabilityError } from "./availability-http-errors.js";
-import { getOrganizationWeeklyHours } from "./availability-query-service.js";
+import {
+  getOrganizationAvailabilitySettings,
+  getOrganizationWeeklyHours,
+} from "./availability-query-service.js";
 import {
   availabilityModeSchema,
   minuteIntervalSchema,
   organizationAvailabilityParamsSchema,
   resourceAvailabilityParamsSchema,
 } from "./availability-schemas.js";
-import { replaceOrganizationWeeklyHours } from "./availability-service.js";
+import {
+  replaceOrganizationWeeklyHours,
+  updateOrganizationAvailabilitySettings,
+} from "./availability-service.js";
 import { organizationDateOverrideRoutes } from "./organization-date-overrides-routes.js";
 import { resourceDateOverrideRoutes } from "./resource-date-overrides-routes.js";
 import { resourceTimeBlockRoutes } from "./resource-time-block-routes.js";
@@ -52,6 +58,12 @@ const resourceWeeklyHoursBody = Type.Object(
   },
   { additionalProperties: Type.Never() },
 );
+const availabilitySettingsBody = Type.Object(
+  {
+    slotIntervalMinutes: Type.Integer({ minimum: 1, maximum: 1440 }),
+  },
+  { additionalProperties: Type.Never() },
+);
 
 export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
   // Validate without coercing null, booleans, or strings into minute values.
@@ -67,6 +79,50 @@ export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
   await app.register(organizationDateOverrideRoutes);
   await app.register(resourceDateOverrideRoutes);
   await app.register(resourceTimeBlockRoutes);
+
+  app.get(
+    "/api/organizations/:organizationId/availability/settings",
+    { schema: { params: organizationAvailabilityParamsSchema } },
+    async (request, reply) => {
+      const result = await getOrganizationAvailabilitySettings({
+        userId: request.verifiedUser.id,
+        organizationId: request.params.organizationId,
+      });
+      if (!result.ok)
+        return sendAvailabilityError(reply, request.id, result.reason);
+      return reply.code(200).send(result.settings);
+    },
+  );
+
+  app.patch(
+    "/api/organizations/:organizationId/availability/settings",
+    {
+      schema: {
+        params: organizationAvailabilityParamsSchema,
+        body: availabilitySettingsBody,
+      },
+      attachValidation: true,
+    },
+    async (request, reply) => {
+      if (request.validationError) {
+        if (request.validationError.validationContext === "body")
+          return sendAvailabilityError(
+            reply,
+            request.id,
+            "invalid_availability_settings",
+          );
+        throw request.validationError;
+      }
+      const result = await updateOrganizationAvailabilitySettings({
+        userId: request.verifiedUser.id,
+        organizationId: request.params.organizationId,
+        slotIntervalMinutes: request.body.slotIntervalMinutes,
+      });
+      if (!result.ok)
+        return sendAvailabilityError(reply, request.id, result.reason);
+      return reply.code(200).send(result.settings);
+    },
+  );
 
   app.get(
     "/api/organizations/:organizationId/availability/weekly-hours",
