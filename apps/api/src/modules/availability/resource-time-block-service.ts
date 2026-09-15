@@ -10,6 +10,7 @@ import {
 import { isLocalDate } from "./local-date.js";
 import { isMinuteInterval } from "./minute-interval.js";
 import { canManageResourceAvailability } from "./resource-availability-policy.js";
+import { authorizeResourceAvailabilityRead } from "./resource-availability-read-access.js";
 
 type ResourceInput = {
   userId: string;
@@ -52,34 +53,28 @@ export type CreateResourceTimeBlockResult =
     };
 export type DeleteResourceTimeBlockResult = TimeBlockFailure | { ok: true };
 
-async function authorizeResource(
+async function authorizeResourceAvailabilityWrite(
   trx: Transaction<Database>,
   input: ResourceInput,
-  write: boolean,
 ): Promise<TimeBlockFailure | { ok: true }> {
-  // Writes always lock ordered memberships -> Organization -> tenant-scoped Resource.
-  const memberships = write
-    ? await lockOrganizationMemberships(trx, input.organizationId)
-    : await trx
-        .selectFrom("membership")
-        .select(["user_id", "role"])
-        .where("organization_id", "=", input.organizationId)
-        .execute();
+  const memberships = await lockOrganizationMemberships(
+    trx,
+    input.organizationId,
+  );
   const actor = memberships.find((member) => member.user_id === input.userId);
   if (!actor) return { ok: false, reason: "organization_not_found" };
-  if (write) {
-    const writeState = await requireWritableOrganization(
-      trx,
-      input.organizationId,
-    );
-    if (!writeState.ok) return writeState;
-  }
-  const query = trx
+  const writeState = await requireWritableOrganization(
+    trx,
+    input.organizationId,
+  );
+  if (!writeState.ok) return writeState;
+  const resource = await trx
     .selectFrom("resource")
     .select("user_id")
     .where("id", "=", input.resourceId)
-    .where("organization_id", "=", input.organizationId);
-  const resource = await (write ? query.forUpdate() : query).executeTakeFirst();
+    .where("organization_id", "=", input.organizationId)
+    .forUpdate()
+    .executeTakeFirst();
   if (!resource) return { ok: false, reason: "resource_not_found" };
   if (!canManageResourceAvailability(actor, resource.user_id, memberships))
     return { ok: false, reason: "insufficient_role" };
@@ -102,7 +97,7 @@ export async function listResourceTimeBlocks(
     .transaction()
     .setIsolationLevel("repeatable read")
     .execute(async (trx) => {
-      const access = await authorizeResource(trx, input, false);
+      const access = await authorizeResourceAvailabilityRead(trx, input);
       if (!access.ok) return access;
       if (!isLocalDate(input.date))
         return { ok: false, reason: "invalid_time_block" };
@@ -136,7 +131,7 @@ export async function createResourceTimeBlock(
 ): Promise<CreateResourceTimeBlockResult> {
   try {
     return await db.transaction().execute(async (trx) => {
-      const access = await authorizeResource(trx, input, true);
+      const access = await authorizeResourceAvailabilityWrite(trx, input);
       if (!access.ok) return access;
       if (
         !isLocalDate(input.date) ||
@@ -188,7 +183,7 @@ export async function deleteResourceTimeBlock(
   input: ResourceInput & { timeBlockId: string },
 ): Promise<DeleteResourceTimeBlockResult> {
   return db.transaction().execute(async (trx) => {
-    const access = await authorizeResource(trx, input, true);
+    const access = await authorizeResourceAvailabilityWrite(trx, input);
     if (!access.ok) return access;
     const deleted = await trx
       .deleteFrom("resource_time_block")

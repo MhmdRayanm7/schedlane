@@ -1,37 +1,24 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
-import Type from "typebox";
-import { uuidSchema } from "../../http/schemas.js";
 import { sendAvailabilityError } from "./availability-http-errors.js";
+import {
+  minuteIntervalSchema,
+  resourceAvailabilityDateParamsSchema,
+  resourceTimeBlockParamsSchema,
+} from "./availability-schemas.js";
 import {
   createResourceTimeBlock,
   deleteResourceTimeBlock,
   listResourceTimeBlocks,
 } from "./resource-time-block-service.js";
 
-const dateParams = Type.Object({
-  organizationId: uuidSchema,
-  resourceId: uuidSchema,
-  date: Type.String(),
-});
-const deleteParams = Type.Object({
-  organizationId: uuidSchema,
-  resourceId: uuidSchema,
-  timeBlockId: uuidSchema,
-});
-const body = Type.Object(
-  {
-    startMinute: Type.Integer({ minimum: 0, maximum: 1439 }),
-    endMinute: Type.Integer({ minimum: 1, maximum: 1440 }),
-  },
-  { additionalProperties: Type.Never() },
-);
+const body = minuteIntervalSchema;
 
 export const resourceTimeBlockRoutes: FastifyPluginAsyncTypebox = async (
   app,
 ) => {
   app.get(
     "/api/organizations/:organizationId/resources/:resourceId/availability/time-blocks/:date",
-    { schema: { params: dateParams } },
+    { schema: { params: resourceAvailabilityDateParamsSchema } },
     async (request, reply) => {
       const result = await listResourceTimeBlocks({
         userId: request.verifiedUser.id,
@@ -44,7 +31,10 @@ export const resourceTimeBlockRoutes: FastifyPluginAsyncTypebox = async (
   );
   app.post(
     "/api/organizations/:organizationId/resources/:resourceId/availability/time-blocks/:date",
-    { schema: { params: dateParams, body }, attachValidation: true },
+    {
+      schema: { params: resourceAvailabilityDateParamsSchema, body },
+      attachValidation: true,
+    },
     async (request, reply) => {
       if (request.validationError) {
         if (request.validationError.validationContext === "body")
@@ -63,7 +53,7 @@ export const resourceTimeBlockRoutes: FastifyPluginAsyncTypebox = async (
   );
   app.delete(
     "/api/organizations/:organizationId/resources/:resourceId/availability/time-blocks/:timeBlockId",
-    { schema: { params: deleteParams } },
+    { schema: { params: resourceTimeBlockParamsSchema } },
     async (request, reply) => {
       const result = await deleteResourceTimeBlock({
         userId: request.verifiedUser.id,

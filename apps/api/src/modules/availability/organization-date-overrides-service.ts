@@ -4,6 +4,7 @@ import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../organizations/organization-write-policy.js";
+import { toMinuteInterval } from "./availability-projections.js";
 import { isLocalDate } from "./local-date.js";
 import {
   type DateOverrideConfiguration,
@@ -75,10 +76,7 @@ export async function getOrganizationDateOverride(
           timezone: "Asia/Jerusalem",
           date: parent.local_date,
           mode: rows.length ? "custom" : "closed",
-          intervals: rows.map((row) => ({
-            startMinute: row.start_minute,
-            endMinute: row.end_minute,
-          })),
+          intervals: rows.map(toMinuteInterval),
         },
       };
     });

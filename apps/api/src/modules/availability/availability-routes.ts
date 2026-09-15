@@ -2,9 +2,14 @@ import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type, { type TSchema } from "typebox";
 import { Check } from "typebox/value";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
-import { uuidSchema } from "../../http/schemas.js";
 import { sendAvailabilityError } from "./availability-http-errors.js";
 import { getOrganizationWeeklyHours } from "./availability-query-service.js";
+import {
+  availabilityModeSchema,
+  minuteIntervalSchema,
+  organizationAvailabilityParamsSchema,
+  resourceAvailabilityParamsSchema,
+} from "./availability-schemas.js";
 import { replaceOrganizationWeeklyHours } from "./availability-service.js";
 import { organizationDateOverrideRoutes } from "./organization-date-overrides-routes.js";
 import { resourceDateOverrideRoutes } from "./resource-date-overrides-routes.js";
@@ -15,21 +20,13 @@ import {
   replaceResourceWeeklyHours,
 } from "./resource-weekly-hours-service.js";
 
-const organizationParams = Type.Object({ organizationId: uuidSchema });
-const interval = Type.Object(
-  {
-    startMinute: Type.Integer({ minimum: 0, maximum: 1439 }),
-    endMinute: Type.Integer({ minimum: 1, maximum: 1440 }),
-  },
-  { additionalProperties: Type.Never() },
-);
 const weeklyHoursBody = Type.Object(
   {
     days: Type.Array(
       Type.Object(
         {
           weekday: Type.Integer({ minimum: 1, maximum: 7 }),
-          intervals: Type.Array(interval),
+          intervals: Type.Array(minuteIntervalSchema),
         },
         { additionalProperties: Type.Never() },
       ),
@@ -39,22 +36,14 @@ const weeklyHoursBody = Type.Object(
   { additionalProperties: Type.Never() },
 );
 
-const resourceParams = Type.Object({
-  organizationId: uuidSchema,
-  resourceId: uuidSchema,
-});
 const resourceWeeklyHoursBody = Type.Object(
   {
     days: Type.Array(
       Type.Object(
         {
           weekday: Type.Integer({ minimum: 1, maximum: 7 }),
-          mode: Type.Union([
-            Type.Literal("inherit"),
-            Type.Literal("closed"),
-            Type.Literal("custom"),
-          ]),
-          intervals: Type.Array(interval),
+          mode: availabilityModeSchema,
+          intervals: Type.Array(minuteIntervalSchema),
         },
         { additionalProperties: Type.Never() },
       ),
@@ -82,7 +71,7 @@ export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
   app.get(
     "/api/organizations/:organizationId/availability/weekly-hours",
     {
-      schema: { params: organizationParams },
+      schema: { params: organizationAvailabilityParamsSchema },
     },
     async (request, reply) => {
       const result = await getOrganizationWeeklyHours({
@@ -98,7 +87,10 @@ export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
   app.put(
     "/api/organizations/:organizationId/availability/weekly-hours",
     {
-      schema: { params: organizationParams, body: weeklyHoursBody },
+      schema: {
+        params: organizationAvailabilityParamsSchema,
+        body: weeklyHoursBody,
+      },
       attachValidation: true,
     },
     async (request, reply) => {
@@ -124,7 +116,7 @@ export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
   );
   app.get(
     "/api/organizations/:organizationId/resources/:resourceId/availability/weekly-hours",
-    { schema: { params: resourceParams } },
+    { schema: { params: resourceAvailabilityParamsSchema } },
     async (request, reply) => {
       const result = await getResourceWeeklyHours({
         userId: request.verifiedUser.id,
@@ -138,7 +130,10 @@ export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
   app.put(
     "/api/organizations/:organizationId/resources/:resourceId/availability/weekly-hours",
     {
-      schema: { params: resourceParams, body: resourceWeeklyHoursBody },
+      schema: {
+        params: resourceAvailabilityParamsSchema,
+        body: resourceWeeklyHoursBody,
+      },
       attachValidation: true,
     },
     async (request, reply) => {

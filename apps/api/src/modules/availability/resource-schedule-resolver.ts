@@ -1,14 +1,15 @@
 import type { Transaction } from "kysely";
 import { db } from "../../db.js";
 import type { Database } from "../../db-types.js";
+import {
+  projectScheduleOverride,
+  toMinuteInterval,
+} from "./availability-projections.js";
 import { subtractIntervals } from "./interval-subtraction.js";
 import { isoWeekdayFromLocalDate } from "./local-date.js";
 import type { MinuteInterval } from "./minute-interval.js";
-import { canManageResourceAvailability } from "./resource-availability-policy.js";
-import {
-  resolveAvailabilityLayers,
-  type ScheduleOverride,
-} from "./resource-schedule.js";
+import { authorizeResourceAvailabilityRead } from "./resource-availability-read-access.js";
+import { resolveAvailabilityLayers } from "./resource-schedule.js";
 
 type ResolveResourceScheduleInput = {
   userId: string;
@@ -45,47 +46,13 @@ export type ResolveResourceWorkingWindowsResult =
     }
   | Extract<ResolveResourceScheduleResult, { ok: false }>;
 
-function overrideFromRows(
-  rows: { start_minute: number | null; end_minute: number | null }[],
-): ScheduleOverride {
-  // A left join preserves closed parents as one row with null interval columns.
-  const intervals = rows.flatMap((row) =>
-    row.start_minute === null || row.end_minute === null
-      ? []
-      : [{ startMinute: row.start_minute, endMinute: row.end_minute }],
-  );
-  return {
-    mode:
-      rows.length === 0
-        ? "inherit"
-        : intervals.length === 0
-          ? "closed"
-          : "custom",
-    intervals,
-  };
-}
-
 // Shared authorization and configured-layer loading; callers own the read snapshot.
 async function resolveResourceScheduleInTransaction(
   trx: Transaction<Database>,
   input: ResolveResourceScheduleInput,
 ): Promise<ResolveResourceScheduleResult> {
-  const memberships = await trx
-    .selectFrom("membership")
-    .select(["user_id", "role"])
-    .where("organization_id", "=", input.organizationId)
-    .execute();
-  const actor = memberships.find((member) => member.user_id === input.userId);
-  if (!actor) return { ok: false, reason: "organization_not_found" };
-  const resource = await trx
-    .selectFrom("resource")
-    .select("user_id")
-    .where("id", "=", input.resourceId)
-    .where("organization_id", "=", input.organizationId)
-    .executeTakeFirst();
-  if (!resource) return { ok: false, reason: "resource_not_found" };
-  if (!canManageResourceAvailability(actor, resource.user_id, memberships))
-    return { ok: false, reason: "insufficient_role" };
+  const access = await authorizeResourceAvailabilityRead(trx, input);
+  if (!access.ok) return access;
   const weekday = isoWeekdayFromLocalDate(input.date);
   if (weekday === null) return { ok: false, reason: "invalid_date" };
 
@@ -140,13 +107,10 @@ async function resolveResourceScheduleInTransaction(
       resourceId: input.resourceId,
       date: input.date,
       intervals: resolveAvailabilityLayers({
-        organizationWeekly: organizationWeekly.map((row) => ({
-          startMinute: row.start_minute,
-          endMinute: row.end_minute,
-        })),
-        resourceWeekly: overrideFromRows(resourceWeekly),
-        organizationDate: overrideFromRows(organizationDate),
-        resourceDate: overrideFromRows(resourceDate),
+        organizationWeekly: organizationWeekly.map(toMinuteInterval),
+        resourceWeekly: projectScheduleOverride(resourceWeekly),
+        organizationDate: projectScheduleOverride(organizationDate),
+        resourceDate: projectScheduleOverride(resourceDate),
       }),
     },
   };
@@ -188,10 +152,7 @@ export async function resolveResourceWorkingWindowsForDate(
           ...result.schedule,
           intervals: subtractIntervals(
             result.schedule.intervals,
-            blocks.map((block) => ({
-              startMinute: block.start_minute,
-              endMinute: block.end_minute,
-            })),
+            blocks.map(toMinuteInterval),
           ),
         },
       };

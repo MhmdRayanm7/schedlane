@@ -5,6 +5,7 @@ import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../organizations/organization-write-policy.js";
+import { toMinuteInterval } from "./availability-projections.js";
 import { isLocalDate } from "./local-date.js";
 import {
   type DateOverrideConfiguration,
@@ -12,6 +13,7 @@ import {
   type OrganizationDateOverride,
 } from "./organization-date-overrides.js";
 import { canManageResourceAvailability } from "./resource-availability-policy.js";
+import { authorizeResourceAvailabilityRead } from "./resource-availability-read-access.js";
 
 type ResourceDateOverride = OrganizationDateOverride & { resourceId: string };
 
@@ -41,24 +43,8 @@ export async function getResourceDateOverride(
     .transaction()
     .setIsolationLevel("repeatable read")
     .execute(async (trx) => {
-      const memberships = await trx
-        .selectFrom("membership")
-        .select(["user_id", "role"])
-        .where("organization_id", "=", input.organizationId)
-        .execute();
-      const actor = memberships.find(
-        (member) => member.user_id === input.userId,
-      );
-      if (!actor) return { ok: false, reason: "organization_not_found" };
-      const resource = await trx
-        .selectFrom("resource")
-        .select("user_id")
-        .where("id", "=", input.resourceId)
-        .where("organization_id", "=", input.organizationId)
-        .executeTakeFirst();
-      if (!resource) return { ok: false, reason: "resource_not_found" };
-      if (!canManageResourceAvailability(actor, resource.user_id, memberships))
-        return { ok: false, reason: "insufficient_role" };
+      const access = await authorizeResourceAvailabilityRead(trx, input);
+      if (!access.ok) return access;
       if (!isLocalDate(input.date))
         return { ok: false, reason: "invalid_date_override" };
       const parent = await trx
@@ -94,10 +80,7 @@ export async function getResourceDateOverride(
           resourceId: input.resourceId,
           date: parent.local_date,
           mode: rows.length ? "custom" : "closed",
-          intervals: rows.map((row) => ({
-            startMinute: row.start_minute,
-            endMinute: row.end_minute,
-          })),
+          intervals: rows.map(toMinuteInterval),
         },
       };
     });

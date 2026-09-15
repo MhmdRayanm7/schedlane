@@ -5,9 +5,10 @@ import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../organizations/organization-write-policy.js";
+import { projectResourceWeeklyHours } from "./availability-projections.js";
 import { canManageResourceAvailability } from "./resource-availability-policy.js";
+import { authorizeResourceAvailabilityRead } from "./resource-availability-read-access.js";
 import {
-  emptyResourceWeeklyHours,
   normalizeResourceWeeklyHours,
   type ResourceWeeklyHours,
   type ResourceWeeklyHoursDay,
@@ -38,24 +39,8 @@ export async function getResourceWeeklyHours(
     .transaction()
     .setIsolationLevel("repeatable read")
     .execute(async (trx) => {
-      const memberships = await trx
-        .selectFrom("membership")
-        .select(["user_id", "role"])
-        .where("organization_id", "=", input.organizationId)
-        .execute();
-      const actor = memberships.find(
-        (member) => member.user_id === input.userId,
-      );
-      if (!actor) return { ok: false, reason: "organization_not_found" };
-      const resource = await trx
-        .selectFrom("resource")
-        .select("user_id")
-        .where("id", "=", input.resourceId)
-        .where("organization_id", "=", input.organizationId)
-        .executeTakeFirst();
-      if (!resource) return { ok: false, reason: "resource_not_found" };
-      if (!canManageResourceAvailability(actor, resource.user_id, memberships))
-        return { ok: false, reason: "insufficient_role" };
+      const access = await authorizeResourceAvailabilityRead(trx, input);
+      if (!access.ok) return access;
       const overrides = await trx
         .selectFrom("resource_weekly_hours_override")
         .select("weekday")
@@ -69,17 +54,11 @@ export async function getResourceWeeklyHours(
         .where("resource_id", "=", input.resourceId)
         .orderBy("start_minute")
         .execute();
-      const weeklyHours = emptyResourceWeeklyHours(input.resourceId);
-      for (const day of weeklyHours.days) {
-        if (!overrides.some((row) => row.weekday === day.weekday)) continue;
-        day.intervals = intervals
-          .filter((row) => row.weekday === day.weekday)
-          .map((row) => ({
-            startMinute: row.start_minute,
-            endMinute: row.end_minute,
-          }));
-        day.mode = day.intervals.length ? "custom" : "closed";
-      }
+      const weeklyHours = projectResourceWeeklyHours(
+        input.resourceId,
+        overrides,
+        intervals,
+      );
       return { ok: true, weeklyHours };
     });
 }
