@@ -1,16 +1,14 @@
-import type { WeeklyHoursDay } from "./weekly-hours.js";
-
-type Interval = WeeklyHoursDay["intervals"][number];
+import type { MinuteInterval } from "./minute-interval.js";
 
 // Subtract half-open intervals, preserving each configured working interval's boundaries.
 export function subtractIntervals(
-  working: readonly Readonly<Interval>[],
-  blocked: readonly Readonly<Interval>[],
-): Interval[] {
+  working: readonly Readonly<MinuteInterval>[],
+  blocked: readonly Readonly<MinuteInterval>[],
+): MinuteInterval[] {
   const sortedBlocks = [...blocked].sort(
     (a, b) => a.startMinute - b.startMinute || a.endMinute - b.endMinute,
   );
-  const result: Interval[] = [];
+  const result: MinuteInterval[] = [];
   for (const window of working) {
     let cursor = window.startMinute;
     for (const block of sortedBlocks) {

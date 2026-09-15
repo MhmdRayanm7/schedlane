@@ -27,7 +27,7 @@ export function emptyResourceWeeklyHours(
 
 export function normalizeResourceWeeklyHours(
   resourceId: string,
-  days: ResourceWeeklyHoursDay[],
+  days: readonly Readonly<ResourceWeeklyHoursDay>[],
 ): ResourceWeeklyHours | null {
   const normalized = normalizeWeeklyHours(days);
   if (!normalized) return null;

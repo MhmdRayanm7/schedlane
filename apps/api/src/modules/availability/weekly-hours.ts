@@ -1,6 +1,11 @@
+import {
+  type MinuteInterval,
+  normalizeMinuteIntervals,
+} from "./minute-interval.js";
+
 export type WeeklyHoursDay = {
   weekday: number;
-  intervals: Array<{ startMinute: number; endMinute: number }>;
+  intervals: MinuteInterval[];
 };
 
 export type OrganizationWeeklyHours = {
@@ -19,7 +24,7 @@ export function emptyWeeklyHours(): OrganizationWeeklyHours {
 }
 
 export function normalizeWeeklyHours(
-  days: WeeklyHoursDay[],
+  days: readonly Readonly<WeeklyHoursDay>[],
 ): OrganizationWeeklyHours | null {
   if (days.length !== 7) return null;
   const weekdays = new Set<number>();
@@ -33,24 +38,8 @@ export function normalizeWeeklyHours(
     )
       return null;
     weekdays.add(day.weekday);
-    const intervals = day.intervals
-      .map((interval) => ({ ...interval }))
-      .sort((a, b) => a.startMinute - b.startMinute);
-    let previousEnd = 0;
-    for (const { startMinute, endMinute } of intervals) {
-      if (
-        !Number.isInteger(startMinute) ||
-        !Number.isInteger(endMinute) ||
-        startMinute < 0 ||
-        startMinute >= 1440 ||
-        endMinute <= 0 ||
-        endMinute > 1440 ||
-        startMinute >= endMinute ||
-        startMinute < previousEnd
-      )
-        return null;
-      previousEnd = endMinute;
-    }
+    const intervals = normalizeMinuteIntervals(day.intervals);
+    if (!intervals) return null;
     normalized.days[day.weekday - 1] = { weekday: day.weekday, intervals };
   }
   return normalized;

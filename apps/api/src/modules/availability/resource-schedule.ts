@@ -1,31 +1,21 @@
-import {
-  type DateOverrideConfiguration,
-  isLocalDate,
-} from "./organization-date-overrides.js";
-import type { WeeklyHoursDay } from "./weekly-hours.js";
+import type { MinuteInterval } from "./minute-interval.js";
+import type { DateOverrideConfiguration } from "./organization-date-overrides.js";
 
-type Interval = WeeklyHoursDay["intervals"][number];
 export type ScheduleOverride = {
   mode: DateOverrideConfiguration["mode"];
-  intervals: readonly Readonly<Interval>[];
+  intervals: readonly Readonly<MinuteInterval>[];
 };
 export type AvailabilityLayers = {
-  organizationWeekly: readonly Readonly<Interval>[];
+  organizationWeekly: readonly Readonly<MinuteInterval>[];
   resourceWeekly: ScheduleOverride;
   organizationDate: ScheduleOverride;
   resourceDate: ScheduleOverride;
 };
 
-export function isoWeekdayFromLocalDate(date: string): number | null {
-  if (!isLocalDate(date)) return null;
-  // UTC is used only for calendar arithmetic, never to interpret persisted DATE values.
-  return new Date(`${date}T00:00:00.000Z`).getUTCDay() || 7;
-}
-
 // Resolves configured working intervals before any blocks, bookings or slot rules.
 export function resolveAvailabilityLayers(
   layers: AvailabilityLayers,
-): Interval[] {
+): MinuteInterval[] {
   // An explicit Organization date closure cannot be reopened by a Resource override.
   if (layers.organizationDate.mode === "closed") return [];
   let intervals = layers.organizationWeekly;

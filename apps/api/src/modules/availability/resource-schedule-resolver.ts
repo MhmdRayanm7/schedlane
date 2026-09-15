@@ -2,13 +2,13 @@ import type { Transaction } from "kysely";
 import { db } from "../../db.js";
 import type { Database } from "../../db-types.js";
 import { subtractIntervals } from "./interval-subtraction.js";
+import { isoWeekdayFromLocalDate } from "./local-date.js";
+import type { MinuteInterval } from "./minute-interval.js";
 import { canManageResourceAvailability } from "./resource-availability-policy.js";
 import {
-  isoWeekdayFromLocalDate,
   resolveAvailabilityLayers,
   type ScheduleOverride,
 } from "./resource-schedule.js";
-import type { WeeklyHoursDay } from "./weekly-hours.js";
 
 type ResolveResourceScheduleInput = {
   userId: string;
@@ -23,7 +23,7 @@ export type ResolveResourceScheduleResult =
         timezone: "Asia/Jerusalem";
         resourceId: string;
         date: string;
-        intervals: WeeklyHoursDay["intervals"];
+        intervals: MinuteInterval[];
       };
     }
   | {

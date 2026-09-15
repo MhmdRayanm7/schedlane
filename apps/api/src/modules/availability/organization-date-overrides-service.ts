@@ -4,9 +4,9 @@ import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../organizations/organization-write-policy.js";
+import { isLocalDate } from "./local-date.js";
 import {
   type DateOverrideConfiguration,
-  isLocalDate,
   normalizeDateOverride,
   type OrganizationDateOverride,
 } from "./organization-date-overrides.js";

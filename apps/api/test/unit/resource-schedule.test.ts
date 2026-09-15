@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { isoWeekdayFromLocalDate } from "../../src/modules/availability/local-date.js";
 import {
   type AvailabilityLayers,
-  isoWeekdayFromLocalDate,
   resolveAvailabilityLayers,
   type ScheduleOverride,
 } from "../../src/modules/availability/resource-schedule.js";

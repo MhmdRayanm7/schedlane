@@ -7,10 +7,8 @@ import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../organizations/organization-write-policy.js";
-import {
-  isLocalDate,
-  normalizeDateOverride,
-} from "./organization-date-overrides.js";
+import { isLocalDate } from "./local-date.js";
+import { isMinuteInterval } from "./minute-interval.js";
 import { canManageResourceAvailability } from "./resource-availability-policy.js";
 
 type ResourceInput = {
@@ -140,13 +138,11 @@ export async function createResourceTimeBlock(
     return await db.transaction().execute(async (trx) => {
       const access = await authorizeResource(trx, input, true);
       if (!access.ok) return access;
-      // Reuse the local-date and minute-of-day validation for one interval.
       if (
-        !normalizeDateOverride(input.date, {
-          mode: "custom",
-          intervals: [
-            { startMinute: input.startMinute, endMinute: input.endMinute },
-          ],
+        !isLocalDate(input.date) ||
+        !isMinuteInterval({
+          startMinute: input.startMinute,
+          endMinute: input.endMinute,
         })
       )
         return { ok: false, reason: "invalid_time_block" };
