@@ -11,7 +11,7 @@ import type { MinuteInterval } from "./minute-interval.js";
 import { authorizeResourceAvailabilityRead } from "./resource-availability-read-access.js";
 import { resolveAvailabilityLayers } from "./resource-schedule.js";
 
-type ResolveResourceScheduleInput = {
+export type ResolveResourceScheduleInput = {
   userId: string;
   organizationId: string;
   resourceId: string;
@@ -127,6 +127,33 @@ export async function resolveResourceScheduleForDate(
 }
 
 // Working windows exclude Time Blocks; Bookings and Service/slot rules are not applied.
+export async function resolveResourceWorkingWindowsInTransaction(
+  trx: Transaction<Database>,
+  input: ResolveResourceScheduleInput,
+): Promise<ResolveResourceWorkingWindowsResult> {
+  const result = await resolveResourceScheduleInTransaction(trx, input);
+  if (!result.ok) return result;
+  const blocks = await trx
+    .selectFrom("resource_time_block")
+    .select(["start_minute", "end_minute"])
+    .where("organization_id", "=", input.organizationId)
+    .where("resource_id", "=", input.resourceId)
+    .where("local_date", "=", input.date)
+    .orderBy("start_minute", "asc")
+    .orderBy("id", "asc")
+    .execute();
+  return {
+    ok: true,
+    workingWindows: {
+      ...result.schedule,
+      intervals: subtractIntervals(
+        result.schedule.intervals,
+        blocks.map(toMinuteInterval),
+      ),
+    },
+  };
+}
+
 export async function resolveResourceWorkingWindowsForDate(
   input: ResolveResourceScheduleInput,
 ): Promise<ResolveResourceWorkingWindowsResult> {
@@ -134,27 +161,5 @@ export async function resolveResourceWorkingWindowsForDate(
   return db
     .transaction()
     .setIsolationLevel("repeatable read")
-    .execute(async (trx) => {
-      const result = await resolveResourceScheduleInTransaction(trx, input);
-      if (!result.ok) return result;
-      const blocks = await trx
-        .selectFrom("resource_time_block")
-        .select(["start_minute", "end_minute"])
-        .where("organization_id", "=", input.organizationId)
-        .where("resource_id", "=", input.resourceId)
-        .where("local_date", "=", input.date)
-        .orderBy("start_minute", "asc")
-        .orderBy("id", "asc")
-        .execute();
-      return {
-        ok: true,
-        workingWindows: {
-          ...result.schedule,
-          intervals: subtractIntervals(
-            result.schedule.intervals,
-            blocks.map(toMinuteInterval),
-          ),
-        },
-      };
-    });
+    .execute((trx) => resolveResourceWorkingWindowsInTransaction(trx, input));
 }
