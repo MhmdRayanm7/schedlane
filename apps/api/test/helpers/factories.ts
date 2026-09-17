@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "../../src/db.js";
-import type { MembershipRole } from "../../src/db-types.js";
+import type { BookingStatus, MembershipRole } from "../../src/db-types.js";
 
 type CreateTestUserInput = {
   id?: string;
@@ -127,6 +127,74 @@ export async function createTestService({
       buffer_after_minutes: bufferAfterMinutes,
       display_order: displayOrder,
       deactivated_at: deactivatedAt,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+type CreateTestBookingInput = {
+  organizationId: string;
+  resourceId: string;
+  serviceId: string;
+  publicReference: string;
+  startAt: Date;
+  durationMinutes: number;
+  bufferAfterMinutes: number;
+  status?: BookingStatus;
+  priceAgorot?: number | null;
+  guestName?: string;
+  guestPhone?: string | null;
+  guestEmail?: string | null;
+  customerNote?: string | null;
+  cancelledAt?: Date | null;
+  cancelledByUserId?: string | null;
+  cancellationReason?: string | null;
+};
+
+export async function createTestBooking({
+  organizationId,
+  resourceId,
+  serviceId,
+  publicReference,
+  startAt,
+  durationMinutes,
+  bufferAfterMinutes,
+  status = "confirmed",
+  priceAgorot = null,
+  guestName = "Test guest",
+  guestPhone = null,
+  guestEmail = null,
+  customerNote = null,
+  cancelledAt = null,
+  cancelledByUserId = null,
+  cancellationReason = null,
+}: CreateTestBookingInput) {
+  const serviceEndAt = new Date(startAt.getTime() + durationMinutes * 60_000);
+  const occupiedUntilAt = new Date(
+    serviceEndAt.getTime() + bufferAfterMinutes * 60_000,
+  );
+
+  return db
+    .insertInto("booking")
+    .values({
+      organization_id: organizationId,
+      resource_id: resourceId,
+      service_id: serviceId,
+      public_reference: publicReference,
+      status,
+      start_at: startAt,
+      service_end_at: serviceEndAt,
+      occupied_until_at: occupiedUntilAt,
+      duration_minutes: durationMinutes,
+      buffer_after_minutes: bufferAfterMinutes,
+      price_agorot: priceAgorot,
+      guest_name: guestName,
+      guest_phone: guestPhone,
+      guest_email: guestEmail,
+      customer_note: customerNote,
+      cancelled_at: cancelledAt,
+      cancelled_by_user_id: cancelledByUserId,
+      cancellation_reason: cancellationReason,
     })
     .returningAll()
     .executeTakeFirstOrThrow();

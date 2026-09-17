@@ -17,6 +17,10 @@ import {
   down as downTimeBlocks,
   up as upTimeBlocks,
 } from "../../src/migrations/0015_create_resource_time_block.js";
+import {
+  down as downBooking,
+  up as upBooking,
+} from "../../src/migrations/0017_create_booking.js";
 import { deactivateResource } from "../../src/modules/resources/resource-service.js";
 import { assignResourceToService } from "../../src/modules/services/resource-service-assignment-service.js";
 import { serviceRoutes } from "../../src/modules/services/service-routes.js";
@@ -405,6 +409,7 @@ describe("Resource-Service assignments", () => {
       // Migrations deliberately erase the application schema type as tables change.
       const migrationDb = trx as unknown as Kysely<unknown>;
       // Remove the later dependency before dropping the Resource composite key.
+      await downBooking(migrationDb);
       await downTimeBlocks(migrationDb);
       await downResourceDateOverrides(migrationDb);
       await downResourceWeeklyHours(migrationDb);
@@ -435,6 +440,7 @@ describe("Resource-Service assignments", () => {
       await upResourceWeeklyHours(migrationDb);
       await upResourceDateOverrides(migrationDb);
       await upTimeBlocks(migrationDb);
+      await upBooking(migrationDb);
       await trx
         .insertInto("resource_service")
         .values({

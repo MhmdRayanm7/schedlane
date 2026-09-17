@@ -6,6 +6,8 @@ export type OrganizationRequestStatus = "pending" | "approved" | "rejected";
 
 export type StaffTeamVisibility = "team" | "self";
 
+export type BookingStatus = "confirmed" | "cancelled" | "no_show";
+
 export interface PlatformAdminTable {
   user_id: string;
   created_at: Generated<Date>;
@@ -157,6 +159,30 @@ export interface ResourceTimeBlockTable {
   created_at: Generated<Date>;
 }
 
+export interface BookingTable {
+  id: Generated<string>;
+  organization_id: string;
+  resource_id: string;
+  service_id: string;
+  public_reference: string;
+  status: Generated<BookingStatus>;
+  start_at: Date;
+  service_end_at: Date;
+  occupied_until_at: Date;
+  duration_minutes: number;
+  buffer_after_minutes: number;
+  price_agorot: number | null;
+  guest_name: string;
+  guest_phone: string | null;
+  guest_email: string | null;
+  customer_note: string | null;
+  cancelled_at: Date | null;
+  cancelled_by_user_id: string | null;
+  cancellation_reason: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 export interface Database {
   user: AuthUserTable;
   platform_admin: PlatformAdminTable;
@@ -175,4 +201,5 @@ export interface Database {
   resource_date_override: ResourceDateOverrideTable;
   resource_date_override_interval: ResourceDateOverrideIntervalTable;
   resource_time_block: ResourceTimeBlockTable;
+  booking: BookingTable;
 }
