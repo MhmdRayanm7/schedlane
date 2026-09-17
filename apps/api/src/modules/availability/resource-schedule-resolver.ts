@@ -17,6 +17,10 @@ export type ResolveResourceScheduleInput = {
   resourceId: string;
   date: string;
 };
+export type ResolveResourceScheduleAfterAccessInput = Omit<
+  ResolveResourceScheduleInput,
+  "userId"
+>;
 export type ResolveResourceScheduleResult =
   | {
       ok: true;
@@ -46,13 +50,11 @@ export type ResolveResourceWorkingWindowsResult =
     }
   | Extract<ResolveResourceScheduleResult, { ok: false }>;
 
-// Shared authorization and configured-layer loading; callers own the read snapshot.
-async function resolveResourceScheduleInTransaction(
+// Configured-layer loading after the caller has authorized Resource access.
+async function resolveResourceScheduleAfterAccessInTransaction(
   trx: Transaction<Database>,
-  input: ResolveResourceScheduleInput,
+  input: ResolveResourceScheduleAfterAccessInput,
 ): Promise<ResolveResourceScheduleResult> {
-  const access = await authorizeResourceAvailabilityRead(trx, input);
-  if (!access.ok) return access;
   const weekday = isoWeekdayFromLocalDate(input.date);
   if (weekday === null) return { ok: false, reason: "invalid_date" };
 
@@ -116,6 +118,16 @@ async function resolveResourceScheduleInTransaction(
   };
 }
 
+// Shared authorization and configured-layer loading; callers own the read snapshot.
+async function resolveResourceScheduleInTransaction(
+  trx: Transaction<Database>,
+  input: ResolveResourceScheduleInput,
+): Promise<ResolveResourceScheduleResult> {
+  const access = await authorizeResourceAvailabilityRead(trx, input);
+  if (!access.ok) return access;
+  return resolveResourceScheduleAfterAccessInTransaction(trx, input);
+}
+
 // Configured schedule only: Time Blocks do not affect this resolver.
 export async function resolveResourceScheduleForDate(
   input: ResolveResourceScheduleInput,
@@ -131,7 +143,20 @@ export async function resolveResourceWorkingWindowsInTransaction(
   trx: Transaction<Database>,
   input: ResolveResourceScheduleInput,
 ): Promise<ResolveResourceWorkingWindowsResult> {
-  const result = await resolveResourceScheduleInTransaction(trx, input);
+  const access = await authorizeResourceAvailabilityRead(trx, input);
+  if (!access.ok) return access;
+  return resolveResourceWorkingWindowsAfterAccessInTransaction(trx, input);
+}
+
+// Working-window calculation for callers that own authorization and the transaction.
+export async function resolveResourceWorkingWindowsAfterAccessInTransaction(
+  trx: Transaction<Database>,
+  input: ResolveResourceScheduleAfterAccessInput,
+): Promise<ResolveResourceWorkingWindowsResult> {
+  const result = await resolveResourceScheduleAfterAccessInTransaction(
+    trx,
+    input,
+  );
   if (!result.ok) return result;
   const blocks = await trx
     .selectFrom("resource_time_block")

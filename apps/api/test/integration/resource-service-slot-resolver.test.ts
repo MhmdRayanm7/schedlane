@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { db } from "../../src/db.js";
 import type { MembershipRole } from "../../src/db-types.js";
 import type { MinuteInterval } from "../../src/modules/availability/minute-interval.js";
-import { resolveResourceServiceSlotStartsForDate } from "../../src/modules/availability/resource-service-slot-resolver.js";
+import {
+  resolveResourceServiceSlotContextAfterAccessInTransaction,
+  resolveResourceServiceSlotStartsForDate,
+} from "../../src/modules/availability/resource-service-slot-resolver.js";
 import {
   addTestMembership,
   createTestOrganization,
@@ -203,6 +206,54 @@ async function addTimeBlock(
 }
 
 describe("Resource-Service slot resolver", () => {
+  it("exposes preauthorized snapshot inputs without changing configured slots", async () => {
+    const f = await fixture({
+      slotIntervalMinutes: 17,
+      durationMinutes: 45,
+      bufferAfterMinutes: 15,
+    });
+    await db
+      .updateTable("organization")
+      .set({ pricing_enabled: true })
+      .where("id", "=", f.organization.id)
+      .execute();
+    await db
+      .updateTable("service")
+      .set({ price_agorot: 5000 })
+      .where("id", "=", f.service.id)
+      .execute();
+    await setOrganizationWeeklyHours(f, [interval(540, 720)]);
+    await assignService(f);
+
+    const context = await db.transaction().execute((trx) =>
+      resolveResourceServiceSlotContextAfterAccessInTransaction(trx, {
+        organizationId: f.organization.id,
+        resourceId: f.resource.id,
+        serviceId: f.service.id,
+        date,
+      }),
+    );
+    expect(context).toEqual({
+      ok: true,
+      context: {
+        timezone: "Asia/Jerusalem",
+        resourceId: f.resource.id,
+        serviceId: f.service.id,
+        date,
+        starts: [540, 557, 574, 591, 608, 625, 642, 659],
+        slotIntervalMinutes: 17,
+        durationMinutes: 45,
+        bufferAfterMinutes: 15,
+        priceAgorot: 5000,
+        pricingEnabled: true,
+        serviceDeactivatedAt: null,
+      },
+    });
+    expect(await f.resolve()).toEqual(
+      f.success([540, 557, 574, 591, 608, 625, 642, 659]),
+    );
+  });
+
   it("resolves the full configured pipeline with Service duration and buffer", async () => {
     const f = await fixture({ durationMinutes: 45, bufferAfterMinutes: 15 });
     await setOrganizationWeeklyHours(f, [interval(540, 720)]);
