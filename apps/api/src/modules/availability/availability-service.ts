@@ -90,11 +90,22 @@ export async function replaceOrganizationWeeklyHours(
 type UpdateOrganizationAvailabilitySettingsInput = {
   userId: string;
   organizationId: string;
-  slotIntervalMinutes: number;
+  slotIntervalMinutes?: number;
+  minBookingNoticeMinutes?: number;
+  maxBookingHorizonDays?: number;
+  publicBookingPaused?: boolean;
 };
 
 export type UpdateOrganizationAvailabilitySettingsResult =
-  | { ok: true; settings: { slotIntervalMinutes: number } }
+  | {
+      ok: true;
+      settings: {
+        slotIntervalMinutes: number;
+        minBookingNoticeMinutes: number;
+        maxBookingHorizonDays: number;
+        publicBookingPaused: boolean;
+      };
+    }
   | {
       ok: false;
       reason:
@@ -125,15 +136,36 @@ export async function updateOrganizationAvailabilitySettings(
     const organization = await trx
       .updateTable("organization")
       .set({
-        slot_interval_minutes: input.slotIntervalMinutes,
+        ...(input.slotIntervalMinutes === undefined
+          ? {}
+          : { slot_interval_minutes: input.slotIntervalMinutes }),
+        ...(input.minBookingNoticeMinutes === undefined
+          ? {}
+          : { min_booking_notice_minutes: input.minBookingNoticeMinutes }),
+        ...(input.maxBookingHorizonDays === undefined
+          ? {}
+          : { max_booking_horizon_days: input.maxBookingHorizonDays }),
+        ...(input.publicBookingPaused === undefined
+          ? {}
+          : { public_booking_paused: input.publicBookingPaused }),
         updated_at: new Date(),
       })
       .where("id", "=", input.organizationId)
-      .returning("slot_interval_minutes")
+      .returning([
+        "slot_interval_minutes",
+        "min_booking_notice_minutes",
+        "max_booking_horizon_days",
+        "public_booking_paused",
+      ])
       .executeTakeFirstOrThrow();
     return {
       ok: true,
-      settings: { slotIntervalMinutes: organization.slot_interval_minutes },
+      settings: {
+        slotIntervalMinutes: organization.slot_interval_minutes,
+        minBookingNoticeMinutes: organization.min_booking_notice_minutes,
+        maxBookingHorizonDays: organization.max_booking_horizon_days,
+        publicBookingPaused: organization.public_booking_paused,
+      },
     };
   });
 }

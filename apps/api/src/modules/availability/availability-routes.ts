@@ -60,9 +60,14 @@ const resourceWeeklyHoursBody = Type.Object(
 );
 const availabilitySettingsBody = Type.Object(
   {
-    slotIntervalMinutes: Type.Integer({ minimum: 1, maximum: 1440 }),
+    slotIntervalMinutes: Type.Optional(
+      Type.Integer({ minimum: 1, maximum: 1440 }),
+    ),
+    minBookingNoticeMinutes: Type.Optional(Type.Integer({ minimum: 0 })),
+    maxBookingHorizonDays: Type.Optional(Type.Integer({ minimum: 0 })),
+    publicBookingPaused: Type.Optional(Type.Boolean()),
   },
-  { additionalProperties: Type.Never() },
+  { minProperties: 1, additionalProperties: Type.Never() },
 );
 
 export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
@@ -116,7 +121,7 @@ export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
       const result = await updateOrganizationAvailabilitySettings({
         userId: request.verifiedUser.id,
         organizationId: request.params.organizationId,
-        slotIntervalMinutes: request.body.slotIntervalMinutes,
+        ...request.body,
       });
       if (!result.ok)
         return sendAvailabilityError(reply, request.id, result.reason);

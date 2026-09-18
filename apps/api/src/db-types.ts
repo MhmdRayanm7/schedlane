@@ -21,6 +21,9 @@ export interface OrganizationTable {
   staff_team_visibility: Generated<StaffTeamVisibility>;
   pricing_enabled: Generated<boolean>;
   slot_interval_minutes: Generated<number>;
+  min_booking_notice_minutes: Generated<number>;
+  max_booking_horizon_days: Generated<number>;
+  public_booking_paused: Generated<boolean>;
   published_at: Date | null;
   suspended_at: Date | null;
   archived_at: Date | null;

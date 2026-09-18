@@ -31,6 +31,9 @@ type CreateTestOrganizationInput = {
   publishedAt?: Date | null;
   archivedAt?: Date | null;
   suspendedAt?: Date | null;
+  minBookingNoticeMinutes?: number;
+  maxBookingHorizonDays?: number;
+  publicBookingPaused?: boolean;
 };
 
 export async function createTestOrganization({
@@ -40,6 +43,9 @@ export async function createTestOrganization({
   publishedAt = null,
   archivedAt = null,
   suspendedAt = null,
+  minBookingNoticeMinutes,
+  maxBookingHorizonDays,
+  publicBookingPaused,
 }: CreateTestOrganizationInput = {}) {
   return db
     .insertInto("organization")
@@ -50,6 +56,9 @@ export async function createTestOrganization({
       published_at: publishedAt,
       archived_at: archivedAt,
       suspended_at: suspendedAt,
+      min_booking_notice_minutes: minBookingNoticeMinutes,
+      max_booking_horizon_days: maxBookingHorizonDays,
+      public_booking_paused: publicBookingPaused,
     })
     .returningAll()
     .executeTakeFirstOrThrow();

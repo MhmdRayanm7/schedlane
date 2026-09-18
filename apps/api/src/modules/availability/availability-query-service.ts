@@ -44,7 +44,15 @@ type OrganizationAvailabilitySettingsInput = {
 };
 
 export type GetOrganizationAvailabilitySettingsResult =
-  | { ok: true; settings: { slotIntervalMinutes: number } }
+  | {
+      ok: true;
+      settings: {
+        slotIntervalMinutes: number;
+        minBookingNoticeMinutes: number;
+        maxBookingHorizonDays: number;
+        publicBookingPaused: boolean;
+      };
+    }
   | { ok: false; reason: "organization_not_found" | "insufficient_role" };
 
 export async function getOrganizationAvailabilitySettings(
@@ -65,13 +73,23 @@ export async function getOrganizationAvailabilitySettings(
         return { ok: false, reason: "insufficient_role" };
       const organization = await trx
         .selectFrom("organization")
-        .select("slot_interval_minutes")
+        .select([
+          "slot_interval_minutes",
+          "min_booking_notice_minutes",
+          "max_booking_horizon_days",
+          "public_booking_paused",
+        ])
         .where("id", "=", input.organizationId)
         .executeTakeFirst();
       if (!organization) return { ok: false, reason: "organization_not_found" };
       return {
         ok: true,
-        settings: { slotIntervalMinutes: organization.slot_interval_minutes },
+        settings: {
+          slotIntervalMinutes: organization.slot_interval_minutes,
+          minBookingNoticeMinutes: organization.min_booking_notice_minutes,
+          maxBookingHorizonDays: organization.max_booking_horizon_days,
+          publicBookingPaused: organization.public_booking_paused,
+        },
       };
     });
 }
