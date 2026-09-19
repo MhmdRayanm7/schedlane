@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { db } from "../../src/db.js";
 import type { BookingStatus } from "../../src/db-types.js";
 import type { MinuteInterval } from "../../src/modules/availability/minute-interval.js";
-import { resolvePublicResourceServiceAvailability } from "../../src/modules/availability/public-resource-service-availability.js";
+import {
+  resolvePublicResourceServiceAvailability,
+  resolvePublicResourceServiceAvailabilityInTransaction,
+} from "../../src/modules/availability/public-resource-service-availability.js";
 import {
   createTestBooking,
   createTestOrganization,
@@ -151,6 +154,30 @@ async function addBooking(
 }
 
 describe("public Resource-Service availability", () => {
+  it("exposes the same starts and immutable snapshots to a caller-owned transaction", async () => {
+    const f = await fixture({ durationMinutes: 45 });
+    await configure(f);
+    const wrapped = await f.resolve();
+    const internal = await db
+      .transaction()
+      .setIsolationLevel("serializable")
+      .execute((trx) =>
+        resolvePublicResourceServiceAvailabilityInTransaction(
+          trx,
+          f.input,
+          now,
+        ),
+      );
+    if (!wrapped.ok || !internal.ok) throw new Error("Expected availability");
+    expect(internal.context).toMatchObject({
+      ...wrapped.availability,
+      durationMinutes: 45,
+      bufferAfterMinutes: 0,
+      pricingEnabled: false,
+      priceAgorot: null,
+    });
+  });
+
   it("resolves a published active assigned pairing without authentication", async () => {
     const f = await fixture();
     await configure(f);
