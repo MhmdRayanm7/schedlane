@@ -4,14 +4,12 @@ import {
   BOOKING_PUBLIC_REFERENCE_ALPHABET,
   generateBookingPublicReference,
 } from "../../src/modules/bookings/booking-public-reference.js";
-import {
-  type CreateManualBookingInput,
-  manualBookingTestInternals,
-} from "../../src/modules/bookings/booking-service.js";
+import type { CreateManualBookingInput } from "../../src/modules/bookings/booking-service.js";
 import {
   calculateBookingTemporalSnapshot,
   localBookingStartToUtc,
 } from "../../src/modules/bookings/booking-time.js";
+import { runConfirmedBookingWriteWithRetries } from "../../src/modules/bookings/confirmed-booking-write.js";
 
 const input: CreateManualBookingInput = {
   userId: "user-id",
@@ -104,9 +102,10 @@ describe("Manual Booking transaction retries", () => {
       });
 
     await expect(
-      manualBookingTestInternals.createManualBookingWithDependencies(input, {
+      runConfirmedBookingWriteWithRetries({
         generatePublicReference: () => "BK-2222222222",
-        executeTransactionAttempt,
+        executeTransactionAttempt: (reference) =>
+          executeTransactionAttempt(input, reference),
       }),
     ).resolves.toEqual(stoppedResult);
     expect(references).toEqual(["BK-2222222222", "BK-2222222222"]);
@@ -118,9 +117,10 @@ describe("Manual Booking transaction retries", () => {
       .fn()
       .mockRejectedValue(serializationFailure);
     await expect(
-      manualBookingTestInternals.createManualBookingWithDependencies(input, {
+      runConfirmedBookingWriteWithRetries({
         generatePublicReference: () => "BK-2222222222",
-        executeTransactionAttempt,
+        executeTransactionAttempt: (reference) =>
+          executeTransactionAttempt(input, reference),
       }),
     ).rejects.toBe(serializationFailure);
     expect(executeTransactionAttempt).toHaveBeenCalledTimes(3);
@@ -132,9 +132,10 @@ describe("Manual Booking transaction retries", () => {
       constraint: "booking_confirmed_resource_occupancy_excl",
     });
     await expect(
-      manualBookingTestInternals.createManualBookingWithDependencies(input, {
+      runConfirmedBookingWriteWithRetries({
         generatePublicReference: () => "BK-2222222222",
-        executeTransactionAttempt,
+        executeTransactionAttempt: (reference) =>
+          executeTransactionAttempt(input, reference),
       }),
     ).resolves.toEqual({ ok: false, reason: "booking_conflict" });
     expect(executeTransactionAttempt).toHaveBeenCalledOnce();
@@ -144,9 +145,10 @@ describe("Manual Booking transaction retries", () => {
     const unexpected = { code: "23503" };
     const executeTransactionAttempt = vi.fn().mockRejectedValue(unexpected);
     await expect(
-      manualBookingTestInternals.createManualBookingWithDependencies(input, {
+      runConfirmedBookingWriteWithRetries({
         generatePublicReference: () => "BK-2222222222",
-        executeTransactionAttempt,
+        executeTransactionAttempt: (reference) =>
+          executeTransactionAttempt(input, reference),
       }),
     ).rejects.toBe(unexpected);
     expect(executeTransactionAttempt).toHaveBeenCalledOnce();
@@ -163,9 +165,10 @@ describe("Manual Booking transaction retries", () => {
       })
       .mockResolvedValueOnce(stoppedResult);
     await expect(
-      manualBookingTestInternals.createManualBookingWithDependencies(input, {
+      runConfirmedBookingWriteWithRetries({
         generatePublicReference,
-        executeTransactionAttempt,
+        executeTransactionAttempt: (reference) =>
+          executeTransactionAttempt(input, reference),
       }),
     ).resolves.toEqual(stoppedResult);
     expect(generatePublicReference).toHaveBeenCalledTimes(2);
@@ -178,9 +181,10 @@ describe("Manual Booking transaction retries", () => {
     const unexpected = { code: "23505", constraint: "another_constraint" };
     const executeTransactionAttempt = vi.fn().mockRejectedValue(unexpected);
     await expect(
-      manualBookingTestInternals.createManualBookingWithDependencies(input, {
+      runConfirmedBookingWriteWithRetries({
         generatePublicReference: () => "BK-2222222222",
-        executeTransactionAttempt,
+        executeTransactionAttempt: (reference) =>
+          executeTransactionAttempt(input, reference),
       }),
     ).rejects.toBe(unexpected);
     expect(executeTransactionAttempt).toHaveBeenCalledOnce();
@@ -192,9 +196,10 @@ describe("Manual Booking transaction retries", () => {
       constraint: "booking_public_reference_key",
     });
     await expect(
-      manualBookingTestInternals.createManualBookingWithDependencies(input, {
+      runConfirmedBookingWriteWithRetries({
         generatePublicReference: () => "BK-2222222222",
-        executeTransactionAttempt,
+        executeTransactionAttempt: (reference) =>
+          executeTransactionAttempt(input, reference),
       }),
     ).rejects.toThrow("Could not allocate");
     expect(executeTransactionAttempt).toHaveBeenCalledTimes(5);

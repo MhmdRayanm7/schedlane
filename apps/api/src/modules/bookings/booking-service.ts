@@ -8,16 +8,12 @@ import {
   requireWritableOrganization,
 } from "../organizations/organization-write-policy.js";
 import { canCreateManualBookingForResource } from "./booking-policy.js";
-import { generateBookingPublicReference } from "./booking-public-reference.js";
+import { localBookingStartToUtc } from "./booking-time.js";
 import {
-  calculateBookingTemporalSnapshot,
-  localBookingStartToUtc,
-} from "./booking-time.js";
-
-const MAX_SERIALIZATION_ATTEMPTS = 3;
-const MAX_PUBLIC_REFERENCE_ATTEMPTS = 5;
-const BOOKING_CONFLICT_CONSTRAINT = "booking_confirmed_resource_occupancy_excl";
-const BOOKING_PUBLIC_REFERENCE_CONSTRAINT = "booking_public_reference_key";
+  type ConfirmedBooking,
+  insertConfirmedBookingInTransaction,
+  runConfirmedBookingWriteWithRetries,
+} from "./confirmed-booking-write.js";
 
 export type CreateManualBookingInput = {
   userId: string;
@@ -50,25 +46,7 @@ type CreateManualBookingFailure =
 export type CreateManualBookingResult =
   | {
       ok: true;
-      booking: {
-        id: string;
-        publicReference: string;
-        status: "confirmed";
-        organizationId: string;
-        resourceId: string;
-        serviceId: string;
-        startAt: string;
-        serviceEndAt: string;
-        occupiedUntilAt: string;
-        durationMinutes: number;
-        bufferAfterMinutes: number;
-        priceAgorot: number | null;
-        guestName: string;
-        guestPhone: string | null;
-        guestEmail: string | null;
-        customerNote: string | null;
-        createdAt: string;
-      };
+      booking: ConfirmedBooking;
     }
   | { ok: false; reason: CreateManualBookingFailure };
 
@@ -82,25 +60,6 @@ type NormalizedManualBookingInput = Omit<
   customerNote: string | null;
   startAt: Date;
 };
-
-type ExecuteTransactionAttempt = (
-  input: NormalizedManualBookingInput,
-  publicReference: string,
-) => Promise<CreateManualBookingResult>;
-
-type ManualBookingDependencies = {
-  generatePublicReference: () => string;
-  executeTransactionAttempt: ExecuteTransactionAttempt;
-};
-
-function databaseError(error: unknown): {
-  code?: string;
-  constraint?: string;
-} {
-  return typeof error === "object" && error !== null
-    ? (error as { code?: string; constraint?: string })
-    : {};
-}
 
 async function executeManualBookingTransaction(
   input: NormalizedManualBookingInput,
@@ -171,77 +130,23 @@ async function createManualBookingInTransaction(
   if (slots.context.pricingEnabled && priceAgorot === null)
     throw new Error("Pricing-enabled Service has no persisted price");
 
-  const { serviceEndAt, occupiedUntilAt } = calculateBookingTemporalSnapshot(
-    input.startAt,
-    slots.context.durationMinutes,
-    slots.context.bufferAfterMinutes,
-  );
-  const booking = await trx
-    .insertInto("booking")
-    .values({
-      organization_id: input.organizationId,
-      resource_id: resource.id,
-      service_id: slots.context.serviceId,
-      public_reference: publicReference,
-      status: "confirmed",
-      start_at: input.startAt,
-      service_end_at: serviceEndAt,
-      occupied_until_at: occupiedUntilAt,
-      duration_minutes: slots.context.durationMinutes,
-      buffer_after_minutes: slots.context.bufferAfterMinutes,
-      price_agorot: priceAgorot,
-      guest_name: input.guestName,
-      guest_phone: input.guestPhone,
-      guest_email: input.guestEmail,
-      customer_note: input.customerNote,
-      cancelled_at: null,
-      cancelled_by_user_id: null,
-      cancellation_reason: null,
-    })
-    .returning([
-      "id",
-      "public_reference",
-      "status",
-      "organization_id",
-      "resource_id",
-      "service_id",
-      "start_at",
-      "service_end_at",
-      "occupied_until_at",
-      "duration_minutes",
-      "buffer_after_minutes",
-      "price_agorot",
-      "guest_name",
-      "guest_phone",
-      "guest_email",
-      "customer_note",
-      "created_at",
-    ])
-    .executeTakeFirstOrThrow();
-
-  if (booking.status !== "confirmed")
-    throw new Error("New manual Booking did not persist as confirmed");
+  const booking = await insertConfirmedBookingInTransaction(trx, {
+    organizationId: input.organizationId,
+    resourceId: resource.id,
+    serviceId: slots.context.serviceId,
+    publicReference,
+    startAt: input.startAt,
+    durationMinutes: slots.context.durationMinutes,
+    bufferAfterMinutes: slots.context.bufferAfterMinutes,
+    priceAgorot,
+    guestName: input.guestName,
+    guestPhone: input.guestPhone,
+    guestEmail: input.guestEmail,
+    customerNote: input.customerNote,
+  });
   return {
     ok: true,
-    booking: {
-      id: booking.id,
-      publicReference: booking.public_reference,
-      status: booking.status,
-      organizationId: booking.organization_id,
-      resourceId: booking.resource_id,
-      serviceId: booking.service_id,
-      startAt: booking.start_at.toISOString(),
-      serviceEndAt: booking.service_end_at.toISOString(),
-      occupiedUntilAt: booking.occupied_until_at.toISOString(),
-      durationMinutes: booking.duration_minutes,
-      bufferAfterMinutes: booking.buffer_after_minutes,
-      priceAgorot: booking.price_agorot,
-      guestName: booking.guest_name,
-      guestPhone: booking.guest_phone,
-      guestEmail: booking.guest_email,
-      customerNote: booking.customer_note,
-      createdAt: booking.created_at.toISOString(),
-    },
+    booking,
   };
 }
 
@@ -269,71 +174,13 @@ function normalizeManualBookingInput(
   };
 }
 
-async function createManualBookingWithDependencies(
+export async function createManualBooking(
   input: CreateManualBookingInput,
-  dependencies: ManualBookingDependencies,
 ): Promise<CreateManualBookingResult> {
   const normalized = normalizeManualBookingInput(input);
   if ("ok" in normalized) return normalized;
-
-  for (
-    let referenceAttempt = 1;
-    referenceAttempt <= MAX_PUBLIC_REFERENCE_ATTEMPTS;
-    referenceAttempt += 1
-  ) {
-    const publicReference = dependencies.generatePublicReference();
-    let referenceCollision = false;
-
-    for (
-      let serializationAttempt = 1;
-      serializationAttempt <= MAX_SERIALIZATION_ATTEMPTS;
-      serializationAttempt += 1
-    ) {
-      try {
-        return await dependencies.executeTransactionAttempt(
-          normalized,
-          publicReference,
-        );
-      } catch (error) {
-        const { code, constraint } = databaseError(error);
-        if (
-          code === "40001" &&
-          serializationAttempt < MAX_SERIALIZATION_ATTEMPTS
-        )
-          continue;
-        if (
-          code === "23505" &&
-          constraint === BOOKING_PUBLIC_REFERENCE_CONSTRAINT
-        ) {
-          referenceCollision = true;
-          break;
-        }
-        if (code === "23P01" && constraint === BOOKING_CONFLICT_CONSTRAINT)
-          return { ok: false, reason: "booking_conflict" };
-        throw error;
-      }
-    }
-
-    if (!referenceCollision)
-      throw new Error("Manual Booking transaction attempt did not complete");
-  }
-
-  throw new Error("Could not allocate a unique Booking public reference");
+  return runConfirmedBookingWriteWithRetries({
+    executeTransactionAttempt: (publicReference) =>
+      executeManualBookingTransaction(normalized, publicReference),
+  });
 }
-
-const productionDependencies: ManualBookingDependencies = {
-  generatePublicReference: generateBookingPublicReference,
-  executeTransactionAttempt: executeManualBookingTransaction,
-};
-
-export function createManualBooking(
-  input: CreateManualBookingInput,
-): Promise<CreateManualBookingResult> {
-  return createManualBookingWithDependencies(input, productionDependencies);
-}
-
-export const manualBookingTestInternals = {
-  createManualBookingWithDependencies,
-  maxSerializationAttempts: MAX_SERIALIZATION_ATTEMPTS,
-  maxPublicReferenceAttempts: MAX_PUBLIC_REFERENCE_ATTEMPTS,
-};
