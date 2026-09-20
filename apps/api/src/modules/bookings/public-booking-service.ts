@@ -3,6 +3,10 @@ import {
   type ResolvePublicResourceServiceAvailabilityInTransactionResult,
   resolvePublicResourceServiceAvailabilityInTransaction,
 } from "../availability/public-resource-service-availability.js";
+import {
+  generateGuestManagementToken,
+  hashGuestManagementToken,
+} from "./booking-management-token.js";
 import { localBookingStartToUtc } from "./booking-time.js";
 import {
   type ConfirmedBooking,
@@ -33,6 +37,10 @@ type CreatePublicBookingFailure =
   | "booking_conflict";
 
 export type CreatePublicBookingResult =
+  | { ok: true; booking: ConfirmedBooking; managementToken: string }
+  | { ok: false; reason: CreatePublicBookingFailure };
+
+type PublicBookingTransactionResult =
   | { ok: true; booking: ConfirmedBooking }
   | { ok: false; reason: CreatePublicBookingFailure };
 
@@ -76,7 +84,7 @@ function mapPublicAvailabilityFailure(
     ResolvePublicResourceServiceAvailabilityInTransactionResult,
     { ok: false }
   >,
-): CreatePublicBookingResult {
+): Extract<PublicBookingTransactionResult, { ok: false }> {
   if (
     result.reason === "invalid_date" ||
     result.reason === "date_outside_booking_window"
@@ -89,7 +97,8 @@ async function executePublicBookingTransaction(
   input: NormalizedPublicBookingInput,
   publicReference: string,
   now: Date,
-): Promise<CreatePublicBookingResult> {
+  guestManagementTokenHash: string,
+): Promise<PublicBookingTransactionResult> {
   return db
     .transaction()
     .setIsolationLevel("serializable")
@@ -132,24 +141,73 @@ async function executePublicBookingTransaction(
         customerNote: input.customerNote,
         cancellationCutoffMinutes:
           availability.context.cancellationCutoffMinutes,
+        guestManagementTokenHash,
       });
       return { ok: true, booking };
     });
 }
 
+const MAX_GUEST_MANAGEMENT_TOKEN_ATTEMPTS = 5;
+const GUEST_MANAGEMENT_TOKEN_CONSTRAINT =
+  "booking_guest_management_token_hash_key";
+
+type CreatePublicBookingDependencies = {
+  generateManagementToken?: () => string;
+};
+
+function databaseError(error: unknown): {
+  code?: string;
+  constraint?: string;
+} {
+  return typeof error === "object" && error !== null
+    ? (error as { code?: string; constraint?: string })
+    : {};
+}
+
 export async function createPublicBooking(
   input: CreatePublicBookingInput,
   now: Date = new Date(),
+  dependencies: CreatePublicBookingDependencies = {},
 ): Promise<CreatePublicBookingResult> {
   const normalized = normalizePublicBookingInput(input);
   if ("ok" in normalized) return normalized;
 
-  return runConfirmedBookingWriteWithRetries({
-    executeTransactionAttempt: (publicReference) =>
-      executePublicBookingTransaction(
-        normalized,
-        publicReference,
-        new Date(now.getTime()),
-      ),
-  });
+  const generateManagementToken =
+    dependencies.generateManagementToken ?? generateGuestManagementToken;
+  for (
+    let tokenAttempt = 1;
+    tokenAttempt <= MAX_GUEST_MANAGEMENT_TOKEN_ATTEMPTS;
+    tokenAttempt += 1
+  ) {
+    const managementToken = generateManagementToken();
+    const managementTokenHash = hashGuestManagementToken(managementToken);
+    try {
+      const result = await runConfirmedBookingWriteWithRetries({
+        executeTransactionAttempt: (publicReference) =>
+          executePublicBookingTransaction(
+            normalized,
+            publicReference,
+            new Date(now.getTime()),
+            managementTokenHash,
+          ),
+      });
+      return result.ok ? { ...result, managementToken } : result;
+    } catch (error) {
+      const { code, constraint } = databaseError(error);
+      if (
+        code === "23505" &&
+        constraint === GUEST_MANAGEMENT_TOKEN_CONSTRAINT &&
+        tokenAttempt < MAX_GUEST_MANAGEMENT_TOKEN_ATTEMPTS
+      )
+        continue;
+      if (code === "23505" && constraint === GUEST_MANAGEMENT_TOKEN_CONSTRAINT)
+        throw new Error("Could not allocate a unique guest management token");
+      throw error;
+    }
+  }
+  throw new Error("Could not allocate a unique guest management token");
 }
+
+export const publicBookingTestInternals = {
+  maxGuestManagementTokenAttempts: MAX_GUEST_MANAGEMENT_TOKEN_ATTEMPTS,
+};

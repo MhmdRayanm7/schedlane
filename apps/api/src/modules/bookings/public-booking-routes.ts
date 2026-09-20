@@ -96,6 +96,7 @@ export const publicBookingRoutes: FastifyPluginAsyncTypebox<
         serviceId: result.booking.serviceId,
         startAt: result.booking.startAt,
         priceAgorot: result.booking.priceAgorot,
+        managementToken: result.managementToken,
       });
     },
   );

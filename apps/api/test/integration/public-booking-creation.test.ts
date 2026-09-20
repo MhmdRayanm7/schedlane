@@ -4,7 +4,15 @@ import { afterAll, describe, expect, it } from "vitest";
 import { db } from "../../src/db.js";
 import type { BookingStatus } from "../../src/db-types.js";
 import { availabilityRoutes } from "../../src/modules/availability/availability-routes.js";
+import {
+  generateGuestManagementToken,
+  hashGuestManagementToken,
+} from "../../src/modules/bookings/booking-management-token.js";
 import { publicBookingRoutes } from "../../src/modules/bookings/public-booking-routes.js";
+import {
+  createPublicBooking,
+  publicBookingTestInternals,
+} from "../../src/modules/bookings/public-booking-service.js";
 import {
   createTestBooking,
   createTestOrganization,
@@ -212,6 +220,7 @@ describe("public guest Booking creation", () => {
       serviceId: f.service.id,
       startAt: "2026-10-05T06:00:00.000Z",
       priceAgorot: null,
+      managementToken: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
     });
     expect(response.json().publicReference).not.toMatch(/^[0-9a-f-]{36}$/i);
     expect(response.headers["set-cookie"]).toBeUndefined();
@@ -224,6 +233,7 @@ describe("public guest Booking creation", () => {
           "guest_phone",
           "guest_email",
           "customer_note",
+          "guest_management_token_hash",
         ])
         .executeTakeFirstOrThrow(),
     ).toEqual({
@@ -232,7 +242,59 @@ describe("public guest Booking creation", () => {
       guest_phone: "050-123-4567",
       guest_email: "guest@example.test",
       customer_note: "Keep this note unchanged  ",
+      guest_management_token_hash: hashGuestManagementToken(
+        response.json().managementToken,
+      ),
     });
+  });
+
+  it("issues different raw tokens while persisting only their hashes", async () => {
+    const f = await fixture();
+    await configure(f);
+    const first = await f.request({ startMinute: 540 });
+    const second = await f.request({ startMinute: 570 });
+    const firstToken = first.json().managementToken as string;
+    const secondToken = second.json().managementToken as string;
+    expect(firstToken).not.toBe(secondToken);
+    const hashes = await db
+      .selectFrom("booking")
+      .select("guest_management_token_hash")
+      .orderBy("start_at")
+      .execute();
+    expect(hashes).toEqual([
+      { guest_management_token_hash: hashGuestManagementToken(firstToken) },
+      { guest_management_token_hash: hashGuestManagementToken(secondToken) },
+    ]);
+    expect(hashes).not.toContainEqual({
+      guest_management_token_hash: firstToken,
+    });
+  });
+
+  it("retries token-hash collisions with a fresh credential and bounds exhaustion", async () => {
+    const f = await fixture();
+    await configure(f);
+    const collidingToken = generateGuestManagementToken();
+    await addBooking(f, "cancelled", {
+      startAt: new Date("2026-10-05T05:00:00Z"),
+      guestManagementTokenHash: hashGuestManagementToken(collidingToken),
+    });
+    const freshToken = generateGuestManagementToken();
+    const generated = [collidingToken, freshToken];
+    const input = {
+      organizationSlug: f.organization.slug,
+      ...f.body,
+    };
+    const result = await createPublicBooking(input, now, {
+      generateManagementToken: () => generated.shift() ?? freshToken,
+    });
+    expect(result).toMatchObject({ ok: true, managementToken: freshToken });
+
+    await expect(
+      createPublicBooking({ ...input, startMinute: 570 }, now, {
+        generateManagementToken: () => collidingToken,
+      }),
+    ).rejects.toThrow("Could not allocate a unique guest management token");
+    expect(publicBookingTestInternals.maxGuestManagementTokenAttempts).toBe(5);
   });
 
   it("requires nonblank guest name and phone and rejects unknown properties", async () => {
