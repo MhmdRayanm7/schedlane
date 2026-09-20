@@ -3,6 +3,33 @@ import { isLocalDate } from "../availability/local-date.js";
 
 export const SCHEDULING_TIMEZONE = "Asia/Jerusalem";
 
+export function localBookingDateRangeToUtc(
+  fromDate: string,
+  toDate: string,
+): { startAt: Date; endExclusiveAt: Date } | null {
+  if (!isLocalDate(fromDate) || !isLocalDate(toDate) || fromDate > toDate)
+    return null;
+
+  const [fromYear, fromMonth, fromDay] = fromDate.split("-").map(Number);
+  const [toYear, toMonth, toDay] = toDate.split("-").map(Number);
+  const start = DateTime.fromObject(
+    { year: fromYear, month: fromMonth, day: fromDay },
+    { zone: SCHEDULING_TIMEZONE },
+  ).startOf("day");
+  const endExclusive = DateTime.fromObject(
+    { year: toYear, month: toMonth, day: toDay },
+    { zone: SCHEDULING_TIMEZONE },
+  )
+    .startOf("day")
+    .plus({ days: 1 });
+  if (!start.isValid || !endExclusive.isValid) return null;
+
+  return {
+    startAt: start.toUTC().toJSDate(),
+    endExclusiveAt: endExclusive.toUTC().toJSDate(),
+  };
+}
+
 export function localBookingStartToUtc(
   date: string,
   startMinute: number,
