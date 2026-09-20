@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { canCreateManualBookingForResource } from "../../src/modules/bookings/booking-policy.js";
+import { bookingLifecycleTestInternals } from "../../src/modules/bookings/booking-lifecycle-service.js";
+import { canManageBookingForResource } from "../../src/modules/bookings/booking-policy.js";
 import {
   BOOKING_PUBLIC_REFERENCE_ALPHABET,
   generateBookingPublicReference,
@@ -37,7 +38,7 @@ describe("Booking domain helpers", () => {
     "applies %s manual Booking access to linked user %s",
     (role, resourceUserId, expected) => {
       expect(
-        canCreateManualBookingForResource(
+        canManageBookingForResource(
           { userId: input.userId, role },
           resourceUserId,
         ),
@@ -83,6 +84,32 @@ describe("Booking domain helpers", () => {
       serviceEndAt: new Date("2026-10-05T06:45:00.000Z"),
       occupiedUntilAt: new Date("2026-10-05T07:00:00.000Z"),
     });
+  });
+});
+
+describe("Booking lifecycle transaction retries", () => {
+  it("retries 40001 at most three total attempts", async () => {
+    const failure = { code: "40001" };
+    const attempt = vi.fn().mockRejectedValue(failure);
+    await expect(
+      bookingLifecycleTestInternals.runBookingLifecycleWithSerializationRetry(
+        attempt,
+      ),
+    ).rejects.toBe(failure);
+    expect(attempt).toHaveBeenCalledTimes(3);
+  });
+
+  it("retries one 40001 and returns the next result", async () => {
+    const attempt = vi
+      .fn()
+      .mockRejectedValueOnce({ code: "40001" })
+      .mockResolvedValueOnce("complete");
+    await expect(
+      bookingLifecycleTestInternals.runBookingLifecycleWithSerializationRetry(
+        attempt,
+      ),
+    ).resolves.toBe("complete");
+    expect(attempt).toHaveBeenCalledTimes(2);
   });
 });
 

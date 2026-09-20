@@ -1,6 +1,6 @@
 import type { MembershipRole } from "../../db-types.js";
 
-export function canCreateManualBookingForResource(
+export function canManageBookingForResource(
   actor: { userId: string; role: MembershipRole },
   resourceUserId: string | null,
 ): boolean {

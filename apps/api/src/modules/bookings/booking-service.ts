@@ -7,7 +7,7 @@ import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../organizations/organization-write-policy.js";
-import { canCreateManualBookingForResource } from "./booking-policy.js";
+import { canManageBookingForResource } from "./booking-policy.js";
 import { localBookingStartToUtc } from "./booking-time.js";
 import {
   type ConfirmedBooking,
@@ -94,7 +94,7 @@ async function createManualBookingInTransaction(
     .executeTakeFirst();
   if (!resource) return { ok: false, reason: "resource_not_found" };
   if (
-    !canCreateManualBookingForResource(
+    !canManageBookingForResource(
       { userId: input.userId, role: membership.role },
       resource.user_id,
     )
