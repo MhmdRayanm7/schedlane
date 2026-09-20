@@ -1,9 +1,22 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
+import type { FastifyReply } from "fastify";
 import Type, { type TSchema } from "typebox";
 import { Check } from "typebox/value";
 import { requireVerifiedUser } from "../../http/auth-guard.js";
 import { uuidSchema } from "../../http/schemas.js";
+import {
+  type CancelManagementBookingResult,
+  cancelManagementBooking,
+  type MarkManagementBookingNoShowResult,
+  markManagementBookingNoShow,
+  type RevertManagementBookingNoShowResult,
+  revertManagementBookingNoShow,
+} from "./booking-lifecycle-service.js";
 import { listManagementBookings } from "./booking-query-service.js";
+
+type BookingRoutesOptions = {
+  now?: () => Date;
+};
 
 const organizationParamsSchema = Type.Object(
   { organizationId: uuidSchema },
@@ -16,8 +29,73 @@ const bookingRangeQuerySchema = Type.Object(
   },
   { additionalProperties: Type.Never() },
 );
+const bookingParamsSchema = Type.Object(
+  {
+    organizationId: uuidSchema,
+    bookingId: uuidSchema,
+  },
+  { additionalProperties: Type.Never() },
+);
+const cancelBodySchema = Type.Object(
+  { reason: Type.Optional(Type.Union([Type.String(), Type.Null()])) },
+  { additionalProperties: Type.Never() },
+);
 
-export const bookingRoutes: FastifyPluginAsyncTypebox = async (app) => {
+type BookingActionResult =
+  | CancelManagementBookingResult
+  | MarkManagementBookingNoShowResult
+  | RevertManagementBookingNoShowResult;
+
+function sendBookingActionError(
+  reply: FastifyReply,
+  requestId: string,
+  reason: Extract<BookingActionResult, { ok: false }>["reason"],
+) {
+  const errors = {
+    organization_not_found: [
+      404,
+      "ORGANIZATION_NOT_FOUND",
+      "Organization not found",
+    ],
+    booking_not_found: [404, "BOOKING_NOT_FOUND", "Booking not found"],
+    insufficient_role: [
+      403,
+      "INSUFFICIENT_ROLE",
+      "Your organization role does not allow this Booking action",
+    ],
+    organization_archived: [
+      409,
+      "ORGANIZATION_ARCHIVED",
+      "Restore the organization before making changes",
+    ],
+    organization_suspended: [
+      409,
+      "ORGANIZATION_SUSPENDED",
+      "The organization is suspended and read-only",
+    ],
+    invalid_booking_status: [
+      409,
+      "INVALID_BOOKING_STATUS",
+      "Booking status does not allow this action",
+    ],
+    no_show_too_early: [
+      409,
+      "NO_SHOW_TOO_EARLY",
+      "Booking cannot be marked no-show before its start",
+    ],
+    booking_conflict: [
+      409,
+      "BOOKING_CONFLICT",
+      "Booking occupancy conflicts with another confirmed Booking",
+    ],
+  } as const;
+  const [status, code, message] = errors[reason];
+  return reply.code(status).send({ code, message, requestId });
+}
+
+export const bookingRoutes: FastifyPluginAsyncTypebox<
+  BookingRoutesOptions
+> = async (app, options) => {
   app.setValidatorCompiler(
     ({ schema }) =>
       (value) =>
@@ -58,6 +136,60 @@ export const bookingRoutes: FastifyPluginAsyncTypebox = async (app) => {
       }
 
       return reply.code(200).send(result.schedule);
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/bookings/:bookingId/cancel",
+    { schema: { params: bookingParamsSchema } },
+    async (request, reply) => {
+      if (request.body !== undefined && !Check(cancelBodySchema, request.body))
+        return reply.code(400).send({
+          code: "FST_ERR_VALIDATION",
+          message: "Invalid request",
+          requestId: request.id,
+        });
+      const reason = (request.body as { reason?: string | null } | undefined)
+        ?.reason;
+      const result = await cancelManagementBooking(
+        {
+          userId: request.verifiedUser.id,
+          ...request.params,
+          ...(reason === undefined ? {} : { reason }),
+        },
+        options.now?.() ?? new Date(),
+      );
+      if (!result.ok)
+        return sendBookingActionError(reply, request.id, result.reason);
+      return reply.code(200).send(result.booking);
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/bookings/:bookingId/mark-no-show",
+    { schema: { params: bookingParamsSchema } },
+    async (request, reply) => {
+      const result = await markManagementBookingNoShow(
+        { userId: request.verifiedUser.id, ...request.params },
+        options.now?.() ?? new Date(),
+      );
+      if (!result.ok)
+        return sendBookingActionError(reply, request.id, result.reason);
+      return reply.code(200).send(result.booking);
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/bookings/:bookingId/revert-no-show",
+    { schema: { params: bookingParamsSchema } },
+    async (request, reply) => {
+      const result = await revertManagementBookingNoShow(
+        { userId: request.verifiedUser.id, ...request.params },
+        options.now?.() ?? new Date(),
+      );
+      if (!result.ok)
+        return sendBookingActionError(reply, request.id, result.reason);
+      return reply.code(200).send(result.booking);
     },
   );
 };
