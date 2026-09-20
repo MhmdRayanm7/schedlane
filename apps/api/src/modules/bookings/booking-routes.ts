@@ -13,6 +13,10 @@ import {
   revertManagementBookingNoShow,
 } from "./booking-lifecycle-service.js";
 import { listManagementBookings } from "./booking-query-service.js";
+import {
+  type RescheduleManagementBookingResult,
+  rescheduleManagementBooking,
+} from "./booking-reschedule-service.js";
 
 type BookingRoutesOptions = {
   now?: () => Date;
@@ -38,6 +42,14 @@ const bookingParamsSchema = Type.Object(
 );
 const cancelBodySchema = Type.Object(
   { reason: Type.Optional(Type.Union([Type.String(), Type.Null()])) },
+  { additionalProperties: Type.Never() },
+);
+const rescheduleBodySchema = Type.Object(
+  {
+    resourceId: uuidSchema,
+    date: Type.String(),
+    startMinute: Type.Integer({ minimum: 0, maximum: 1439 }),
+  },
   { additionalProperties: Type.Never() },
 );
 
@@ -93,6 +105,60 @@ function sendBookingActionError(
   return reply.code(status).send({ code, message, requestId });
 }
 
+function sendBookingRescheduleError(
+  reply: FastifyReply,
+  requestId: string,
+  reason: Extract<RescheduleManagementBookingResult, { ok: false }>["reason"],
+) {
+  const errors = {
+    organization_not_found: [
+      404,
+      "ORGANIZATION_NOT_FOUND",
+      "Organization not found",
+    ],
+    booking_not_found: [404, "BOOKING_NOT_FOUND", "Booking not found"],
+    resource_not_found: [404, "RESOURCE_NOT_FOUND", "Resource not found"],
+    service_not_found: [404, "SERVICE_NOT_FOUND", "Service not found"],
+    insufficient_role: [
+      403,
+      "INSUFFICIENT_ROLE",
+      "Your organization role does not allow this Booking action",
+    ],
+    organization_archived: [
+      409,
+      "ORGANIZATION_ARCHIVED",
+      "Restore the organization before making changes",
+    ],
+    organization_suspended: [
+      409,
+      "ORGANIZATION_SUSPENDED",
+      "The organization is suspended and read-only",
+    ],
+    invalid_booking_status: [
+      409,
+      "INVALID_BOOKING_STATUS",
+      "Booking status does not allow this action",
+    ],
+    resource_inactive: [409, "RESOURCE_INACTIVE", "Resource is inactive"],
+    service_not_assigned: [
+      409,
+      "SERVICE_NOT_ASSIGNED",
+      "Service is not assigned to this Resource",
+    ],
+    invalid_date: [400, "INVALID_DATE", "Date is invalid"],
+    invalid_start_time: [400, "INVALID_START_TIME", "Start time is invalid"],
+    reschedule_start_in_past: [
+      409,
+      "RESCHEDULE_START_IN_PAST",
+      "Booking cannot be rescheduled into the past",
+    ],
+    start_not_available: [409, "SLOT_UNAVAILABLE", "Slot is unavailable"],
+    booking_conflict: [409, "SLOT_UNAVAILABLE", "Slot is unavailable"],
+  } as const;
+  const [status, code, message] = errors[reason];
+  return reply.code(status).send({ code, message, requestId });
+}
+
 export const bookingRoutes: FastifyPluginAsyncTypebox<
   BookingRoutesOptions
 > = async (app, options) => {
@@ -136,6 +202,29 @@ export const bookingRoutes: FastifyPluginAsyncTypebox<
       }
 
       return reply.code(200).send(result.schedule);
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/bookings/:bookingId/reschedule",
+    {
+      schema: {
+        params: bookingParamsSchema,
+        body: rescheduleBodySchema,
+      },
+    },
+    async (request, reply) => {
+      const result = await rescheduleManagementBooking(
+        {
+          userId: request.verifiedUser.id,
+          ...request.params,
+          ...request.body,
+        },
+        options.now?.() ?? new Date(),
+      );
+      if (!result.ok)
+        return sendBookingRescheduleError(reply, request.id, result.reason);
+      return reply.code(200).send(result.booking);
     },
   );
 
