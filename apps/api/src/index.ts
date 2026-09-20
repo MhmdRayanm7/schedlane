@@ -6,6 +6,7 @@ import { config } from "./config.js";
 import { db } from "./db.js";
 import { availabilityRoutes } from "./modules/availability/availability-routes.js";
 import { publicAvailabilityRoutes } from "./modules/availability/public-availability-routes.js";
+import { bookingRoutes } from "./modules/bookings/booking-routes.js";
 import { publicBookingRoutes } from "./modules/bookings/public-booking-routes.js";
 import { organizationRoutes } from "./modules/organizations/routes/index.js";
 import { resourceRoutes } from "./modules/resources/resource-routes.js";
@@ -26,6 +27,7 @@ await app.register(organizationRoutes);
 await app.register(resourceRoutes);
 await app.register(serviceRoutes);
 await app.register(availabilityRoutes);
+await app.register(bookingRoutes);
 await app.register(publicAvailabilityRoutes);
 await app.register(publicBookingRoutes);
 
