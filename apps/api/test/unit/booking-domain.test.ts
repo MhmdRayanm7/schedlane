@@ -5,6 +5,7 @@ import {
   BOOKING_PUBLIC_REFERENCE_ALPHABET,
   generateBookingPublicReference,
 } from "../../src/modules/bookings/booking-public-reference.js";
+import { bookingRescheduleTestInternals } from "../../src/modules/bookings/booking-reschedule-service.js";
 import type { CreateManualBookingInput } from "../../src/modules/bookings/booking-service.js";
 import {
   calculateBookingTemporalSnapshot,
@@ -110,6 +111,31 @@ describe("Booking lifecycle transaction retries", () => {
       ),
     ).resolves.toBe("complete");
     expect(attempt).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Booking reschedule transaction retries", () => {
+  it("retries 40001 at most three total attempts", async () => {
+    const failure = { code: "40001" };
+    const attempt = vi.fn().mockRejectedValue(failure);
+    await expect(
+      bookingRescheduleTestInternals.runWithSerializationRetry(attempt),
+    ).rejects.toBe(failure);
+    expect(attempt).toHaveBeenCalledTimes(
+      bookingRescheduleTestInternals.maxSerializationAttempts,
+    );
+  });
+
+  it("does not retry 23P01", async () => {
+    const failure = {
+      code: "23P01",
+      constraint: "booking_confirmed_resource_occupancy_excl",
+    };
+    const attempt = vi.fn().mockRejectedValue(failure);
+    await expect(
+      bookingRescheduleTestInternals.runWithSerializationRetry(attempt),
+    ).rejects.toBe(failure);
+    expect(attempt).toHaveBeenCalledOnce();
   });
 });
 
