@@ -24,6 +24,7 @@ export interface OrganizationTable {
   min_booking_notice_minutes: Generated<number>;
   max_booking_horizon_days: Generated<number>;
   public_booking_paused: Generated<boolean>;
+  cancellation_cutoff_minutes: Generated<number>;
   published_at: Date | null;
   suspended_at: Date | null;
   archived_at: Date | null;
@@ -182,6 +183,8 @@ export interface BookingTable {
   cancelled_at: Date | null;
   cancelled_by_user_id: string | null;
   cancellation_reason: string | null;
+  cancellation_cutoff_minutes: Generated<number>;
+  guest_management_token_hash: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }

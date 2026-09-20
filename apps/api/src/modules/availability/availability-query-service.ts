@@ -51,6 +51,7 @@ export type GetOrganizationAvailabilitySettingsResult =
         minBookingNoticeMinutes: number;
         maxBookingHorizonDays: number;
         publicBookingPaused: boolean;
+        cancellationCutoffMinutes: number;
       };
     }
   | { ok: false; reason: "organization_not_found" | "insufficient_role" };
@@ -78,6 +79,7 @@ export async function getOrganizationAvailabilitySettings(
           "min_booking_notice_minutes",
           "max_booking_horizon_days",
           "public_booking_paused",
+          "cancellation_cutoff_minutes",
         ])
         .where("id", "=", input.organizationId)
         .executeTakeFirst();
@@ -89,6 +91,7 @@ export async function getOrganizationAvailabilitySettings(
           minBookingNoticeMinutes: organization.min_booking_notice_minutes,
           maxBookingHorizonDays: organization.max_booking_horizon_days,
           publicBookingPaused: organization.public_booking_paused,
+          cancellationCutoffMinutes: organization.cancellation_cutoff_minutes,
         },
       };
     });

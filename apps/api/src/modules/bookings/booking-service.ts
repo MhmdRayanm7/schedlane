@@ -106,6 +106,11 @@ async function createManualBookingInTransaction(
     input.organizationId,
   );
   if (!writeState.ok) return writeState;
+  const organization = await trx
+    .selectFrom("organization")
+    .select("cancellation_cutoff_minutes")
+    .where("id", "=", input.organizationId)
+    .executeTakeFirstOrThrow();
   if (resource.deactivated_at)
     return { ok: false, reason: "resource_inactive" };
 
@@ -143,6 +148,7 @@ async function createManualBookingInTransaction(
     guestPhone: input.guestPhone,
     guestEmail: input.guestEmail,
     customerNote: input.customerNote,
+    cancellationCutoffMinutes: organization.cancellation_cutoff_minutes,
   });
   return {
     ok: true,

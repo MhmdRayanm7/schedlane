@@ -34,6 +34,7 @@ type CreateTestOrganizationInput = {
   minBookingNoticeMinutes?: number;
   maxBookingHorizonDays?: number;
   publicBookingPaused?: boolean;
+  cancellationCutoffMinutes?: number;
 };
 
 export async function createTestOrganization({
@@ -46,6 +47,7 @@ export async function createTestOrganization({
   minBookingNoticeMinutes,
   maxBookingHorizonDays,
   publicBookingPaused,
+  cancellationCutoffMinutes,
 }: CreateTestOrganizationInput = {}) {
   return db
     .insertInto("organization")
@@ -59,6 +61,7 @@ export async function createTestOrganization({
       min_booking_notice_minutes: minBookingNoticeMinutes,
       max_booking_horizon_days: maxBookingHorizonDays,
       public_booking_paused: publicBookingPaused,
+      cancellation_cutoff_minutes: cancellationCutoffMinutes,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
@@ -158,6 +161,8 @@ type CreateTestBookingInput = {
   cancelledAt?: Date | null;
   cancelledByUserId?: string | null;
   cancellationReason?: string | null;
+  cancellationCutoffMinutes?: number;
+  guestManagementTokenHash?: string | null;
 };
 
 export async function createTestBooking({
@@ -177,6 +182,8 @@ export async function createTestBooking({
   cancelledAt = null,
   cancelledByUserId = null,
   cancellationReason = null,
+  cancellationCutoffMinutes = 0,
+  guestManagementTokenHash = null,
 }: CreateTestBookingInput) {
   const serviceEndAt = new Date(startAt.getTime() + durationMinutes * 60_000);
   const occupiedUntilAt = new Date(
@@ -204,6 +211,8 @@ export async function createTestBooking({
       cancelled_at: cancelledAt,
       cancelled_by_user_id: cancelledByUserId,
       cancellation_reason: cancellationReason,
+      cancellation_cutoff_minutes: cancellationCutoffMinutes,
+      guest_management_token_hash: guestManagementTokenHash,
     })
     .returningAll()
     .executeTakeFirstOrThrow();

@@ -66,6 +66,7 @@ const availabilitySettingsBody = Type.Object(
     minBookingNoticeMinutes: Type.Optional(Type.Integer({ minimum: 0 })),
     maxBookingHorizonDays: Type.Optional(Type.Integer({ minimum: 0 })),
     publicBookingPaused: Type.Optional(Type.Boolean()),
+    cancellationCutoffMinutes: Type.Optional(Type.Integer({ minimum: 0 })),
   },
   { minProperties: 1, additionalProperties: Type.Never() },
 );

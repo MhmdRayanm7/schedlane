@@ -41,6 +41,8 @@ export type InsertConfirmedBookingInput = {
   guestPhone: string | null;
   guestEmail: string | null;
   customerNote: string | null;
+  cancellationCutoffMinutes: number;
+  guestManagementTokenHash?: string | null;
 };
 
 export async function insertConfirmedBookingInTransaction(
@@ -73,6 +75,8 @@ export async function insertConfirmedBookingInTransaction(
       cancelled_at: null,
       cancelled_by_user_id: null,
       cancellation_reason: null,
+      cancellation_cutoff_minutes: input.cancellationCutoffMinutes,
+      guest_management_token_hash: input.guestManagementTokenHash ?? null,
     })
     .returning([
       "id",

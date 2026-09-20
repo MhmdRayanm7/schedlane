@@ -50,6 +50,7 @@ export type ResolvePublicResourceServiceAvailabilityInTransactionResult =
         bufferAfterMinutes: number;
         pricingEnabled: boolean;
         priceAgorot: number | null;
+        cancellationCutoffMinutes: number;
       };
     }
   | Extract<ResolvePublicResourceServiceAvailabilityResult, { ok: false }>;
@@ -71,6 +72,7 @@ export async function resolvePublicResourceServiceAvailabilityInTransaction(
       "public_booking_paused",
       "min_booking_notice_minutes",
       "max_booking_horizon_days",
+      "cancellation_cutoff_minutes",
     ])
     .where("slug", "=", input.organizationSlug)
     .executeTakeFirst();
@@ -132,6 +134,7 @@ export async function resolvePublicResourceServiceAvailabilityInTransaction(
       bufferAfterMinutes: free.context.bufferAfterMinutes,
       pricingEnabled: free.context.pricingEnabled,
       priceAgorot: free.context.priceAgorot,
+      cancellationCutoffMinutes: organization.cancellation_cutoff_minutes,
     },
   };
 }

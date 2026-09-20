@@ -94,6 +94,7 @@ type UpdateOrganizationAvailabilitySettingsInput = {
   minBookingNoticeMinutes?: number;
   maxBookingHorizonDays?: number;
   publicBookingPaused?: boolean;
+  cancellationCutoffMinutes?: number;
 };
 
 export type UpdateOrganizationAvailabilitySettingsResult =
@@ -104,6 +105,7 @@ export type UpdateOrganizationAvailabilitySettingsResult =
         minBookingNoticeMinutes: number;
         maxBookingHorizonDays: number;
         publicBookingPaused: boolean;
+        cancellationCutoffMinutes: number;
       };
     }
   | {
@@ -148,6 +150,11 @@ export async function updateOrganizationAvailabilitySettings(
         ...(input.publicBookingPaused === undefined
           ? {}
           : { public_booking_paused: input.publicBookingPaused }),
+        ...(input.cancellationCutoffMinutes === undefined
+          ? {}
+          : {
+              cancellation_cutoff_minutes: input.cancellationCutoffMinutes,
+            }),
         updated_at: new Date(),
       })
       .where("id", "=", input.organizationId)
@@ -156,6 +163,7 @@ export async function updateOrganizationAvailabilitySettings(
         "min_booking_notice_minutes",
         "max_booking_horizon_days",
         "public_booking_paused",
+        "cancellation_cutoff_minutes",
       ])
       .executeTakeFirstOrThrow();
     return {
@@ -165,6 +173,7 @@ export async function updateOrganizationAvailabilitySettings(
         minBookingNoticeMinutes: organization.min_booking_notice_minutes,
         maxBookingHorizonDays: organization.max_booking_horizon_days,
         publicBookingPaused: organization.public_booking_paused,
+        cancellationCutoffMinutes: organization.cancellation_cutoff_minutes,
       },
     };
   });

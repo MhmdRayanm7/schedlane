@@ -5,6 +5,10 @@ import { db } from "../../src/db.js";
 import type { BookingStatus, BookingTable } from "../../src/db-types.js";
 import { down, up } from "../../src/migrations/0017_create_booking.js";
 import {
+  down as downGuestManagement,
+  up as upGuestManagement,
+} from "../../src/migrations/0019_add_guest_booking_management.js";
+import {
   createTestBooking,
   createTestOrganization,
   createTestResource,
@@ -53,6 +57,8 @@ async function insertBooking(
       cancelled_at: null,
       cancelled_by_user_id: null,
       cancellation_reason: null,
+      cancellation_cutoff_minutes: 0,
+      guest_management_token_hash: null,
       ...overrides,
     })
     .returningAll()
@@ -106,6 +112,24 @@ describe("Booking persistence", () => {
         bufferAfterMinutes: 15,
       }),
     ).rejects.toMatchObject({ code: "23505" });
+  });
+
+  it("enforces nonnegative cancellation snapshots and unique nullable token hashes", async () => {
+    await expect(
+      insertBooking({ cancellation_cutoff_minutes: -1 }),
+    ).rejects.toMatchObject({
+      code: "23514",
+      constraint: "booking_cancellation_cutoff_minutes_check",
+    });
+    await insertBooking({ guest_management_token_hash: null });
+    await insertBooking({ guest_management_token_hash: null });
+    await insertBooking({ guest_management_token_hash: "unique-hash" });
+    await expect(
+      insertBooking({ guest_management_token_hash: "unique-hash" }),
+    ).rejects.toMatchObject({
+      code: "23505",
+      constraint: "booking_guest_management_token_hash_key",
+    });
   });
 
   it.each([
@@ -257,12 +281,14 @@ describe("Booking persistence", () => {
     await insertBooking();
     await db.transaction().execute(async (trx) => {
       const migrationDb = trx as unknown as Kysely<unknown>;
+      await downGuestManagement(migrationDb);
       await down(migrationDb);
       const { rows } = await sql<{ table_name: string | null }>`
         SELECT to_regclass('booking')::text AS table_name
       `.execute(trx);
       expect(rows[0]?.table_name).toBeNull();
       await up(migrationDb);
+      await upGuestManagement(migrationDb);
     });
     expect((await insertBooking()).status).toBe("confirmed");
   });

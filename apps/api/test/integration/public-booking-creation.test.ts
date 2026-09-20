@@ -33,6 +33,7 @@ type FixtureOptions = {
   durationMinutes?: number;
   bufferAfterMinutes?: number;
   slotIntervalMinutes?: number;
+  cancellationCutoffMinutes?: number;
 };
 
 async function fixture({
@@ -49,6 +50,7 @@ async function fixture({
   durationMinutes = 30,
   bufferAfterMinutes = 0,
   slotIntervalMinutes = 15,
+  cancellationCutoffMinutes = 0,
 }: FixtureOptions = {}) {
   const organization = await createTestOrganization({
     publishedAt,
@@ -58,6 +60,7 @@ async function fixture({
     minBookingNoticeMinutes,
     maxBookingHorizonDays,
     pricingEnabled,
+    cancellationCutoffMinutes,
   });
   await db
     .updateTable("organization")
@@ -162,6 +165,34 @@ const expectNotFound = (response: {
 };
 
 describe("public guest Booking creation", () => {
+  it("snapshots the Organization cancellation cutoff", async () => {
+    const f = await fixture({ cancellationCutoffMinutes: 60 });
+    await configure(f);
+    expect((await f.request()).statusCode).toBe(201);
+    const first = await db
+      .selectFrom("booking")
+      .select("cancellation_cutoff_minutes")
+      .executeTakeFirstOrThrow();
+    expect(first.cancellation_cutoff_minutes).toBe(60);
+    await db
+      .updateTable("organization")
+      .set({ cancellation_cutoff_minutes: 1440 })
+      .where("id", "=", f.organization.id)
+      .execute();
+    expect(first.cancellation_cutoff_minutes).toBe(60);
+    expect((await f.request({ startMinute: 570 })).statusCode).toBe(201);
+    expect(
+      await db
+        .selectFrom("booking")
+        .select("cancellation_cutoff_minutes")
+        .orderBy("start_at")
+        .execute(),
+    ).toEqual([
+      { cancellation_cutoff_minutes: 60 },
+      { cancellation_cutoff_minutes: 1440 },
+    ]);
+  });
+
   it("creates a confirmed Booking without a session and returns only public confirmation data", async () => {
     const f = await fixture();
     await configure(f);

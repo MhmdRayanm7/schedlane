@@ -25,6 +25,7 @@ type FixtureOptions = {
   durationMinutes?: number;
   bufferAfterMinutes?: number;
   slotIntervalMinutes?: number;
+  cancellationCutoffMinutes?: number;
 };
 
 async function fixture({
@@ -35,9 +36,13 @@ async function fixture({
   durationMinutes = 30,
   bufferAfterMinutes = 0,
   slotIntervalMinutes = 15,
+  cancellationCutoffMinutes = 0,
 }: FixtureOptions = {}) {
   const actor = await createTestUser();
-  const organization = await createTestOrganization({ pricingEnabled });
+  const organization = await createTestOrganization({
+    pricingEnabled,
+    cancellationCutoffMinutes,
+  });
   await addTestMembership({
     organizationId: organization.id,
     userId: actor.id,
@@ -119,6 +124,23 @@ async function makeReady(
 }
 
 describe("Transactional manual Booking creation", () => {
+  it("snapshots the Organization cancellation cutoff without issuing a token", async () => {
+    const f = await fixture({ cancellationCutoffMinutes: 30 });
+    await makeReady(f);
+    const result = await f.create();
+    if (!result.ok) throw new Error("Expected Booking creation to succeed");
+    expect(
+      await db
+        .selectFrom("booking")
+        .select(["cancellation_cutoff_minutes", "guest_management_token_hash"])
+        .where("id", "=", result.booking.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({
+      cancellation_cutoff_minutes: 30,
+      guest_management_token_hash: null,
+    });
+  });
+
   it("creates a confirmed Booking at the correct UTC instant with normalized guest data", async () => {
     const f = await fixture();
     await makeReady(f);

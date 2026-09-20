@@ -130,6 +130,8 @@ async function executePublicBookingTransaction(
         guestPhone: input.guestPhone,
         guestEmail: input.guestEmail,
         customerNote: input.customerNote,
+        cancellationCutoffMinutes:
+          availability.context.cancellationCutoffMinutes,
       });
       return { ok: true, booking };
     });

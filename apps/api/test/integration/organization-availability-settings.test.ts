@@ -11,6 +11,10 @@ import {
   down as downPublicSettings,
   up as upPublicSettings,
 } from "../../src/migrations/0018_add_public_booking_availability_settings.js";
+import {
+  down as downGuestManagement,
+  up as upGuestManagement,
+} from "../../src/migrations/0019_add_guest_booking_management.js";
 import { availabilityRoutes } from "../../src/modules/availability/availability-routes.js";
 import {
   addTestMembership,
@@ -63,6 +67,7 @@ describe("Organization Availability settings", () => {
     expect(organization.min_booking_notice_minutes).toBe(0);
     expect(organization.max_booking_horizon_days).toBe(60);
     expect(organization.public_booking_paused).toBe(false);
+    expect(organization.cancellation_cutoff_minutes).toBe(0);
     for (const slot_interval_minutes of [1, 1440]) {
       await expect(
         db
@@ -94,6 +99,7 @@ describe("Organization Availability settings", () => {
     for (const update of [
       { min_booking_notice_minutes: -1 },
       { max_booking_horizon_days: -1 },
+      { cancellation_cutoff_minutes: -1 },
     ]) {
       await expect(
         db
@@ -103,6 +109,64 @@ describe("Organization Availability settings", () => {
           .execute(),
       ).rejects.toMatchObject({ code: "23514" });
     }
+  });
+
+  it("backfills cancellation policy and Booking credential storage defaults", async () => {
+    const organization = await createTestOrganization();
+    const resource = await db
+      .insertInto("resource")
+      .values({ organization_id: organization.id, name: "Resource" })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+    const service = await db
+      .insertInto("service")
+      .values({
+        organization_id: organization.id,
+        name: "Service",
+        duration_minutes: 30,
+        display_order: 0,
+      })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+    await db
+      .insertInto("booking")
+      .values({
+        organization_id: organization.id,
+        resource_id: resource.id,
+        service_id: service.id,
+        public_reference: `BK-${randomUUID()}`,
+        start_at: new Date("2026-10-05T06:00:00Z"),
+        service_end_at: new Date("2026-10-05T06:30:00Z"),
+        occupied_until_at: new Date("2026-10-05T06:30:00Z"),
+        duration_minutes: 30,
+        buffer_after_minutes: 0,
+        guest_name: "Guest",
+      })
+      .execute();
+    await db.transaction().execute(async (trx) => {
+      const migrationDb = trx as unknown as Kysely<unknown>;
+      await downGuestManagement(migrationDb);
+      await upGuestManagement(migrationDb);
+      expect(
+        await trx
+          .selectFrom("organization")
+          .select("cancellation_cutoff_minutes")
+          .where("id", "=", organization.id)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ cancellation_cutoff_minutes: 0 });
+      expect(
+        await trx
+          .selectFrom("booking")
+          .select([
+            "cancellation_cutoff_minutes",
+            "guest_management_token_hash",
+          ])
+          .executeTakeFirstOrThrow(),
+      ).toEqual({
+        cancellation_cutoff_minutes: 0,
+        guest_management_token_hash: null,
+      });
+    });
   });
 
   it("backfills existing Organizations to slot interval 15 when migration 0016 is reapplied", async () => {
@@ -150,6 +214,7 @@ describe("Organization Availability settings", () => {
       minBookingNoticeMinutes: 0,
       maxBookingHorizonDays: 60,
       publicBookingPaused: false,
+      cancellationCutoffMinutes: 0,
     });
     expect(
       (await f.request("PATCH", { slotIntervalMinutes: 17 })).json(),
@@ -158,12 +223,14 @@ describe("Organization Availability settings", () => {
       minBookingNoticeMinutes: 0,
       maxBookingHorizonDays: 60,
       publicBookingPaused: false,
+      cancellationCutoffMinutes: 0,
     });
     expect((await f.request("GET")).json()).toEqual({
       slotIntervalMinutes: 17,
       minBookingNoticeMinutes: 0,
       maxBookingHorizonDays: 60,
       publicBookingPaused: false,
+      cancellationCutoffMinutes: 0,
     });
     const manager = await createTestUser();
     await addTestMembership({
@@ -190,6 +257,7 @@ describe("Organization Availability settings", () => {
       minBookingNoticeMinutes: 30,
       maxBookingHorizonDays: 60,
       publicBookingPaused: false,
+      cancellationCutoffMinutes: 0,
     });
     expect(
       (
@@ -203,6 +271,7 @@ describe("Organization Availability settings", () => {
       minBookingNoticeMinutes: 30,
       maxBookingHorizonDays: 90,
       publicBookingPaused: false,
+      cancellationCutoffMinutes: 0,
     });
     expect(
       (await f.request("PATCH", { publicBookingPaused: true })).json(),
@@ -220,6 +289,7 @@ describe("Organization Availability settings", () => {
       minBookingNoticeMinutes: 0,
       maxBookingHorizonDays: 0,
       publicBookingPaused: false,
+      cancellationCutoffMinutes: 0,
     });
     expect(
       (await f.request("PATCH", { maxBookingHorizonDays: 60 })).json(),
@@ -286,6 +356,12 @@ describe("Organization Availability settings", () => {
     [{ publicBookingPaused: "true" }, 400],
     [{ publicBookingPaused: null }, 400],
     [{ publicBookingPaused: false }, 200],
+    [{ cancellationCutoffMinutes: 0 }, 200],
+    [{ cancellationCutoffMinutes: 1440 }, 200],
+    [{ cancellationCutoffMinutes: -1 }, 400],
+    [{ cancellationCutoffMinutes: 1.5 }, 400],
+    [{ cancellationCutoffMinutes: "60" }, 400],
+    [{ cancellationCutoffMinutes: null }, 400],
   ])("validates PATCH body %j", async (body, status) => {
     const f = await fixture();
     const response = await f.request("PATCH", body);
