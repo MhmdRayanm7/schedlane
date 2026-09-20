@@ -6,9 +6,11 @@ import type { MinuteInterval } from "../../src/modules/availability/minute-inter
 import {
   resolveResourceServiceSlotContextAfterAccessInTransaction,
   resolveResourceServiceSlotStartsForDate,
+  resolveResourceServiceSnapshotSlotContextAfterAccessInTransaction,
 } from "../../src/modules/availability/resource-service-slot-resolver.js";
 import {
   addTestMembership,
+  createTestBooking,
   createTestOrganization,
   createTestResource,
   createTestService,
@@ -203,6 +205,29 @@ async function addTimeBlock(
       end_minute: endMinute,
     })
     .execute();
+}
+
+async function resolveSnapshot(
+  f: TestFixture,
+  durationMinutes: number,
+  bufferAfterMinutes: number,
+) {
+  return db.transaction().execute((trx) =>
+    resolveResourceServiceSnapshotSlotContextAfterAccessInTransaction(trx, {
+      organizationId: f.organization.id,
+      resourceId: f.resource.id,
+      serviceId: f.service.id,
+      date,
+      durationMinutes,
+      bufferAfterMinutes,
+    }),
+  );
+}
+
+function snapshotStarts(
+  result: Awaited<ReturnType<typeof resolveSnapshot>>,
+): number[] | undefined {
+  return result.ok ? result.context.starts : undefined;
 }
 
 describe("Resource-Service slot resolver", () => {
@@ -445,6 +470,103 @@ describe("Resource-Service slot resolver", () => {
         .where("id", "=", f.organization.id)
         .execute();
       expect(await f.resolve()).toEqual(f.success([540, 555, 570]));
+    },
+  );
+
+  it("uses a shorter supplied Booking duration without changing current-Service slots", async () => {
+    const f = await fixture({ durationMinutes: 45 });
+    await setOrganizationWeeklyHours(f, [interval(540, 580)]);
+    await assignService(f);
+
+    expect(await f.resolve()).toEqual(f.success([]));
+    expect(snapshotStarts(await resolveSnapshot(f, 30, 0))).toEqual([540]);
+  });
+
+  it("uses a longer supplied Booking duration instead of current Service duration", async () => {
+    const f = await fixture({ durationMinutes: 30 });
+    await setOrganizationWeeklyHours(f, [interval(540, 590)]);
+    await assignService(f);
+
+    expect(await f.resolve()).toEqual(f.success([540, 555]));
+    expect(snapshotStarts(await resolveSnapshot(f, 60, 0))).toEqual([]);
+  });
+
+  it("uses the supplied Booking buffer and the Organization's arbitrary grid", async () => {
+    const f = await fixture({
+      slotIntervalMinutes: 17,
+      durationMinutes: 15,
+      bufferAfterMinutes: 0,
+    });
+    await setOrganizationWeeklyHours(f, [interval(540, 600)]);
+    await assignService(f);
+
+    expect(snapshotStarts(await resolveSnapshot(f, 15, 20))).toEqual([
+      540, 557,
+    ]);
+  });
+
+  it("composes supplied timing with Time Blocks and date overrides", async () => {
+    const f = await fixture({ durationMinutes: 60 });
+    await setOrganizationWeeklyHours(f, [interval(540, 600)]);
+    await setResourceDateHours(f, [interval(600, 720)]);
+    await addTimeBlock(f, 630, 660);
+    await assignService(f);
+
+    expect(snapshotStarts(await resolveSnapshot(f, 30, 0))).toEqual([
+      600, 660, 675, 690,
+    ]);
+  });
+
+  it("requires assignment but permits a deactivated Service", async () => {
+    const f = await fixture({ durationMinutes: 45 });
+    await setOrganizationWeeklyHours(f, [interval(540, 600)]);
+    expect(await resolveSnapshot(f, 30, 0)).toEqual({
+      ok: false,
+      reason: "service_not_assigned",
+    });
+
+    await assignService(f);
+    await db
+      .updateTable("service")
+      .set({ deactivated_at: new Date() })
+      .where("id", "=", f.service.id)
+      .execute();
+    expect(snapshotStarts(await resolveSnapshot(f, 30, 0))).toEqual([
+      540, 555, 570,
+    ]);
+  });
+
+  it("does not subtract confirmed Booking occupancy", async () => {
+    const f = await fixture();
+    await setOrganizationWeeklyHours(f, [interval(540, 600)]);
+    await assignService(f);
+    await createTestBooking({
+      organizationId: f.organization.id,
+      resourceId: f.resource.id,
+      serviceId: f.service.id,
+      publicReference: `slot-${randomUUID()}`,
+      startAt: new Date("2026-10-05T06:00:00.000Z"),
+      durationMinutes: 30,
+      bufferAfterMinutes: 0,
+    });
+
+    expect(snapshotStarts(await resolveSnapshot(f, 30, 0))).toEqual([
+      540, 555, 570,
+    ]);
+  });
+
+  it.each([
+    [0, 0],
+    [30.5, 0],
+    [30, -1],
+    [30, 0.5],
+  ])(
+    "rejects invalid persisted timing snapshots (%s, %s)",
+    async (duration, buffer) => {
+      const f = await fixture();
+      await expect(resolveSnapshot(f, duration, buffer)).rejects.toThrow(
+        "Persisted Booking timing snapshots violated invariants",
+      );
     },
   );
 });

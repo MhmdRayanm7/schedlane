@@ -17,6 +17,11 @@ export type ResolveResourceServiceSlotContextAfterAccessInput = Omit<
   ResolveResourceServiceSlotStartsInput,
   "userId"
 >;
+export type ResolveResourceServiceSnapshotSlotContextAfterAccessInput =
+  ResolveResourceServiceSlotContextAfterAccessInput & {
+    durationMinutes: number;
+    bufferAfterMinutes: number;
+  };
 
 type ResourceWorkingWindowsFailure = Extract<
   ResolveResourceWorkingWindowsResult,
@@ -64,11 +69,52 @@ export type ResolveResourceServiceSlotContextAfterAccessResult =
       reason: "invalid_date" | "service_not_found" | "service_not_assigned";
     };
 
-// The caller owns authorization and the transaction snapshot.
-export async function resolveResourceServiceSlotContextAfterAccessInTransaction(
+export type ResolveResourceServiceSnapshotSlotContextAfterAccessResult =
+  | {
+      ok: true;
+      context: {
+        timezone: "Asia/Jerusalem";
+        resourceId: string;
+        serviceId: string;
+        date: string;
+        starts: number[];
+        slotIntervalMinutes: number;
+        durationMinutes: number;
+        bufferAfterMinutes: number;
+      };
+    }
+  | {
+      ok: false;
+      reason: "invalid_date" | "service_not_found" | "service_not_assigned";
+    };
+
+type ConfiguredResourceServiceSlotInputs = {
+  workingWindows: Extract<
+    ResolveResourceWorkingWindowsResult,
+    { ok: true }
+  >["workingWindows"];
+  slotIntervalMinutes: number;
+  pricingEnabled: boolean;
+  service: {
+    id: string;
+    durationMinutes: number;
+    bufferAfterMinutes: number;
+    priceAgorot: number | null;
+    deactivatedAt: Date | null;
+  };
+};
+
+type LoadConfiguredResourceServiceSlotInputsResult =
+  | { ok: true; inputs: ConfiguredResourceServiceSlotInputs }
+  | Extract<
+      ResolveResourceServiceSnapshotSlotContextAfterAccessResult,
+      { ok: false }
+    >;
+
+async function loadConfiguredResourceServiceSlotInputs(
   trx: Transaction<Database>,
   input: ResolveResourceServiceSlotContextAfterAccessInput,
-): Promise<ResolveResourceServiceSlotContextAfterAccessResult> {
+): Promise<LoadConfiguredResourceServiceSlotInputsResult> {
   const workingWindows =
     await resolveResourceWorkingWindowsAfterAccessInTransaction(trx, input);
   if (!workingWindows.ok) {
@@ -112,11 +158,38 @@ export async function resolveResourceServiceSlotContextAfterAccessInTransaction(
     .executeTakeFirst();
   if (!assignment) return { ok: false, reason: "service_not_assigned" };
 
+  return {
+    ok: true,
+    inputs: {
+      workingWindows: workingWindows.workingWindows,
+      slotIntervalMinutes: organization.slot_interval_minutes,
+      pricingEnabled: organization.pricing_enabled,
+      service: {
+        id: service.id,
+        durationMinutes: service.duration_minutes,
+        bufferAfterMinutes: service.buffer_after_minutes,
+        priceAgorot: service.price_agorot,
+        deactivatedAt: service.deactivated_at,
+      },
+    },
+  };
+}
+
+// The caller owns authorization and the transaction snapshot.
+export async function resolveResourceServiceSlotContextAfterAccessInTransaction(
+  trx: Transaction<Database>,
+  input: ResolveResourceServiceSlotContextAfterAccessInput,
+): Promise<ResolveResourceServiceSlotContextAfterAccessResult> {
+  const configured = await loadConfiguredResourceServiceSlotInputs(trx, input);
+  if (!configured.ok) return configured;
+  const { service, workingWindows, slotIntervalMinutes, pricingEnabled } =
+    configured.inputs;
+
   const starts = generateServiceSlotStarts(
-    workingWindows.workingWindows.intervals,
-    organization.slot_interval_minutes,
-    service.duration_minutes,
-    service.buffer_after_minutes,
+    workingWindows.intervals,
+    slotIntervalMinutes,
+    service.durationMinutes,
+    service.bufferAfterMinutes,
   );
   if (starts === null)
     throw new Error("Persisted slot configuration violated domain invariants");
@@ -124,17 +197,58 @@ export async function resolveResourceServiceSlotContextAfterAccessInTransaction(
   return {
     ok: true,
     context: {
-      timezone: workingWindows.workingWindows.timezone,
+      timezone: workingWindows.timezone,
       resourceId: input.resourceId,
       serviceId: service.id,
       date: input.date,
       starts,
-      slotIntervalMinutes: organization.slot_interval_minutes,
-      durationMinutes: service.duration_minutes,
-      bufferAfterMinutes: service.buffer_after_minutes,
-      priceAgorot: service.price_agorot,
-      pricingEnabled: organization.pricing_enabled,
-      serviceDeactivatedAt: service.deactivated_at,
+      slotIntervalMinutes,
+      durationMinutes: service.durationMinutes,
+      bufferAfterMinutes: service.bufferAfterMinutes,
+      priceAgorot: service.priceAgorot,
+      pricingEnabled,
+      serviceDeactivatedAt: service.deactivatedAt,
+    },
+  };
+}
+
+// Configured slots for an existing Booking: the caller owns authorization,
+// transaction/locks and occupancy policy, while persisted Booking timing wins.
+export async function resolveResourceServiceSnapshotSlotContextAfterAccessInTransaction(
+  trx: Transaction<Database>,
+  input: ResolveResourceServiceSnapshotSlotContextAfterAccessInput,
+): Promise<ResolveResourceServiceSnapshotSlotContextAfterAccessResult> {
+  if (
+    !Number.isInteger(input.durationMinutes) ||
+    input.durationMinutes <= 0 ||
+    !Number.isInteger(input.bufferAfterMinutes) ||
+    input.bufferAfterMinutes < 0
+  )
+    throw new Error("Persisted Booking timing snapshots violated invariants");
+
+  const configured = await loadConfiguredResourceServiceSlotInputs(trx, input);
+  if (!configured.ok) return configured;
+  const { workingWindows, slotIntervalMinutes, service } = configured.inputs;
+  const starts = generateServiceSlotStarts(
+    workingWindows.intervals,
+    slotIntervalMinutes,
+    input.durationMinutes,
+    input.bufferAfterMinutes,
+  );
+  if (starts === null)
+    throw new Error("Persisted slot configuration violated domain invariants");
+
+  return {
+    ok: true,
+    context: {
+      timezone: workingWindows.timezone,
+      resourceId: input.resourceId,
+      serviceId: service.id,
+      date: input.date,
+      starts,
+      slotIntervalMinutes,
+      durationMinutes: input.durationMinutes,
+      bufferAfterMinutes: input.bufferAfterMinutes,
     },
   };
 }
