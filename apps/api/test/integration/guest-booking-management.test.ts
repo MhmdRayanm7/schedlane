@@ -12,10 +12,12 @@ import {
   generateGuestManagementToken,
   hashGuestManagementToken,
 } from "../../src/modules/bookings/booking-management-token.js";
+import { listManagementBookings } from "../../src/modules/bookings/booking-query-service.js";
 import { rescheduleManagementBooking } from "../../src/modules/bookings/booking-reschedule-service.js";
 import {
   cancelGuestManagedBooking,
   getGuestManagedBooking,
+  updateGuestManagedBookingContact,
 } from "../../src/modules/bookings/guest-booking-management-service.js";
 import { publicBookingRoutes } from "../../src/modules/bookings/public-booking-routes.js";
 import {
@@ -91,7 +93,28 @@ async function fixture({
           : { authorization: `Bearer ${suppliedToken}` },
       ...(payload === undefined ? {} : { payload }),
     });
-  return { token, organization, resource, service, booking, request };
+  const updateContact = (
+    payload: object,
+    suppliedToken: string | null = token,
+  ) =>
+    app.inject({
+      method: "PATCH",
+      url: "/api/public/bookings/manage/contact",
+      headers:
+        suppliedToken === null
+          ? {}
+          : { authorization: `Bearer ${suppliedToken}` },
+      payload,
+    });
+  return {
+    token,
+    organization,
+    resource,
+    service,
+    booking,
+    request,
+    updateContact,
+  };
 }
 
 function expectGuestNotFound(response: {
@@ -436,6 +459,349 @@ describe("guest Booking management", () => {
       ok: true,
     });
     expect(await f.request("POST")).toMatchObject({ statusCode: 200 });
+  });
+
+  it("edits all contact fields, preserves the note, and updates both read models", async () => {
+    const f = await fixture();
+    const response = await f.updateContact({
+      guestName: "  Updated guest  ",
+      guestPhone: "050-123-4567",
+      guestEmail: "  Updated@Example.test  ",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      publicReference: f.booking.public_reference,
+      guestName: "Updated guest",
+      guestPhone: "+972501234567",
+      guestEmail: "Updated@Example.test",
+      updatedAt: routeNow.toISOString(),
+    });
+    expect(response.body).not.toMatch(
+      /token|hash|customerNote|membership|"id"/i,
+    );
+    expect(
+      await db
+        .selectFrom("booking")
+        .select([
+          "guest_name",
+          "guest_phone",
+          "guest_email",
+          "customer_note",
+          "updated_at",
+        ])
+        .where("id", "=", f.booking.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({
+      guest_name: "Updated guest",
+      guest_phone: "+972501234567",
+      guest_email: "Updated@Example.test",
+      customer_note: "Guest note",
+      updated_at: routeNow,
+    });
+    expect((await f.request("GET")).json()).toMatchObject({
+      guestName: "Updated guest",
+      guestPhone: "+972501234567",
+      guestEmail: "Updated@Example.test",
+      customerNote: "Guest note",
+    });
+
+    const owner = await createTestUser();
+    await addTestMembership({
+      organizationId: f.organization.id,
+      userId: owner.id,
+      role: "owner",
+    });
+    const management = await listManagementBookings({
+      userId: owner.id,
+      organizationId: f.organization.id,
+      fromDate: "2026-10-05",
+      toDate: "2026-10-05",
+    });
+    expect(management).toMatchObject({
+      ok: true,
+      schedule: {
+        bookings: [
+          {
+            guestName: "Updated guest",
+            guestPhone: "+972501234567",
+            guestEmail: "Updated@Example.test",
+          },
+        ],
+      },
+    });
+  });
+
+  it.each([
+    [{ guestName: "  Name only  " }, { guestName: "Name only" }],
+    [{ guestPhone: "972501234567" }, { guestPhone: "+972501234567" }],
+    [{ guestPhone: "+972 50 123 4567" }, { guestPhone: "+972501234567" }],
+    [
+      { guestEmail: "  email-only@example.test  " },
+      { guestEmail: "email-only@example.test" },
+    ],
+    [
+      { guestName: "  Name and phone  ", guestPhone: "00972501234567" },
+      { guestName: "Name and phone", guestPhone: "+972501234567" },
+    ],
+  ] as const)(
+    "applies only supplied contact fields %#",
+    async (patch, expected) => {
+      const f = await fixture();
+      const response = await f.updateContact(patch);
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject(expected);
+      expect(response.json()).toMatchObject({
+        guestName: "guestName" in expected ? expected.guestName : "Guest name",
+        guestPhone:
+          "guestPhone" in expected ? expected.guestPhone : "050-123-4567",
+        guestEmail:
+          "guestEmail" in expected ? expected.guestEmail : "guest@example.test",
+      });
+    },
+  );
+
+  it.each([null, "   "])("clears email with %j", async (guestEmail) => {
+    const f = await fixture();
+    expect((await f.updateContact({ guestEmail })).json()).toMatchObject({
+      guestEmail: null,
+    });
+    expect(
+      await db
+        .selectFrom("booking")
+        .select("guest_email")
+        .where("id", "=", f.booking.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ guest_email: null });
+  });
+
+  it.each([
+    {},
+    { customerNote: "changed" },
+    { guestName: "Name", extra: true },
+  ])(
+    "rejects invalid contact body %j without changing the Booking",
+    async (payload) => {
+      const f = await fixture();
+      const response = await f.updateContact(payload);
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ code: "FST_ERR_VALIDATION" });
+      expect(
+        await db
+          .selectFrom("booking")
+          .select(["guest_name", "customer_note"])
+          .where("id", "=", f.booking.id)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ guest_name: "Guest name", customer_note: "Guest note" });
+    },
+  );
+
+  it.each([
+    [{ guestName: "   " }, "INVALID_GUEST_NAME"],
+    [{ guestPhone: "not a phone" }, "INVALID_GUEST_PHONE"],
+    [{ guestPhone: "+12025550123" }, "INVALID_GUEST_PHONE"],
+  ] as const)("rejects invalid contact %j", async (payload, code) => {
+    const f = await fixture();
+    const response = await f.updateContact(payload);
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe(code);
+    expect(
+      await db
+        .selectFrom("booking")
+        .select(["guest_name", "guest_phone"])
+        .where("id", "=", f.booking.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ guest_name: "Guest name", guest_phone: "050-123-4567" });
+  });
+
+  it.each(["cancelled", "no_show"] as const)(
+    "rejects contact editing for %s Bookings",
+    async (status) => {
+      const f = await fixture({ status });
+      const response = await f.updateContact({ guestName: "Changed" });
+      expect(response.statusCode).toBe(409);
+      expect(response.json().code).toBe("INVALID_BOOKING_STATUS");
+    },
+  );
+
+  it("allows editing one millisecond before start and closes at the exact start", async () => {
+    const before = await fixture();
+    expect(
+      await updateGuestManagedBookingContact(
+        { token: before.token, guestName: "Before" },
+        new Date(startAt.getTime() - 1),
+      ),
+    ).toMatchObject({ ok: true });
+
+    for (const now of [startAt, new Date(startAt.getTime() + 1)]) {
+      const closed = await fixture();
+      expect(
+        await updateGuestManagedBookingContact(
+          { token: closed.token, guestName: "Closed" },
+          now,
+        ),
+      ).toEqual({ ok: false, reason: "guest_contact_edit_closed" });
+    }
+
+    const closedApp = Fastify();
+    await closedApp.register(publicBookingRoutes, { now: () => startAt });
+    const closed = await fixture();
+    const response = await closedApp.inject({
+      method: "PATCH",
+      url: "/api/public/bookings/manage/contact",
+      headers: { authorization: `Bearer ${closed.token}` },
+      payload: { guestName: "Closed" },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json().code).toBe("GUEST_CONTACT_EDIT_CLOSED");
+    await closedApp.close();
+  });
+
+  it("does not reuse the guest cancellation cutoff for contact editing", async () => {
+    const f = await fixture({ cancellationCutoffMinutes: 180 });
+    expect((await f.request("POST")).json().code).toBe(
+      "CANCELLATION_CUTOFF_PASSED",
+    );
+    expect(
+      (await f.updateContact({ guestName: "Still editable" })).statusCode,
+    ).toBe(200);
+  });
+
+  it("allows unpublished and paused organizations while blocking archived and suspended writes", async () => {
+    const unpublished = await fixture();
+    expect(
+      (await unpublished.updateContact({ guestName: "Allowed" })).statusCode,
+    ).toBe(200);
+
+    const paused = await fixture();
+    await db
+      .updateTable("organization")
+      .set({ public_booking_paused: true })
+      .where("id", "=", paused.organization.id)
+      .execute();
+    expect(
+      (await paused.updateContact({ guestName: "Allowed" })).statusCode,
+    ).toBe(200);
+
+    for (const [column, code] of [
+      ["archived_at", "ORGANIZATION_ARCHIVED"],
+      ["suspended_at", "ORGANIZATION_SUSPENDED"],
+    ] as const) {
+      const blocked = await fixture();
+      await db
+        .updateTable("organization")
+        .set({ [column]: routeNow })
+        .where("id", "=", blocked.organization.id)
+        .execute();
+      const response = await blocked.updateContact({ guestName: "Blocked" });
+      expect(response.statusCode).toBe(409);
+      expect(response.json().code).toBe(code);
+      expect((await blocked.request("GET")).statusCode).toBe(200);
+    }
+  });
+
+  it("uses generic token failures and scopes each token to its Booking", async () => {
+    const first = await fixture();
+    const second = await fixture();
+    expectGuestNotFound(
+      await first.updateContact({ guestName: "No token" }, null),
+    );
+    expectGuestNotFound(
+      await first.updateContact({ guestName: "Malformed" }, "bad"),
+    );
+    expectGuestNotFound(
+      await first.updateContact(
+        { guestName: "Unknown" },
+        generateGuestManagementToken(),
+      ),
+    );
+    expect((await first.updateContact({ guestName: "First" })).statusCode).toBe(
+      200,
+    );
+    expect(
+      await db
+        .selectFrom("booking")
+        .select(["id", "guest_name"])
+        .orderBy("id")
+        .execute(),
+    ).toEqual(
+      [
+        { id: first.booking.id, guest_name: "First" },
+        { id: second.booking.id, guest_name: "Guest name" },
+      ].sort((left, right) => left.id.localeCompare(right.id)),
+    );
+  });
+
+  it("serializes concurrent complete contact updates without torn fields", async () => {
+    const f = await fixture();
+    const updates = [
+      {
+        token: f.token,
+        guestName: "First complete",
+        guestPhone: "0501111111",
+        guestEmail: "first@example.test",
+      },
+      {
+        token: f.token,
+        guestName: "Second complete",
+        guestPhone: "0502222222",
+        guestEmail: "second@example.test",
+      },
+    ] as const;
+    const results = await Promise.all(
+      updates.map((input) => updateGuestManagedBookingContact(input, routeNow)),
+    );
+    expect(results.every((result) => result.ok)).toBe(true);
+    const row = await db
+      .selectFrom("booking")
+      .select(["guest_name", "guest_phone", "guest_email"])
+      .where("id", "=", f.booking.id)
+      .executeTakeFirstOrThrow();
+    expect([
+      {
+        guest_name: "First complete",
+        guest_phone: "+972501111111",
+        guest_email: "first@example.test",
+      },
+      {
+        guest_name: "Second complete",
+        guest_phone: "+972502222222",
+        guest_email: "second@example.test",
+      },
+    ]).toContainEqual(row);
+  });
+
+  it("serializes guest contact editing against guest cancellation", async () => {
+    const f = await fixture();
+    const [edit, cancellation] = await Promise.all([
+      updateGuestManagedBookingContact(
+        { token: f.token, guestName: "Race edit" },
+        routeNow,
+      ),
+      cancelGuestManagedBooking({ token: f.token }, routeNow),
+    ]);
+    expect(cancellation).toMatchObject({ ok: true });
+    expect(edit.ok || edit.reason === "invalid_booking_status").toBe(true);
+    const row = await db
+      .selectFrom("booking")
+      .select(["status", "guest_name"])
+      .where("id", "=", f.booking.id)
+      .executeTakeFirstOrThrow();
+    expect(row.status).toBe("cancelled");
+    expect(row.guest_name).toBe(edit.ok ? "Race edit" : "Guest name");
+  });
+
+  it("keeps edited contacts when cancelling with the same token", async () => {
+    const f = await fixture();
+    expect(
+      (await f.updateContact({ guestName: "Edited", guestEmail: null }))
+        .statusCode,
+    ).toBe(200);
+    expect((await f.request("POST")).statusCode).toBe(200);
+    expect((await f.request("GET")).json()).toMatchObject({
+      status: "cancelled",
+      guestName: "Edited",
+      guestEmail: null,
+    });
   });
 
   it("derives a new deadline from a management-rescheduled start using the same token", async () => {

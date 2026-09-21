@@ -6,6 +6,11 @@ import {
   requireWritableOrganization,
 } from "../organizations/organization-write-policy.js";
 import {
+  normalizeGuestEmail,
+  normalizeGuestName,
+  normalizeIsraeliGuestPhone,
+} from "./booking-guest-contact.js";
+import {
   hashGuestManagementToken,
   isGuestManagementToken,
 } from "./booking-management-token.js";
@@ -165,6 +170,35 @@ export type CancelGuestManagedBookingResult =
         | OrganizationWriteStateFailure;
     };
 
+export type UpdateGuestManagedBookingContactInput = {
+  token: string;
+  guestName?: string;
+  guestPhone?: string;
+  guestEmail?: string | null;
+};
+
+export type UpdateGuestManagedBookingContactResult =
+  | {
+      ok: true;
+      booking: {
+        publicReference: string;
+        guestName: string;
+        guestPhone: string | null;
+        guestEmail: string | null;
+        updatedAt: string;
+      };
+    }
+  | {
+      ok: false;
+      reason:
+        | "guest_booking_not_found"
+        | "invalid_guest_name"
+        | "invalid_guest_phone"
+        | "invalid_booking_status"
+        | "guest_contact_edit_closed"
+        | OrganizationWriteStateFailure;
+    };
+
 function databaseError(error: unknown): { code?: string } {
   return typeof error === "object" && error !== null
     ? (error as { code?: string })
@@ -190,7 +224,113 @@ async function runWithSerializationRetry<Result>(
       throw error;
     }
   }
-  throw new Error("Guest Booking cancellation transaction did not complete");
+  throw new Error("Guest Booking management transaction did not complete");
+}
+
+async function updateGuestBookingContactInTransaction(
+  trx: Transaction<Database>,
+  tokenHash: string,
+  input: Omit<UpdateGuestManagedBookingContactInput, "token">,
+  now: Date,
+): Promise<UpdateGuestManagedBookingContactResult> {
+  const identity = await trx
+    .selectFrom("booking")
+    .select(["id", "organization_id"])
+    .where("guest_management_token_hash", "=", tokenHash)
+    .executeTakeFirst();
+  if (!identity) return { ok: false, reason: "guest_booking_not_found" };
+
+  const writeState = await requireWritableOrganization(
+    trx,
+    identity.organization_id,
+  );
+  if (!writeState.ok) return writeState;
+
+  const booking = await trx
+    .selectFrom("booking")
+    .select(["id", "status", "start_at"])
+    .where("id", "=", identity.id)
+    .where("organization_id", "=", identity.organization_id)
+    .where("guest_management_token_hash", "=", tokenHash)
+    .forUpdate()
+    .executeTakeFirst();
+  if (!booking) return { ok: false, reason: "guest_booking_not_found" };
+  if (booking.status !== "confirmed")
+    return { ok: false, reason: "invalid_booking_status" };
+  if (now.getTime() >= booking.start_at.getTime())
+    return { ok: false, reason: "guest_contact_edit_closed" };
+
+  const guestName =
+    input.guestName === undefined
+      ? undefined
+      : normalizeGuestName(input.guestName);
+  if (guestName && !guestName.ok) return guestName;
+  const guestPhone =
+    input.guestPhone === undefined
+      ? undefined
+      : normalizeIsraeliGuestPhone(input.guestPhone);
+  if (guestPhone && !guestPhone.ok) return guestPhone;
+
+  const row = await trx
+    .updateTable("booking")
+    .set({
+      ...(guestName ? { guest_name: guestName.guestName } : {}),
+      ...(guestPhone ? { guest_phone: guestPhone.guestPhone } : {}),
+      ...(input.guestEmail !== undefined
+        ? { guest_email: normalizeGuestEmail(input.guestEmail) }
+        : {}),
+      updated_at: now,
+    })
+    .where("id", "=", booking.id)
+    .where("organization_id", "=", identity.organization_id)
+    .returning([
+      "public_reference",
+      "guest_name",
+      "guest_phone",
+      "guest_email",
+      "updated_at",
+    ])
+    .executeTakeFirstOrThrow();
+  return {
+    ok: true,
+    booking: {
+      publicReference: row.public_reference,
+      guestName: row.guest_name,
+      guestPhone: row.guest_phone,
+      guestEmail: row.guest_email,
+      updatedAt: row.updated_at.toISOString(),
+    },
+  };
+}
+
+export async function updateGuestManagedBookingContact(
+  input: UpdateGuestManagedBookingContactInput,
+  now: Date = new Date(),
+): Promise<UpdateGuestManagedBookingContactResult> {
+  const currentTime = operationNow(now);
+  if (!isGuestManagementToken(input.token))
+    return { ok: false, reason: "guest_booking_not_found" };
+  if (
+    input.guestName === undefined &&
+    input.guestPhone === undefined &&
+    input.guestEmail === undefined
+  )
+    throw new Error("Guest contact update requires at least one field");
+  const tokenHash = hashGuestManagementToken(input.token);
+  const { token: _token, ...contact } = input;
+  return runWithSerializationRetry(() =>
+    db
+      .transaction()
+      .setIsolationLevel("serializable")
+      .execute((trx) =>
+        updateGuestBookingContactInTransaction(
+          trx,
+          tokenHash,
+          contact,
+          currentTime,
+        ),
+      ),
+  );
 }
 
 async function cancelGuestBookingInTransaction(
