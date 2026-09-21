@@ -1,16 +1,16 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
 import { sql } from "kysely";
-import { registerAuthRoutes } from "./auth-routes.js";
 import { config } from "./config.js";
 import { db } from "./db.js";
-import { availabilityRoutes } from "./modules/availability/availability-routes.js";
-import { publicAvailabilityRoutes } from "./modules/availability/public-availability-routes.js";
-import { bookingRoutes } from "./modules/bookings/booking-routes.js";
-import { publicBookingRoutes } from "./modules/bookings/public-booking-routes.js";
-import { organizationRoutes } from "./modules/organizations/routes/index.js";
-import { resourceRoutes } from "./modules/resources/resource-routes.js";
-import { serviceRoutes } from "./modules/services/service-routes.js";
+import { registerAuthRoutes } from "./modules/auth/http/routes.js";
+import { availabilityRoutes } from "./modules/availability/http/management-routes.js";
+import { publicAvailabilityRoutes } from "./modules/availability/http/public-routes.js";
+import { bookingRoutes } from "./modules/bookings/http/management-routes.js";
+import { publicBookingRoutes } from "./modules/bookings/http/public-routes.js";
+import { organizationRoutes } from "./modules/organizations/http/index.js";
+import { resourceRoutes } from "./modules/resources/http/routes.js";
+import { serviceRoutes } from "./modules/services/http/routes.js";
 
 const app = Fastify({
   logger: true,

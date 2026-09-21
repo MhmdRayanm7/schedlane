@@ -1,6 +1,6 @@
 import { fromNodeHeaders } from "better-auth/node";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { auth } from "../auth.js";
+import { auth } from "../modules/auth/auth.js";
 
 export type VerifiedUser = {
   id: string;
