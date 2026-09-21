@@ -7,6 +7,11 @@ import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../organizations/organization-write-policy.js";
+import {
+  normalizeGuestEmail,
+  normalizeGuestName,
+  normalizeOptionalIsraeliGuestPhone,
+} from "./booking-guest-contact.js";
 import { canManageBookingForResource } from "./booking-policy.js";
 import { localBookingStartToUtc } from "./booking-time.js";
 import {
@@ -40,6 +45,7 @@ type CreateManualBookingFailure =
   | "invalid_date"
   | "invalid_start_time"
   | "invalid_guest_name"
+  | "invalid_guest_phone"
   | "start_not_available"
   | "booking_conflict";
 
@@ -166,15 +172,17 @@ function normalizeManualBookingInput(
     input.startMinute >= 1440
   )
     return { ok: false, reason: "invalid_start_time" };
-  const guestName = input.guestName.trim();
-  if (guestName === "") return { ok: false, reason: "invalid_guest_name" };
+  const guestName = normalizeGuestName(input.guestName);
+  if (!guestName.ok) return guestName;
+  const guestPhone = normalizeOptionalIsraeliGuestPhone(input.guestPhone);
+  if (!guestPhone.ok) return guestPhone;
   const startAt = localBookingStartToUtc(input.date, input.startMinute);
   if (!startAt) return { ok: false, reason: "invalid_start_time" };
   return {
     ...input,
-    guestName,
-    guestPhone: input.guestPhone ?? null,
-    guestEmail: input.guestEmail ?? null,
+    guestName: guestName.guestName,
+    guestPhone: guestPhone.guestPhone,
+    guestEmail: normalizeGuestEmail(input.guestEmail),
     customerNote: input.customerNote ?? null,
     startAt,
   };

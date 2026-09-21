@@ -4,6 +4,11 @@ import {
   resolvePublicResourceServiceAvailabilityInTransaction,
 } from "../availability/public-resource-service-availability.js";
 import {
+  normalizeGuestEmail,
+  normalizeGuestName,
+  normalizeIsraeliGuestPhone,
+} from "./booking-guest-contact.js";
+import {
   generateGuestManagementToken,
   hashGuestManagementToken,
 } from "./booking-management-token.js";
@@ -64,17 +69,16 @@ function normalizePublicBookingInput(
   )
     return { ok: false, reason: "invalid_start_time" };
 
-  const guestName = input.guestName.trim();
-  if (guestName === "") return { ok: false, reason: "invalid_guest_name" };
-  const guestPhone = input.guestPhone.trim();
-  if (guestPhone === "") return { ok: false, reason: "invalid_guest_phone" };
-  const guestEmail = input.guestEmail?.trim() || null;
+  const guestName = normalizeGuestName(input.guestName);
+  if (!guestName.ok) return guestName;
+  const guestPhone = normalizeIsraeliGuestPhone(input.guestPhone);
+  if (!guestPhone.ok) return guestPhone;
 
   return {
     ...input,
-    guestName,
-    guestPhone,
-    guestEmail,
+    guestName: guestName.guestName,
+    guestPhone: guestPhone.guestPhone,
+    guestEmail: normalizeGuestEmail(input.guestEmail),
     customerNote: input.customerNote ?? null,
   };
 }

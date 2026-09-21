@@ -146,6 +146,8 @@ describe("Transactional manual Booking creation", () => {
     await makeReady(f);
     const result = await f.create({
       guestName: "  Manual guest  ",
+      guestPhone: "  02-531-0747  ",
+      guestEmail: "  Manual@Example.test  ",
       customerNote: "Keep this note unchanged  ",
     });
     expect(result).toMatchObject({
@@ -162,8 +164,8 @@ describe("Transactional manual Booking creation", () => {
         serviceEndAt: "2026-10-05T06:30:00.000Z",
         occupiedUntilAt: "2026-10-05T06:30:00.000Z",
         guestName: "Manual guest",
-        guestPhone: null,
-        guestEmail: null,
+        guestPhone: "+97225310747",
+        guestEmail: "Manual@Example.test",
         customerNote: "Keep this note unchanged  ",
       },
     });
@@ -177,11 +179,38 @@ describe("Transactional manual Booking creation", () => {
         .executeTakeFirstOrThrow(),
     ).toEqual({
       start_at: new Date("2026-10-05T06:00:00.000Z"),
-      guest_phone: null,
-      guest_email: null,
+      guest_phone: "+97225310747",
+      guest_email: "Manual@Example.test",
       customer_note: "Keep this note unchanged  ",
     });
   });
+
+  it.each([undefined, null, "   "])(
+    "stores optional manual phone %j as null",
+    async (guestPhone) => {
+      const f = await fixture();
+      await makeReady(f);
+      const result = await f.create(
+        guestPhone === undefined ? {} : { guestPhone },
+      );
+      expect(result).toMatchObject({
+        ok: true,
+        booking: { guestPhone: null },
+      });
+    },
+  );
+
+  it.each(["invalid", "0891234567", "+12025550123"])(
+    "rejects invalid or foreign manual phone %s",
+    async (guestPhone) => {
+      const f = await fixture();
+      expect(await f.create({ guestPhone })).toEqual({
+        ok: false,
+        reason: "invalid_guest_phone",
+      });
+      expect(await db.selectFrom("booking").select("id").execute()).toEqual([]);
+    },
+  );
 
   it.each(["owner", "manager"] as const)(
     "allows an %s to create for an unlinked Resource",

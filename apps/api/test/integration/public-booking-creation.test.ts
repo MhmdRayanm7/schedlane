@@ -239,7 +239,7 @@ describe("public guest Booking creation", () => {
     ).toEqual({
       status: "confirmed",
       guest_name: "Public guest",
-      guest_phone: "050-123-4567",
+      guest_phone: "+972501234567",
       guest_email: "guest@example.test",
       customer_note: "Keep this note unchanged  ",
       guest_management_token_hash: hashGuestManagementToken(
@@ -336,6 +336,33 @@ describe("public guest Booking creation", () => {
         .executeTakeFirstOrThrow(),
     ).toEqual({ guest_email: null });
   });
+
+  it.each(["0501234567", "+972501234567", "972501234567", "00972501234567"])(
+    "persists Israeli phone form %s as canonical E.164",
+    async (guestPhone) => {
+      const f = await fixture();
+      await configure(f);
+      expect((await f.request({ guestPhone })).statusCode).toBe(201);
+      expect(
+        await db
+          .selectFrom("booking")
+          .select("guest_phone")
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ guest_phone: "+972501234567" });
+    },
+  );
+
+  it.each(["invalid", "05012", "0891234567", "+12025550123"])(
+    "rejects invalid or foreign phone %s without writing",
+    async (guestPhone) => {
+      const f = await fixture();
+      await configure(f);
+      const response = await f.request({ guestPhone });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ code: "INVALID_GUEST_PHONE" });
+      expect(await db.selectFrom("booking").select("id").execute()).toEqual([]);
+    },
+  );
 
   it("uses one generic 404 for every hidden Organization lifecycle state", async () => {
     for (const options of [
