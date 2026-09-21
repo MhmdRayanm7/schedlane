@@ -2,6 +2,7 @@ import type { Transaction } from "kysely";
 import type { Database } from "../../../db-types.js";
 import { generateBookingPublicReference } from "../domain/public-reference.js";
 import { calculateBookingTemporalSnapshot } from "../domain/time.js";
+import { postgresErrorMetadata } from "./postgres-errors.js";
 
 const MAX_SERIALIZATION_ATTEMPTS = 3;
 const MAX_PUBLIC_REFERENCE_ATTEMPTS = 5;
@@ -133,15 +134,6 @@ type RunConfirmedBookingWriteDependencies<
   generatePublicReference?: () => string;
 };
 
-function databaseError(error: unknown): {
-  code?: string;
-  constraint?: string;
-} {
-  return typeof error === "object" && error !== null
-    ? (error as { code?: string; constraint?: string })
-    : {};
-}
-
 export async function runConfirmedBookingWriteWithRetries<
   Result extends ConfirmedBookingWriteResult,
 >({
@@ -166,7 +158,7 @@ export async function runConfirmedBookingWriteWithRetries<
       try {
         return await executeTransactionAttempt(publicReference);
       } catch (error) {
-        const { code, constraint } = databaseError(error);
+        const { code, constraint } = postgresErrorMetadata(error);
         if (
           code === "40001" &&
           serializationAttempt < MAX_SERIALIZATION_ATTEMPTS

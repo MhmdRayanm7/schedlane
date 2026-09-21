@@ -7,13 +7,18 @@ import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../../organizations/application/write-policy.js";
+import { cloneValidOperationTime } from "../domain/operation-time.js";
 import { canManageBookingForResource } from "../domain/policy.js";
 import {
   calculateBookingTemporalSnapshot,
   localBookingStartToUtc,
 } from "../domain/time.js";
+import { postgresErrorMetadata } from "../persistence/postgres-errors.js";
+import {
+  MAX_SERIALIZATION_ATTEMPTS,
+  runWithSerializationRetry as runSerializableOperation,
+} from "../persistence/serializable-retry.js";
 
-const MAX_SERIALIZATION_ATTEMPTS = 3;
 const BOOKING_CONFLICT_CONSTRAINT = "booking_confirmed_resource_occupancy_excl";
 
 export type RescheduleManagementBookingInput = {
@@ -64,35 +69,13 @@ type NormalizedRescheduleInput = RescheduleManagementBookingInput & {
   startAt: Date;
 };
 
-function databaseError(error: unknown): {
-  code?: string;
-  constraint?: string;
-} {
-  return typeof error === "object" && error !== null
-    ? (error as { code?: string; constraint?: string })
-    : {};
-}
-
-async function runWithSerializationRetry<Result>(
+function runWithSerializationRetry<Result>(
   attempt: () => Promise<Result>,
 ): Promise<Result> {
-  for (
-    let serializationAttempt = 1;
-    serializationAttempt <= MAX_SERIALIZATION_ATTEMPTS;
-    serializationAttempt += 1
-  ) {
-    try {
-      return await attempt();
-    } catch (error) {
-      if (
-        databaseError(error).code === "40001" &&
-        serializationAttempt < MAX_SERIALIZATION_ATTEMPTS
-      )
-        continue;
-      throw error;
-    }
-  }
-  throw new Error("Booking reschedule transaction attempt did not complete");
+  return runSerializableOperation(
+    attempt,
+    "Booking reschedule transaction attempt did not complete",
+  );
 }
 
 function toRescheduleDto(row: {
@@ -247,9 +230,10 @@ export async function rescheduleManagementBooking(
   input: RescheduleManagementBookingInput,
   now: Date = new Date(),
 ): Promise<RescheduleManagementBookingResult> {
-  if (!(now instanceof Date) || !Number.isFinite(now.getTime()))
-    throw new Error("Booking reschedule now must be a valid Date");
-  const operationNow = new Date(now.getTime());
+  const operationNow = cloneValidOperationTime(
+    now,
+    "Booking reschedule now must be a valid Date",
+  );
   if (!isLocalDate(input.date)) return { ok: false, reason: "invalid_date" };
   if (
     !Number.isInteger(input.startMinute) ||
@@ -272,7 +256,7 @@ export async function rescheduleManagementBooking(
         ),
     );
   } catch (error) {
-    const { code, constraint } = databaseError(error);
+    const { code, constraint } = postgresErrorMetadata(error);
     if (code === "23P01" && constraint === BOOKING_CONFLICT_CONSTRAINT)
       return { ok: false, reason: "booking_conflict" };
     throw error;

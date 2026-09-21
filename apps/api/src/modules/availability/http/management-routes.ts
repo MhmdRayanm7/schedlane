@@ -1,7 +1,7 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
-import Type, { type TSchema } from "typebox";
-import { Check } from "typebox/value";
+import Type from "typebox";
 import { requireVerifiedUser } from "../../../http/auth-guard.js";
+import { typeboxValidatorCompiler } from "../../../http/typebox-validator.js";
 import {
   replaceOrganizationWeeklyHours,
   updateOrganizationAvailabilitySettings,
@@ -72,13 +72,7 @@ const availabilitySettingsBody = Type.Object(
 
 export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
   // Validate without coercing null, booleans, or strings into minute values.
-  app.setValidatorCompiler(
-    ({ schema }) =>
-      (value) =>
-        Check(schema as TSchema, value)
-          ? { value }
-          : { error: new Error("Invalid request") },
-  );
+  app.setValidatorCompiler(typeboxValidatorCompiler);
   app.decorateRequest("verifiedUser");
   app.addHook("preHandler", requireVerifiedUser);
   await app.register(organizationDateOverrideRoutes);

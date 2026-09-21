@@ -6,6 +6,7 @@ import {
   requireWritableOrganization,
 } from "../../../organizations/application/write-policy.js";
 import { calculateGuestCancellationPolicy } from "../../domain/cancellation-policy.js";
+import { normalizeCancellationReason } from "../../domain/cancellation-reason.js";
 import {
   normalizeGuestEmail,
   normalizeGuestName,
@@ -15,14 +16,11 @@ import {
   hashGuestManagementToken,
   isGuestManagementToken,
 } from "../../domain/management-token.js";
-
-const MAX_SERIALIZATION_ATTEMPTS = 3;
-
-function operationNow(now: Date): Date {
-  if (!(now instanceof Date) || !Number.isFinite(now.getTime()))
-    throw new Error("Guest Booking management now must be a valid Date");
-  return new Date(now.getTime());
-}
+import { cloneValidOperationTime } from "../../domain/operation-time.js";
+import {
+  MAX_SERIALIZATION_ATTEMPTS,
+  runWithSerializationRetry as runSerializableOperation,
+} from "../../persistence/serializable-retry.js";
 
 export type CancelGuestManagedBookingResult =
   | {
@@ -72,32 +70,13 @@ export type UpdateGuestManagedBookingContactResult =
         | OrganizationWriteStateFailure;
     };
 
-function databaseError(error: unknown): { code?: string } {
-  return typeof error === "object" && error !== null
-    ? (error as { code?: string })
-    : {};
-}
-
-async function runWithSerializationRetry<Result>(
+function runWithSerializationRetry<Result>(
   attempt: () => Promise<Result>,
 ): Promise<Result> {
-  for (
-    let serializationAttempt = 1;
-    serializationAttempt <= MAX_SERIALIZATION_ATTEMPTS;
-    serializationAttempt += 1
-  ) {
-    try {
-      return await attempt();
-    } catch (error) {
-      if (
-        databaseError(error).code === "40001" &&
-        serializationAttempt < MAX_SERIALIZATION_ATTEMPTS
-      )
-        continue;
-      throw error;
-    }
-  }
-  throw new Error("Guest Booking management transaction did not complete");
+  return runSerializableOperation(
+    attempt,
+    "Guest Booking management transaction did not complete",
+  );
 }
 
 async function updateGuestBookingContactInTransaction(
@@ -180,7 +159,10 @@ export async function updateGuestManagedBookingContact(
   input: UpdateGuestManagedBookingContactInput,
   now: Date = new Date(),
 ): Promise<UpdateGuestManagedBookingContactResult> {
-  const currentTime = operationNow(now);
+  const currentTime = cloneValidOperationTime(
+    now,
+    "Guest Booking management now must be a valid Date",
+  );
   if (!isGuestManagementToken(input.token))
     return { ok: false, reason: "guest_booking_not_found" };
   if (
@@ -280,11 +262,14 @@ export async function cancelGuestManagedBooking(
   input: { token: string; reason?: string | null },
   now: Date = new Date(),
 ): Promise<CancelGuestManagedBookingResult> {
-  const currentTime = operationNow(now);
+  const currentTime = cloneValidOperationTime(
+    now,
+    "Guest Booking management now must be a valid Date",
+  );
   if (!isGuestManagementToken(input.token))
     return { ok: false, reason: "guest_booking_not_found" };
   const tokenHash = hashGuestManagementToken(input.token);
-  const normalizedReason = input.reason?.trim() || null;
+  const normalizedReason = normalizeCancellationReason(input.reason);
   return runWithSerializationRetry(() =>
     db
       .transaction()

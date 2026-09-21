@@ -5,9 +5,15 @@ import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../../organizations/application/write-policy.js";
+import { normalizeCancellationReason } from "../domain/cancellation-reason.js";
+import { cloneValidOperationTime } from "../domain/operation-time.js";
 import { canManageBookingForResource } from "../domain/policy.js";
+import { postgresErrorMetadata } from "../persistence/postgres-errors.js";
+import {
+  MAX_SERIALIZATION_ATTEMPTS,
+  runWithSerializationRetry,
+} from "../persistence/serializable-retry.js";
 
-const MAX_SERIALIZATION_ATTEMPTS = 3;
 const BOOKING_CONFLICT_CONSTRAINT = "booking_confirmed_resource_occupancy_excl";
 
 type ManagementBookingActionInput = {
@@ -72,41 +78,13 @@ type LoadManagementBookingResult =
   | { ok: true; booking: LockedManagementBooking }
   | { ok: false; reason: BookingLifecycleAccessFailure };
 
-function operationNow(now: Date): Date {
-  if (!(now instanceof Date) || !Number.isFinite(now.getTime()))
-    throw new Error("Booking lifecycle now must be a valid Date");
-  return new Date(now.getTime());
-}
-
-function databaseError(error: unknown): {
-  code?: string;
-  constraint?: string;
-} {
-  return typeof error === "object" && error !== null
-    ? (error as { code?: string; constraint?: string })
-    : {};
-}
-
-async function runBookingLifecycleWithSerializationRetry<Result>(
+function runBookingLifecycleWithSerializationRetry<Result>(
   attempt: () => Promise<Result>,
 ): Promise<Result> {
-  for (
-    let serializationAttempt = 1;
-    serializationAttempt <= MAX_SERIALIZATION_ATTEMPTS;
-    serializationAttempt += 1
-  ) {
-    try {
-      return await attempt();
-    } catch (error) {
-      if (
-        databaseError(error).code === "40001" &&
-        serializationAttempt < MAX_SERIALIZATION_ATTEMPTS
-      )
-        continue;
-      throw error;
-    }
-  }
-  throw new Error("Booking lifecycle transaction attempt did not complete");
+  return runWithSerializationRetry(
+    attempt,
+    "Booking lifecycle transaction attempt did not complete",
+  );
 }
 
 async function loadManagementBookingForUpdate(
@@ -191,8 +169,11 @@ export async function cancelManagementBooking(
   input: CancelManagementBookingInput,
   now: Date = new Date(),
 ): Promise<CancelManagementBookingResult> {
-  const currentTime = operationNow(now);
-  const normalizedReason = input.reason?.trim() || null;
+  const currentTime = cloneValidOperationTime(
+    now,
+    "Booking lifecycle now must be a valid Date",
+  );
+  const normalizedReason = normalizeCancellationReason(input.reason);
   return runBookingLifecycleWithSerializationRetry(() =>
     db
       .transaction()
@@ -225,7 +206,10 @@ export async function markManagementBookingNoShow(
   input: ManagementBookingActionInput,
   now: Date = new Date(),
 ): Promise<MarkManagementBookingNoShowResult> {
-  const currentTime = operationNow(now);
+  const currentTime = cloneValidOperationTime(
+    now,
+    "Booking lifecycle now must be a valid Date",
+  );
   return runBookingLifecycleWithSerializationRetry(() =>
     db
       .transaction()
@@ -260,7 +244,10 @@ export async function revertManagementBookingNoShow(
   input: ManagementBookingActionInput,
   now: Date = new Date(),
 ): Promise<RevertManagementBookingNoShowResult> {
-  const currentTime = operationNow(now);
+  const currentTime = cloneValidOperationTime(
+    now,
+    "Booking lifecycle now must be a valid Date",
+  );
   try {
     return await runBookingLifecycleWithSerializationRetry(() =>
       db
@@ -289,7 +276,7 @@ export async function revertManagementBookingNoShow(
         }),
     );
   } catch (error) {
-    const { code, constraint } = databaseError(error);
+    const { code, constraint } = postgresErrorMetadata(error);
     if (code === "23P01" && constraint === BOOKING_CONFLICT_CONSTRAINT)
       return { ok: false, reason: "booking_conflict" };
     throw error;

@@ -18,6 +18,7 @@ import {
   insertConfirmedBookingInTransaction,
   runConfirmedBookingWriteWithRetries,
 } from "../persistence/confirmed-booking-write.js";
+import { postgresErrorMetadata } from "../persistence/postgres-errors.js";
 
 export type CreatePublicBookingInput = {
   organizationSlug: string;
@@ -159,15 +160,6 @@ type CreatePublicBookingDependencies = {
   generateManagementToken?: () => string;
 };
 
-function databaseError(error: unknown): {
-  code?: string;
-  constraint?: string;
-} {
-  return typeof error === "object" && error !== null
-    ? (error as { code?: string; constraint?: string })
-    : {};
-}
-
 export async function createPublicBooking(
   input: CreatePublicBookingInput,
   now: Date = new Date(),
@@ -197,7 +189,7 @@ export async function createPublicBooking(
       });
       return result.ok ? { ...result, managementToken } : result;
     } catch (error) {
-      const { code, constraint } = databaseError(error);
+      const { code, constraint } = postgresErrorMetadata(error);
       if (
         code === "23505" &&
         constraint === GUEST_MANAGEMENT_TOKEN_CONSTRAINT &&

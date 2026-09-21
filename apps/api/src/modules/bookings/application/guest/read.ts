@@ -6,6 +6,7 @@ import {
   hashGuestManagementToken,
   isGuestManagementToken,
 } from "../../domain/management-token.js";
+import { cloneValidOperationTime } from "../../domain/operation-time.js";
 
 export type GuestManagedBooking = {
   publicReference: string;
@@ -49,12 +50,6 @@ type GuestBookingRow = {
   cancellation_reason: string | null;
   cancellation_cutoff_minutes: number;
 };
-
-function operationNow(now: Date): Date {
-  if (!(now instanceof Date) || !Number.isFinite(now.getTime()))
-    throw new Error("Guest Booking management now must be a valid Date");
-  return new Date(now.getTime());
-}
 
 function toGuestManagedBooking(
   row: GuestBookingRow,
@@ -125,7 +120,10 @@ export async function getGuestManagedBooking(
   token: string,
   now: Date = new Date(),
 ): Promise<GetGuestManagedBookingResult> {
-  const currentTime = operationNow(now);
+  const currentTime = cloneValidOperationTime(
+    now,
+    "Guest Booking management now must be a valid Date",
+  );
   if (!isGuestManagementToken(token))
     return { ok: false, reason: "guest_booking_not_found" };
   const tokenHash = hashGuestManagementToken(token);

@@ -1,9 +1,10 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import type { FastifyReply } from "fastify";
-import Type, { type TSchema } from "typebox";
+import Type from "typebox";
 import { Check } from "typebox/value";
 import { requireVerifiedUser } from "../../../http/auth-guard.js";
 import { uuidSchema } from "../../../http/schemas.js";
+import { typeboxValidatorCompiler } from "../../../http/typebox-validator.js";
 import {
   type CancelManagementBookingResult,
   cancelManagementBooking,
@@ -162,13 +163,7 @@ function sendBookingRescheduleError(
 export const bookingRoutes: FastifyPluginAsyncTypebox<
   BookingRoutesOptions
 > = async (app, options) => {
-  app.setValidatorCompiler(
-    ({ schema }) =>
-      (value) =>
-        Check(schema as TSchema, value)
-          ? { value }
-          : { error: new Error("Invalid request") },
-  );
+  app.setValidatorCompiler(typeboxValidatorCompiler);
   app.decorateRequest("verifiedUser");
   app.addHook("preHandler", requireVerifiedUser);
 

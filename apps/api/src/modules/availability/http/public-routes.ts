@@ -1,8 +1,8 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import type { FastifyReply } from "fastify";
-import Type, { type TSchema } from "typebox";
-import { Check } from "typebox/value";
+import Type from "typebox";
 import { uuidSchema } from "../../../http/schemas.js";
+import { typeboxValidatorCompiler } from "../../../http/typebox-validator.js";
 import {
   type ResolvePublicResourceServiceAvailabilityResult,
   resolvePublicResourceServiceAvailability,
@@ -55,13 +55,7 @@ function sendPublicAvailabilityError(
 export const publicAvailabilityRoutes: FastifyPluginAsyncTypebox<
   PublicAvailabilityRoutesOptions
 > = async (app, options) => {
-  app.setValidatorCompiler(
-    ({ schema }) =>
-      (value) =>
-        Check(schema as TSchema, value)
-          ? { value }
-          : { error: new Error("Invalid request") },
-  );
+  app.setValidatorCompiler(typeboxValidatorCompiler);
 
   app.get(
     "/api/public/organizations/:slug/availability",
