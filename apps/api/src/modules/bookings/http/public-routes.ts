@@ -7,13 +7,13 @@ import {
   type CreatePublicBookingResult,
   createPublicBooking,
 } from "../application/create-public-booking.js";
+import { getGuestManagedBooking } from "../application/guest/read.js";
 import {
   type CancelGuestManagedBookingResult,
   cancelGuestManagedBooking,
-  getGuestManagedBooking,
   type UpdateGuestManagedBookingContactResult,
   updateGuestManagedBookingContact,
-} from "../application/guest/management.js";
+} from "../application/guest/write.js";
 import { parseGuestManagementBearer } from "./guest-authorization.js";
 
 type PublicBookingRoutesOptions = {

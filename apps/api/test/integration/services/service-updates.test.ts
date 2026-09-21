@@ -3,11 +3,9 @@ import Fastify from "fastify";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { db } from "../../../src/db.js";
 import type { MembershipRole } from "../../../src/db-types.js";
-import {
-  createService,
-  deactivateService,
-} from "../../../src/modules/services/application/service.js";
-import { serviceRoutes } from "../../../src/modules/services/http/routes.js";
+import { createService } from "../../../src/modules/services/application/create-update.js";
+import { deactivateService } from "../../../src/modules/services/application/lifecycle.js";
+import { serviceRoutes } from "../../../src/modules/services/http/index.js";
 import {
   addTestMembership,
   createTestOrganization,

@@ -1,159 +1,19 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
-import type { FastifyReply } from "fastify";
-import Type from "typebox";
-import { requireVerifiedUser } from "../../../http/auth-guard.js";
-import { uuidSchema } from "../../../http/schemas.js";
 import { sendOrganizationWriteStateError } from "../../organizations/http/errors.js";
+import { createService, updateService } from "../application/create-update.js";
 import {
-  listOrganizationServices,
-  listServiceResources,
-} from "../application/queries.js";
-import {
-  assignResourceToService,
-  type ResourceServiceAssignmentResult,
-  unassignResourceFromService,
-} from "../application/resource-assignment.js";
-import {
-  createService,
   deactivateService,
   reactivateService,
-  updateService,
-} from "../application/service.js";
+} from "../application/lifecycle.js";
+import { listOrganizationServices } from "../application/queries.js";
+import {
+  createServiceBody,
+  organizationParams,
+  serviceParams,
+  updateServiceBody,
+} from "./schemas.js";
 
-const organizationParams = Type.Object({
-  organizationId: uuidSchema,
-});
-
-const serviceParams = Type.Object({
-  organizationId: uuidSchema,
-  serviceId: uuidSchema,
-});
-
-const serviceResourceParams = Type.Object({
-  organizationId: uuidSchema,
-  serviceId: uuidSchema,
-  resourceId: uuidSchema,
-});
-
-const servicePriceSchema = Type.Unsafe<number | null>({
-  type: ["integer", "null"],
-  minimum: 0,
-});
-
-function sendAssignmentError(
-  reply: FastifyReply,
-  requestId: string,
-  reason: Extract<ResourceServiceAssignmentResult, { ok: false }>["reason"],
-) {
-  if (
-    reason === "organization_archived" ||
-    reason === "organization_suspended"
-  ) {
-    return sendOrganizationWriteStateError(reply, requestId, reason);
-  }
-  const errors = {
-    organization_not_found: [
-      404,
-      "ORGANIZATION_NOT_FOUND",
-      "Organization not found",
-    ],
-    service_not_found: [404, "SERVICE_NOT_FOUND", "Service not found"],
-    resource_not_found: [404, "RESOURCE_NOT_FOUND", "Resource not found"],
-    insufficient_role: [
-      403,
-      "SERVICE_MANAGEMENT_NOT_ALLOWED",
-      "Your organization role does not allow Service management",
-    ],
-    service_inactive: [409, "SERVICE_INACTIVE", "The Service is deactivated"],
-    resource_inactive: [
-      409,
-      "RESOURCE_INACTIVE",
-      "The Resource is deactivated",
-    ],
-  } as const;
-  const [status, code, message] = errors[reason];
-  return reply.code(status).send({ code, message, requestId });
-}
-
-const createServiceBody = Type.Object({
-  name: Type.String({
-    minLength: 1,
-    maxLength: 120,
-    pattern: ".*\\S.*",
-  }),
-  durationMinutes: Type.Integer({
-    minimum: 1,
-  }),
-  priceAgorot: servicePriceSchema,
-  bufferAfterMinutes: Type.Optional(
-    Type.Integer({
-      minimum: 0,
-    }),
-  ),
-});
-
-const updateServiceBody = Type.Object(
-  {
-    name: Type.Optional(createServiceBody.properties.name),
-    durationMinutes: Type.Optional(
-      createServiceBody.properties.durationMinutes,
-    ),
-    priceAgorot: Type.Optional(servicePriceSchema),
-    bufferAfterMinutes: createServiceBody.properties.bufferAfterMinutes,
-  },
-  {
-    minProperties: 1,
-    // Reject unknown fields instead of letting Fastify strip them.
-    additionalProperties: Type.Never(),
-  },
-);
-
-export const serviceRoutes: FastifyPluginAsyncTypebox = async (app) => {
-  app.decorateRequest("verifiedUser");
-  app.addHook("preHandler", requireVerifiedUser);
-
-  app.get(
-    "/api/organizations/:organizationId/services/:serviceId/resources",
-    { schema: { params: serviceParams } },
-    async (request, reply) => {
-      const result = await listServiceResources({
-        userId: request.verifiedUser.id,
-        ...request.params,
-      });
-      if (!result.ok)
-        return sendAssignmentError(reply, request.id, result.reason);
-      return reply.code(200).send({ items: result.items });
-    },
-  );
-
-  app.put(
-    "/api/organizations/:organizationId/services/:serviceId/resources/:resourceId",
-    { schema: { params: serviceResourceParams } },
-    async (request, reply) => {
-      const result = await assignResourceToService({
-        userId: request.verifiedUser.id,
-        ...request.params,
-      });
-      if (!result.ok)
-        return sendAssignmentError(reply, request.id, result.reason);
-      return reply.code(200).send(result.assignment);
-    },
-  );
-
-  app.delete(
-    "/api/organizations/:organizationId/services/:serviceId/resources/:resourceId",
-    { schema: { params: serviceResourceParams } },
-    async (request, reply) => {
-      const result = await unassignResourceFromService({
-        userId: request.verifiedUser.id,
-        ...request.params,
-      });
-      if (!result.ok)
-        return sendAssignmentError(reply, request.id, result.reason);
-      return reply.code(200).send(result.assignment);
-    },
-  );
-
+export const catalogRoutes: FastifyPluginAsyncTypebox = async (app) => {
   app.get(
     "/api/organizations/:organizationId/services",
     {

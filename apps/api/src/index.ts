@@ -9,8 +9,8 @@ import { publicAvailabilityRoutes } from "./modules/availability/http/public-rou
 import { bookingRoutes } from "./modules/bookings/http/management-routes.js";
 import { publicBookingRoutes } from "./modules/bookings/http/public-routes.js";
 import { organizationRoutes } from "./modules/organizations/http/index.js";
-import { resourceRoutes } from "./modules/resources/http/routes.js";
-import { serviceRoutes } from "./modules/services/http/routes.js";
+import { resourceRoutes } from "./modules/resources/http/index.js";
+import { serviceRoutes } from "./modules/services/http/index.js";
 
 const app = Fastify({
   logger: true,

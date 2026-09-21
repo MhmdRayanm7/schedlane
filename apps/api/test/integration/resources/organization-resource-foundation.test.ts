@@ -2,10 +2,8 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { db } from "../../../src/db.js";
 import type { MembershipRole } from "../../../src/db-types.js";
-import {
-  acceptOrganizationInvitation,
-  createOrganizationInvitation,
-} from "../../../src/modules/organizations/application/invitations.js";
+import { acceptOrganizationInvitation } from "../../../src/modules/organizations/application/accept-invitation.js";
+import { createOrganizationInvitation } from "../../../src/modules/organizations/application/create-invitation.js";
 import { archiveOrganization } from "../../../src/modules/organizations/application/lifecycle.js";
 import {
   leaveOrganization,
@@ -13,12 +11,12 @@ import {
   updateOrganizationMemberRole,
 } from "../../../src/modules/organizations/application/memberships.js";
 import { suspendOrganization } from "../../../src/modules/organizations/application/suspension.js";
+import { createResource } from "../../../src/modules/resources/application/create.js";
 import {
-  createResource,
   deactivateResource,
-  linkResourceToMember,
   reactivateResource,
-} from "../../../src/modules/resources/application/service.js";
+} from "../../../src/modules/resources/application/lifecycle.js";
+import { linkResourceToMember } from "../../../src/modules/resources/application/membership.js";
 
 async function createTestUser(name: string) {
   const id = randomUUID();

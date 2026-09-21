@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { guestBookingManagementTestInternals } from "../../../src/modules/bookings/application/guest/management.js";
+import { guestBookingManagementTestInternals } from "../../../src/modules/bookings/application/guest/write.js";
 
 describe("guest Booking management transaction retries", () => {
   it("retries exact serialization failures up to three attempts", async () => {

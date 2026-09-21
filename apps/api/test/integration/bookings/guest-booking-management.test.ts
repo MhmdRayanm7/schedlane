@@ -3,11 +3,11 @@ import Fastify from "fastify";
 import { afterAll, describe, expect, it } from "vitest";
 import { db } from "../../../src/db.js";
 import type { BookingStatus } from "../../../src/db-types.js";
+import { getGuestManagedBooking } from "../../../src/modules/bookings/application/guest/read.js";
 import {
   cancelGuestManagedBooking,
-  getGuestManagedBooking,
   updateGuestManagedBookingContact,
-} from "../../../src/modules/bookings/application/guest/management.js";
+} from "../../../src/modules/bookings/application/guest/write.js";
 import {
   cancelManagementBooking,
   markManagementBookingNoShow,

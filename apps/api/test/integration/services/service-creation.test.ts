@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { db } from "../../../src/db.js";
-import { serviceRoutes } from "../../../src/modules/services/http/routes.js";
+import { serviceRoutes } from "../../../src/modules/services/http/index.js";
 import {
   addTestMembership,
   createTestOrganization,

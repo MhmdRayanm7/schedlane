@@ -24,10 +24,10 @@ import {
   down as downBooking,
   up as upBooking,
 } from "../../../src/migrations/0017_create_booking.js";
-import { deactivateResource } from "../../../src/modules/resources/application/service.js";
+import { deactivateResource } from "../../../src/modules/resources/application/lifecycle.js";
+import { deactivateService } from "../../../src/modules/services/application/lifecycle.js";
 import { assignResourceToService } from "../../../src/modules/services/application/resource-assignment.js";
-import { deactivateService } from "../../../src/modules/services/application/service.js";
-import { serviceRoutes } from "../../../src/modules/services/http/routes.js";
+import { serviceRoutes } from "../../../src/modules/services/http/index.js";
 import {
   addTestMembership,
   createTestOrganization,

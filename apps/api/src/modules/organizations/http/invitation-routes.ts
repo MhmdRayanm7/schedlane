@@ -3,13 +3,11 @@ import Type from "typebox";
 import { config } from "../../../config.js";
 import { emailService } from "../../../email/index.js";
 import { uuidSchema } from "../../../http/schemas.js";
+import { acceptOrganizationInvitation } from "../application/accept-invitation.js";
+import { createOrganizationInvitation } from "../application/create-invitation.js";
+import { revokeInvitationAfterDeliveryFailure } from "../application/invitation-delivery.js";
 import { listOrganizationInvitations } from "../application/invitation-queries.js";
-import {
-  acceptOrganizationInvitation,
-  createOrganizationInvitation,
-  revokeInvitationAfterDeliveryFailure,
-  revokeOrganizationInvitation,
-} from "../application/invitations.js";
+import { revokeOrganizationInvitation } from "../application/revoke-invitation.js";
 import { sendOrganizationWriteStateError } from "./errors.js";
 import {
   organizationInvitationParamsSchema,
