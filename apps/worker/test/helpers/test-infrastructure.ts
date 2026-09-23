@@ -4,7 +4,9 @@ import { type Channel, type ChannelModel, connect } from "amqplib";
 import { Pool } from "pg";
 import {
   assertEventTopology,
+  BOOKING_EVENTS_DLQ,
   BOOKING_EVENTS_QUEUE,
+  BOOKING_EVENTS_RETRY_QUEUE,
 } from "../../src/messaging/topology.js";
 
 export async function startWorkerTestInfrastructure() {
@@ -45,6 +47,8 @@ export async function startWorkerTestInfrastructure() {
       async reset() {
         await pool.query("TRUNCATE TABLE outbox_event");
         await rabbitChannel?.purgeQueue(BOOKING_EVENTS_QUEUE);
+        await rabbitChannel?.purgeQueue(BOOKING_EVENTS_RETRY_QUEUE);
+        await rabbitChannel?.purgeQueue(BOOKING_EVENTS_DLQ);
       },
       async stop() {
         await rabbitChannel?.close().catch(() => undefined);

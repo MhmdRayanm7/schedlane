@@ -57,12 +57,15 @@ export class RabbitMqOutboxPublisher implements OutboxPublisher {
     });
   }
 
-  static async connect(url: string): Promise<RabbitMqOutboxPublisher> {
+  static async connect(
+    url: string,
+    options: { retryDelayMs?: number } = {},
+  ): Promise<RabbitMqOutboxPublisher> {
     const connection = await connect(url);
     try {
       const channel = await connection.createConfirmChannel();
       try {
-        await assertEventTopology(channel);
+        await assertEventTopology(channel, options);
         return new RabbitMqOutboxPublisher(connection, channel);
       } catch (error) {
         await channel.close().catch(() => undefined);
