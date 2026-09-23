@@ -201,6 +201,14 @@ export interface OutboxEventTable {
   created_at: Generated<Date>;
 }
 
+export interface ConsumerReceiptTable {
+  consumer_name: string;
+  event_id: string;
+  event_type: string;
+  outcome: string;
+  processed_at: Generated<Date>;
+}
+
 export interface Database {
   user: AuthUserTable;
   platform_admin: PlatformAdminTable;
@@ -221,4 +229,5 @@ export interface Database {
   resource_time_block: ResourceTimeBlockTable;
   booking: BookingTable;
   outbox_event: OutboxEventTable;
+  consumer_receipt: ConsumerReceiptTable;
 }

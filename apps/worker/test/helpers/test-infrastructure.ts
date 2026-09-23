@@ -34,7 +34,16 @@ export async function startWorkerTestInfrastructure() {
         occurred_at timestamptz NOT NULL,
         published_at timestamptz NULL,
         created_at timestamptz NOT NULL DEFAULT current_timestamp
-      )
+      );
+
+      CREATE TABLE consumer_receipt (
+        consumer_name text NOT NULL,
+        event_id uuid NOT NULL,
+        event_type text NOT NULL,
+        outcome text NOT NULL,
+        processed_at timestamptz NOT NULL DEFAULT current_timestamp,
+        PRIMARY KEY (consumer_name, event_id)
+      );
     `);
     rabbitConnection = await connect(rabbitmq.getAmqpUrl());
     rabbitChannel = await rabbitConnection.createChannel();
@@ -45,7 +54,7 @@ export async function startWorkerTestInfrastructure() {
       rabbitmqUrl: rabbitmq.getAmqpUrl(),
       rabbitChannel,
       async reset() {
-        await pool.query("TRUNCATE TABLE outbox_event");
+        await pool.query("TRUNCATE TABLE outbox_event, consumer_receipt");
         await rabbitChannel?.purgeQueue(BOOKING_EVENTS_QUEUE);
         await rabbitChannel?.purgeQueue(BOOKING_EVENTS_RETRY_QUEUE);
         await rabbitChannel?.purgeQueue(BOOKING_EVENTS_DLQ);
