@@ -610,5 +610,19 @@ describe("management Booking reschedule", () => {
     expect(failed?.resource_id).toBe(
       failedId === second.id ? secondSource.id : f.source.id,
     );
+    const successfulId = results[0]?.ok ? f.booking.id : second.id;
+    expect(
+      await db
+        .selectFrom("outbox_event")
+        .select(["aggregate_id", "event_type", "published_at"])
+        .where("aggregate_id", "in", [f.booking.id, second.id])
+        .execute(),
+    ).toEqual([
+      {
+        aggregate_id: successfulId,
+        event_type: "booking.rescheduled",
+        published_at: null,
+      },
+    ]);
   });
 });

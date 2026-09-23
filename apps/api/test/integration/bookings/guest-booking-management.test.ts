@@ -380,6 +380,19 @@ describe("guest Booking management", () => {
     expect(results.filter((result) => !result.ok)).toEqual([
       { ok: false, reason: "invalid_booking_status" },
     ]);
+    expect(
+      await db
+        .selectFrom("outbox_event")
+        .select(["aggregate_id", "event_type", "published_at"])
+        .where("aggregate_id", "=", f.booking.id)
+        .execute(),
+    ).toEqual([
+      {
+        aggregate_id: f.booking.id,
+        event_type: "booking.cancelled",
+        published_at: null,
+      },
+    ]);
   });
 
   it("serializes guest and management cancellation without reversing locks", async () => {

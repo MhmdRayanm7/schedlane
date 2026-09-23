@@ -8,6 +8,7 @@ import {
   createPublicBooking,
   publicBookingTestInternals,
 } from "../../../src/modules/bookings/application/create-public-booking.js";
+import { updateGuestManagedBookingContact } from "../../../src/modules/bookings/application/guest/write.js";
 import {
   generateGuestManagementToken,
   hashGuestManagementToken,
@@ -283,7 +284,60 @@ describe("public guest Booking creation", () => {
     expect(JSON.stringify(event.payload)).not.toContain(
       response.json().managementToken,
     );
-    expect(JSON.stringify(event.payload)).not.toMatch(/token|hash/i);
+    const serializedPayload = JSON.stringify(event.payload);
+    for (const secretField of [
+      "managementToken",
+      "guestManagementToken",
+      "guestManagementTokenHash",
+      "guest_management_token_hash",
+    ])
+      expect(serializedPayload).not.toContain(secretField);
+    expect(serializedPayload).not.toMatch(/token|hash/i);
+  });
+
+  it("keeps the created payload as an immutable event-time snapshot", async () => {
+    const f = await fixture();
+    await configure(f);
+    const response = await f.request({
+      guestName: "Original guest",
+      guestPhone: "050-123-4567",
+      guestEmail: "original@example.test",
+    });
+    const managementToken = response.json().managementToken as string;
+    const booking = await db
+      .selectFrom("booking")
+      .select("id")
+      .executeTakeFirstOrThrow();
+    const originalEvent = await db
+      .selectFrom("outbox_event")
+      .select(["id", "payload"])
+      .where("aggregate_id", "=", booking.id)
+      .executeTakeFirstOrThrow();
+
+    expect(
+      await updateGuestManagedBookingContact(
+        {
+          token: managementToken,
+          guestName: "Updated guest",
+          guestPhone: "052-765-4321",
+          guestEmail: "updated@example.test",
+        },
+        now,
+      ),
+    ).toMatchObject({ ok: true });
+
+    expect(
+      await db
+        .selectFrom("outbox_event")
+        .select(["id", "payload"])
+        .where("aggregate_id", "=", booking.id)
+        .execute(),
+    ).toEqual([originalEvent]);
+    expect(originalEvent.payload).toMatchObject({
+      guestName: "Original guest",
+      guestPhone: "+972501234567",
+      guestEmail: "original@example.test",
+    });
   });
 
   it("issues different raw tokens while persisting only their hashes", async () => {
@@ -326,6 +380,14 @@ describe("public guest Booking creation", () => {
       generateManagementToken: () => generated.shift() ?? freshToken,
     });
     expect(result).toMatchObject({ ok: true, managementToken: freshToken });
+    if (!result.ok) throw new Error("Expected retry to succeed");
+    expect(
+      await db
+        .selectFrom("outbox_event")
+        .select("id")
+        .where("event_type", "=", "booking.created")
+        .execute(),
+    ).toHaveLength(1);
 
     await expect(
       createPublicBooking({ ...input, startMinute: 570 }, now, {
@@ -612,14 +674,26 @@ describe("public guest Booking creation", () => {
     expect(
       responses.find((response) => response.statusCode === 409)?.json(),
     ).toMatchObject({ code: "SLOT_UNAVAILABLE" });
+    const bookings = await db
+      .selectFrom("booking")
+      .select("id")
+      .where("resource_id", "=", f.resource.id)
+      .where("status", "=", "confirmed")
+      .execute();
+    expect(bookings).toHaveLength(1);
     expect(
       await db
-        .selectFrom("booking")
-        .select("id")
-        .where("resource_id", "=", f.resource.id)
-        .where("status", "=", "confirmed")
+        .selectFrom("outbox_event")
+        .select(["aggregate_id", "event_type", "published_at"])
+        .where("event_type", "=", "booking.created")
         .execute(),
-    ).toHaveLength(1);
+    ).toEqual([
+      {
+        aggregate_id: bookings[0]?.id,
+        event_type: "booking.created",
+        published_at: null,
+      },
+    ]);
   });
 
   it("keeps authenticated management routes protected", async () => {
