@@ -25,7 +25,39 @@ export async function startWorkerTestInfrastructure() {
 
   try {
     await pool.query(`
-      CREATE TABLE outbox_event (
+      CREATE TABLE IF NOT EXISTS organization (
+        id uuid PRIMARY KEY,
+        name text NOT NULL,
+        slug text NOT NULL,
+        timezone text NOT NULL DEFAULT 'Asia/Jerusalem'
+      );
+
+      CREATE TABLE IF NOT EXISTS service (
+        id uuid PRIMARY KEY,
+        organization_id uuid NOT NULL REFERENCES organization(id),
+        name text NOT NULL,
+        slug text NOT NULL,
+        duration_minutes integer NOT NULL,
+        price_agorot integer NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS booking (
+        id uuid PRIMARY KEY,
+        organization_id uuid NOT NULL REFERENCES organization(id),
+        service_id uuid NOT NULL REFERENCES service(id),
+        public_reference text NOT NULL,
+        status text NOT NULL,
+        start_at timestamptz NOT NULL,
+        end_at timestamptz NOT NULL,
+        guest_name text NOT NULL,
+        guest_email text NULL,
+        guest_phone text NULL,
+        guest_management_token_hash text NULL,
+        guest_management_token_encrypted text NULL,
+        created_at timestamptz NOT NULL DEFAULT current_timestamp
+      );
+
+      CREATE TABLE IF NOT EXISTS outbox_event (
         id uuid PRIMARY KEY DEFAULT uuidv7(),
         aggregate_type text NOT NULL,
         aggregate_id uuid NOT NULL,
@@ -36,7 +68,7 @@ export async function startWorkerTestInfrastructure() {
         created_at timestamptz NOT NULL DEFAULT current_timestamp
       );
 
-      CREATE TABLE consumer_receipt (
+      CREATE TABLE IF NOT EXISTS consumer_receipt (
         consumer_name text NOT NULL,
         event_id uuid NOT NULL,
         event_type text NOT NULL,
@@ -54,7 +86,9 @@ export async function startWorkerTestInfrastructure() {
       rabbitmqUrl: rabbitmq.getAmqpUrl(),
       rabbitChannel,
       async reset() {
-        await pool.query("TRUNCATE TABLE outbox_event, consumer_receipt");
+        await pool.query(
+          "TRUNCATE TABLE outbox_event, consumer_receipt, booking, service, organization CASCADE",
+        );
         await rabbitChannel?.purgeQueue(BOOKING_EVENTS_QUEUE);
         await rabbitChannel?.purgeQueue(BOOKING_EVENTS_RETRY_QUEUE);
         await rabbitChannel?.purgeQueue(BOOKING_EVENTS_DLQ);
