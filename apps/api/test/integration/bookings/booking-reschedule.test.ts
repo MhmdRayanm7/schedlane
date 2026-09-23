@@ -181,6 +181,34 @@ describe("management Booking reschedule", () => {
           updatedAt: operationNow.toISOString(),
         },
       });
+      expect(
+        await db
+          .selectFrom("outbox_event")
+          .selectAll()
+          .where("aggregate_id", "=", f.booking.id)
+          .executeTakeFirstOrThrow(),
+      ).toMatchObject({
+        aggregate_type: "booking",
+        event_type: "booking.rescheduled",
+        occurred_at: operationNow,
+        published_at: null,
+        payload: {
+          bookingId: f.booking.id,
+          organizationId: f.organization.id,
+          publicReference: f.booking.public_reference,
+          serviceId: f.service.id,
+          previousResourceId: f.source.id,
+          resourceId: f.target.id,
+          previousStartAt: originalStartAt.toISOString(),
+          startAt: "2026-10-05T08:00:00.000Z",
+          serviceEndAt: "2026-10-05T08:30:00.000Z",
+          durationMinutes: 30,
+          priceAgorot: 8000,
+          guestName: "Original guest",
+          guestPhone: "+972500000000",
+          guestEmail: "guest@example.test",
+        },
+      });
     },
   );
 
@@ -513,6 +541,13 @@ describe("management Booking reschedule", () => {
       resource_id: f.target.id,
       start_at: competing.start_at,
     });
+    expect(
+      await db
+        .selectFrom("outbox_event")
+        .select("id")
+        .where("aggregate_id", "=", f.booking.id)
+        .execute(),
+    ).toEqual([]);
   });
 
   it("allows a future exact same Resource and start without self-conflict", async () => {

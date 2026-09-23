@@ -1,11 +1,16 @@
 import type { Transaction } from "kysely";
 import { db } from "../../../db.js";
 import type { BookingStatus, Database } from "../../../db-types.js";
+import { insertOutboxEventInTransaction } from "../../../outbox/persistence.js";
 import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../../organizations/application/write-policy.js";
 import { normalizeCancellationReason } from "../domain/cancellation-reason.js";
+import {
+  bookingEventType,
+  createBookingCancelledEventPayload,
+} from "../domain/events.js";
 import { cloneValidOperationTime } from "../domain/operation-time.js";
 import { canManageBookingForResource } from "../domain/policy.js";
 import { postgresErrorMetadata } from "../persistence/postgres-errors.js";
@@ -71,7 +76,14 @@ export type RevertManagementBookingNoShowResult =
 type LockedManagementBooking = {
   id: string;
   status: BookingStatus;
+  publicReference: string;
+  organizationId: string;
+  resourceId: string;
+  serviceId: string;
   startAt: Date;
+  guestName: string;
+  guestPhone: string | null;
+  guestEmail: string | null;
 };
 
 type LoadManagementBookingResult =
@@ -107,7 +119,18 @@ async function loadManagementBookingForUpdate(
 
   const booking = await trx
     .selectFrom("booking")
-    .select(["id", "status", "resource_id", "start_at"])
+    .select([
+      "id",
+      "status",
+      "public_reference",
+      "organization_id",
+      "resource_id",
+      "service_id",
+      "start_at",
+      "guest_name",
+      "guest_phone",
+      "guest_email",
+    ])
     .where("id", "=", input.bookingId)
     .where("organization_id", "=", input.organizationId)
     .forUpdate()
@@ -133,7 +156,14 @@ async function loadManagementBookingForUpdate(
     booking: {
       id: booking.id,
       status: booking.status,
+      publicReference: booking.public_reference,
+      organizationId: booking.organization_id,
+      resourceId: booking.resource_id,
+      serviceId: booking.service_id,
       startAt: booking.start_at,
+      guestName: booking.guest_name,
+      guestPhone: booking.guest_phone,
+      guestEmail: booking.guest_email,
     },
   };
 }
@@ -197,6 +227,26 @@ export async function cancelManagementBooking(
           .where("organization_id", "=", input.organizationId)
           .returning(lifecycleReturning)
           .executeTakeFirstOrThrow();
+        await insertOutboxEventInTransaction(trx, {
+          aggregateType: "booking",
+          aggregateId: access.booking.id,
+          eventType: bookingEventType.cancelled,
+          payload: createBookingCancelledEventPayload({
+            id: access.booking.id,
+            organizationId: access.booking.organizationId,
+            publicReference: access.booking.publicReference,
+            resourceId: access.booking.resourceId,
+            serviceId: access.booking.serviceId,
+            startAt: access.booking.startAt,
+            guestName: access.booking.guestName,
+            guestPhone: access.booking.guestPhone,
+            guestEmail: access.booking.guestEmail,
+            cancelledAt: currentTime,
+            cancellationReason: normalizedReason,
+            cancelledBy: "management",
+          }),
+          occurredAt: currentTime,
+        });
         return { ok: true, booking: toLifecycleDto(row) };
       }),
   );

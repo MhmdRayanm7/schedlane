@@ -183,6 +183,38 @@ describe("Transactional manual Booking creation", () => {
       guest_email: "Manual@Example.test",
       customer_note: "Keep this note unchanged  ",
     });
+    expect(
+      await db
+        .selectFrom("outbox_event")
+        .select([
+          "aggregate_type",
+          "aggregate_id",
+          "event_type",
+          "payload",
+          "published_at",
+        ])
+        .where("aggregate_id", "=", result.booking.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({
+      aggregate_type: "booking",
+      aggregate_id: result.booking.id,
+      event_type: "booking.created",
+      payload: {
+        bookingId: result.booking.id,
+        organizationId: f.organization.id,
+        publicReference: result.booking.publicReference,
+        resourceId: f.resource.id,
+        serviceId: f.service.id,
+        startAt: "2026-10-05T06:00:00.000Z",
+        serviceEndAt: "2026-10-05T06:30:00.000Z",
+        durationMinutes: 30,
+        priceAgorot: null,
+        guestName: "Manual guest",
+        guestPhone: "+97225310747",
+        guestEmail: "Manual@Example.test",
+      },
+      published_at: null,
+    });
   });
 
   it.each([undefined, null, "   "])(

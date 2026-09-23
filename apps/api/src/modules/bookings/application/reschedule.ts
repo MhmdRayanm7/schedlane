@@ -1,12 +1,17 @@
 import type { Transaction } from "kysely";
 import { db } from "../../../db.js";
 import type { BookingStatus, Database } from "../../../db-types.js";
+import { insertOutboxEventInTransaction } from "../../../outbox/persistence.js";
 import { isLocalDate } from "../../availability/domain/local-date.js";
 import { resolveResourceServiceSnapshotSlotContextAfterAccessInTransaction } from "../../availability/resolvers/resource-service-slots.js";
 import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../../organizations/application/write-policy.js";
+import {
+  bookingEventType,
+  createBookingRescheduledEventPayload,
+} from "../domain/events.js";
 import { cloneValidOperationTime } from "../domain/operation-time.js";
 import { canManageBookingForResource } from "../domain/policy.js";
 import {
@@ -134,8 +139,14 @@ async function rescheduleInTransaction(
       "status",
       "resource_id",
       "service_id",
+      "public_reference",
+      "start_at",
       "duration_minutes",
       "buffer_after_minutes",
+      "price_agorot",
+      "guest_name",
+      "guest_phone",
+      "guest_email",
     ])
     .where("id", "=", input.bookingId)
     .where("organization_id", "=", input.organizationId)
@@ -220,9 +231,34 @@ async function rescheduleInTransaction(
       "duration_minutes",
       "buffer_after_minutes",
       "price_agorot",
+      "guest_name",
+      "guest_phone",
+      "guest_email",
       "updated_at",
     ])
     .executeTakeFirstOrThrow();
+  await insertOutboxEventInTransaction(trx, {
+    aggregateType: "booking",
+    aggregateId: row.id,
+    eventType: bookingEventType.rescheduled,
+    payload: createBookingRescheduledEventPayload({
+      id: row.id,
+      organizationId: input.organizationId,
+      publicReference: row.public_reference,
+      previousResourceId: booking.resource_id,
+      resourceId: row.resource_id,
+      serviceId: row.service_id,
+      previousStartAt: booking.start_at,
+      startAt: row.start_at,
+      serviceEndAt: row.service_end_at,
+      durationMinutes: row.duration_minutes,
+      priceAgorot: row.price_agorot,
+      guestName: row.guest_name,
+      guestPhone: row.guest_phone,
+      guestEmail: row.guest_email,
+    }),
+    occurredAt: now,
+  });
   return { ok: true, booking: toRescheduleDto(row) };
 }
 

@@ -1,8 +1,13 @@
 import { db } from "../../../db.js";
+import { insertOutboxEventInTransaction } from "../../../outbox/persistence.js";
 import {
   type ResolvePublicResourceServiceAvailabilityInTransactionResult,
   resolvePublicResourceServiceAvailabilityInTransaction,
 } from "../../availability/resolvers/public-resource-service-availability.js";
+import {
+  bookingEventType,
+  createBookingCreatedEventPayload,
+} from "../domain/events.js";
 import {
   normalizeGuestEmail,
   normalizeGuestName,
@@ -147,6 +152,13 @@ async function executePublicBookingTransaction(
         cancellationCutoffMinutes:
           availability.context.cancellationCutoffMinutes,
         guestManagementTokenHash,
+      });
+      await insertOutboxEventInTransaction(trx, {
+        aggregateType: "booking",
+        aggregateId: booking.id,
+        eventType: bookingEventType.created,
+        payload: createBookingCreatedEventPayload(booking),
+        occurredAt: now,
       });
       return { ok: true, booking };
     });

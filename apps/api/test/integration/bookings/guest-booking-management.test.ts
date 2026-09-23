@@ -255,6 +255,32 @@ describe("guest Booking management", () => {
       status: "cancelled",
       canCancel: false,
     });
+    expect(
+      await db
+        .selectFrom("outbox_event")
+        .selectAll()
+        .where("aggregate_id", "=", f.booking.id)
+        .executeTakeFirstOrThrow(),
+    ).toMatchObject({
+      aggregate_type: "booking",
+      event_type: "booking.cancelled",
+      occurred_at: routeNow,
+      published_at: null,
+      payload: {
+        bookingId: f.booking.id,
+        organizationId: f.organization.id,
+        publicReference: f.booking.public_reference,
+        resourceId: f.resource.id,
+        serviceId: f.service.id,
+        startAt: startAt.toISOString(),
+        guestName: "Guest name",
+        guestPhone: "050-123-4567",
+        guestEmail: "guest@example.test",
+        cancelledAt: routeNow.toISOString(),
+        cancellationReason: "Guest changed plans",
+        cancelledBy: "guest",
+      },
+    });
   });
 
   it.each([undefined, null, "   "])(
@@ -319,6 +345,13 @@ describe("guest Booking management", () => {
         new Date(startAt.getTime() - 1),
       ),
     ).toEqual({ ok: false, reason: "cancellation_cutoff_passed" });
+    expect(
+      await db
+        .selectFrom("outbox_event")
+        .select("id")
+        .where("aggregate_id", "=", current.booking.id)
+        .execute(),
+    ).toEqual([]);
   });
 
   it.each([

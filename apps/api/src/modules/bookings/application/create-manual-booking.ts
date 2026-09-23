@@ -1,6 +1,7 @@
 import type { Transaction } from "kysely";
 import { db } from "../../../db.js";
 import type { Database } from "../../../db-types.js";
+import { insertOutboxEventInTransaction } from "../../../outbox/persistence.js";
 import { isLocalDate } from "../../availability/domain/local-date.js";
 import { resolveResourceServiceSlotContextAfterAccessInTransaction } from "../../availability/resolvers/resource-service-slots.js";
 import {
@@ -8,10 +9,15 @@ import {
   requireWritableOrganization,
 } from "../../organizations/application/write-policy.js";
 import {
+  bookingEventType,
+  createBookingCreatedEventPayload,
+} from "../domain/events.js";
+import {
   normalizeGuestEmail,
   normalizeGuestName,
   normalizeOptionalIsraeliGuestPhone,
 } from "../domain/guest-contact.js";
+import { cloneValidOperationTime } from "../domain/operation-time.js";
 import { canManageBookingForResource } from "../domain/policy.js";
 import { localBookingStartToUtc } from "../domain/time.js";
 import {
@@ -70,12 +76,13 @@ type NormalizedManualBookingInput = Omit<
 async function executeManualBookingTransaction(
   input: NormalizedManualBookingInput,
   publicReference: string,
+  now: Date,
 ): Promise<CreateManualBookingResult> {
   return db
     .transaction()
     .setIsolationLevel("serializable")
     .execute((trx) =>
-      createManualBookingInTransaction(trx, input, publicReference),
+      createManualBookingInTransaction(trx, input, publicReference, now),
     );
 }
 
@@ -83,6 +90,7 @@ async function createManualBookingInTransaction(
   trx: Transaction<Database>,
   input: NormalizedManualBookingInput,
   publicReference: string,
+  now: Date,
 ): Promise<CreateManualBookingResult> {
   const membership = await trx
     .selectFrom("membership")
@@ -156,6 +164,13 @@ async function createManualBookingInTransaction(
     customerNote: input.customerNote,
     cancellationCutoffMinutes: organization.cancellation_cutoff_minutes,
   });
+  await insertOutboxEventInTransaction(trx, {
+    aggregateType: "booking",
+    aggregateId: booking.id,
+    eventType: bookingEventType.created,
+    payload: createBookingCreatedEventPayload(booking),
+    occurredAt: now,
+  });
   return {
     ok: true,
     booking,
@@ -190,11 +205,20 @@ function normalizeManualBookingInput(
 
 export async function createManualBooking(
   input: CreateManualBookingInput,
+  now: Date = new Date(),
 ): Promise<CreateManualBookingResult> {
+  const operationNow = cloneValidOperationTime(
+    now,
+    "Manual Booking creation now must be a valid Date",
+  );
   const normalized = normalizeManualBookingInput(input);
   if ("ok" in normalized) return normalized;
   return runConfirmedBookingWriteWithRetries({
     executeTransactionAttempt: (publicReference) =>
-      executeManualBookingTransaction(normalized, publicReference),
+      executeManualBookingTransaction(
+        normalized,
+        publicReference,
+        operationNow,
+      ),
   });
 }

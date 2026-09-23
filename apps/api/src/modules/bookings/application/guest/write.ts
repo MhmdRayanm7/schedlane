@@ -1,12 +1,17 @@
 import type { Transaction } from "kysely";
 import { db } from "../../../../db.js";
 import type { Database } from "../../../../db-types.js";
+import { insertOutboxEventInTransaction } from "../../../../outbox/persistence.js";
 import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../../../organizations/application/write-policy.js";
 import { calculateGuestCancellationPolicy } from "../../domain/cancellation-policy.js";
 import { normalizeCancellationReason } from "../../domain/cancellation-reason.js";
+import {
+  bookingEventType,
+  createBookingCancelledEventPayload,
+} from "../../domain/events.js";
 import {
   normalizeGuestEmail,
   normalizeGuestName,
@@ -209,7 +214,19 @@ async function cancelGuestBookingInTransaction(
 
   const booking = await trx
     .selectFrom("booking")
-    .select(["id", "status", "start_at", "cancellation_cutoff_minutes"])
+    .select([
+      "id",
+      "status",
+      "public_reference",
+      "organization_id",
+      "resource_id",
+      "service_id",
+      "start_at",
+      "guest_name",
+      "guest_phone",
+      "guest_email",
+      "cancellation_cutoff_minutes",
+    ])
     .where("id", "=", identity.id)
     .where("organization_id", "=", identity.organization_id)
     .where("guest_management_token_hash", "=", tokenHash)
@@ -247,6 +264,26 @@ async function cancelGuestBookingInTransaction(
     .executeTakeFirstOrThrow();
   if (row.status !== "cancelled" || !row.cancelled_at)
     throw new Error("Guest cancellation did not persist as cancelled");
+  await insertOutboxEventInTransaction(trx, {
+    aggregateType: "booking",
+    aggregateId: booking.id,
+    eventType: bookingEventType.cancelled,
+    payload: createBookingCancelledEventPayload({
+      id: booking.id,
+      organizationId: booking.organization_id,
+      publicReference: booking.public_reference,
+      resourceId: booking.resource_id,
+      serviceId: booking.service_id,
+      startAt: booking.start_at,
+      guestName: booking.guest_name,
+      guestPhone: booking.guest_phone,
+      guestEmail: booking.guest_email,
+      cancelledAt: row.cancelled_at,
+      cancellationReason: row.cancellation_reason,
+      cancelledBy: "guest",
+    }),
+    occurredAt: now,
+  });
   return {
     ok: true,
     booking: {

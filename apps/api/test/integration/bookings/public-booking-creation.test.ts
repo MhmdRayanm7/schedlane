@@ -224,19 +224,27 @@ describe("public guest Booking creation", () => {
     });
     expect(response.json().publicReference).not.toMatch(/^[0-9a-f-]{36}$/i);
     expect(response.headers["set-cookie"]).toBeUndefined();
-    expect(
-      await db
-        .selectFrom("booking")
-        .select([
-          "status",
-          "guest_name",
-          "guest_phone",
-          "guest_email",
-          "customer_note",
-          "guest_management_token_hash",
-        ])
-        .executeTakeFirstOrThrow(),
-    ).toEqual({
+    const booking = await db
+      .selectFrom("booking")
+      .select([
+        "id",
+        "organization_id",
+        "resource_id",
+        "service_id",
+        "public_reference",
+        "status",
+        "start_at",
+        "service_end_at",
+        "duration_minutes",
+        "price_agorot",
+        "guest_name",
+        "guest_phone",
+        "guest_email",
+        "customer_note",
+        "guest_management_token_hash",
+      ])
+      .executeTakeFirstOrThrow();
+    expect(booking).toMatchObject({
       status: "confirmed",
       guest_name: "Public guest",
       guest_phone: "+972501234567",
@@ -246,6 +254,36 @@ describe("public guest Booking creation", () => {
         response.json().managementToken,
       ),
     });
+    const event = await db
+      .selectFrom("outbox_event")
+      .selectAll()
+      .where("aggregate_id", "=", booking.id)
+      .executeTakeFirstOrThrow();
+    expect(event).toMatchObject({
+      aggregate_type: "booking",
+      aggregate_id: booking.id,
+      event_type: "booking.created",
+      occurred_at: now,
+      published_at: null,
+      payload: {
+        bookingId: booking.id,
+        organizationId: f.organization.id,
+        publicReference: booking.public_reference,
+        resourceId: f.resource.id,
+        serviceId: f.service.id,
+        startAt: booking.start_at.toISOString(),
+        serviceEndAt: booking.service_end_at.toISOString(),
+        durationMinutes: 30,
+        priceAgorot: null,
+        guestName: "Public guest",
+        guestPhone: "+972501234567",
+        guestEmail: "guest@example.test",
+      },
+    });
+    expect(JSON.stringify(event.payload)).not.toContain(
+      response.json().managementToken,
+    );
+    expect(JSON.stringify(event.payload)).not.toMatch(/token|hash/i);
   });
 
   it("issues different raw tokens while persisting only their hashes", async () => {

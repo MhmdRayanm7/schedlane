@@ -133,6 +133,32 @@ describe("management Booking cancellation", () => {
         ok: true,
         booking: { id: f.booking.id, status: "cancelled" },
       });
+      expect(
+        await db
+          .selectFrom("outbox_event")
+          .selectAll()
+          .where("aggregate_id", "=", f.booking.id)
+          .executeTakeFirstOrThrow(),
+      ).toMatchObject({
+        aggregate_type: "booking",
+        event_type: "booking.cancelled",
+        occurred_at: afterStart,
+        published_at: null,
+        payload: {
+          bookingId: f.booking.id,
+          organizationId: f.organization.id,
+          publicReference: f.booking.public_reference,
+          resourceId: f.booking.resource_id,
+          serviceId: f.service.id,
+          startAt: startAt.toISOString(),
+          guestName: "Test guest",
+          guestPhone: null,
+          guestEmail: null,
+          cancelledAt: afterStart.toISOString(),
+          cancellationReason: null,
+          cancelledBy: "management",
+        },
+      });
     },
   );
 
