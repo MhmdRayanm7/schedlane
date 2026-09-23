@@ -189,6 +189,17 @@ export interface BookingTable {
   updated_at: Generated<Date>;
 }
 
+export interface OutboxEventTable {
+  id: Generated<string>;
+  aggregate_type: string;
+  aggregate_id: string;
+  event_type: string;
+  payload: unknown;
+  occurred_at: Date;
+  published_at: Date | null;
+  created_at: Generated<Date>;
+}
+
 export interface Database {
   user: AuthUserTable;
   platform_admin: PlatformAdminTable;
@@ -208,4 +219,5 @@ export interface Database {
   resource_date_override_interval: ResourceDateOverrideIntervalTable;
   resource_time_block: ResourceTimeBlockTable;
   booking: BookingTable;
+  outbox_event: OutboxEventTable;
 }
