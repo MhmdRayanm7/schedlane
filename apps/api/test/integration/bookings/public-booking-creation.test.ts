@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import { afterAll, describe, expect, it } from "vitest";
+import { config } from "../../../src/config.js";
 import { db } from "../../../src/db.js";
 import type { BookingStatus } from "../../../src/db-types.js";
 import { availabilityRoutes } from "../../../src/modules/availability/http/management-routes.js";
@@ -10,6 +11,7 @@ import {
 } from "../../../src/modules/bookings/application/create-public-booking.js";
 import { updateGuestManagedBookingContact } from "../../../src/modules/bookings/application/guest/write.js";
 import {
+  decryptGuestManagementToken,
   generateGuestManagementToken,
   hashGuestManagementToken,
 } from "../../../src/modules/bookings/domain/management-token.js";
@@ -340,7 +342,7 @@ describe("public guest Booking creation", () => {
     });
   });
 
-  it("issues different raw tokens while persisting only their hashes", async () => {
+  it("issues different raw tokens while persisting their hashes and encrypted envelopes", async () => {
     const f = await fixture();
     await configure(f);
     const first = await f.request({ startMinute: 540 });
@@ -348,18 +350,44 @@ describe("public guest Booking creation", () => {
     const firstToken = first.json().managementToken as string;
     const secondToken = second.json().managementToken as string;
     expect(firstToken).not.toBe(secondToken);
-    const hashes = await db
+    const credentials = await db
       .selectFrom("booking")
-      .select("guest_management_token_hash")
+      .select([
+        "guest_management_token_hash",
+        "guest_management_token_encrypted",
+      ])
       .orderBy("start_at")
       .execute();
-    expect(hashes).toEqual([
-      { guest_management_token_hash: hashGuestManagementToken(firstToken) },
-      { guest_management_token_hash: hashGuestManagementToken(secondToken) },
-    ]);
-    expect(hashes).not.toContainEqual({
-      guest_management_token_hash: firstToken,
-    });
+
+    expect(credentials).toHaveLength(2);
+    expect(credentials[0]?.guest_management_token_hash).toBe(
+      hashGuestManagementToken(firstToken),
+    );
+    expect(credentials[1]?.guest_management_token_hash).toBe(
+      hashGuestManagementToken(secondToken),
+    );
+    expect(credentials[0]?.guest_management_token_encrypted).not.toBe(
+      firstToken,
+    );
+    expect(credentials[0]?.guest_management_token_encrypted).not.toBe(
+      credentials[0]?.guest_management_token_hash,
+    );
+
+    const firstEncrypted = credentials[0]?.guest_management_token_encrypted;
+    const secondEncrypted = credentials[1]?.guest_management_token_encrypted;
+    expect(firstEncrypted).toBeTruthy();
+    expect(secondEncrypted).toBeTruthy();
+
+    const decryptedFirst = decryptGuestManagementToken(
+      firstEncrypted ?? "",
+      config.GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY,
+    );
+    const decryptedSecond = decryptGuestManagementToken(
+      secondEncrypted ?? "",
+      config.GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY,
+    );
+    expect(decryptedFirst).toBe(firstToken);
+    expect(decryptedSecond).toBe(secondToken);
   });
 
   it("retries token-hash collisions with a fresh credential and bounds exhaustion", async () => {
@@ -381,6 +409,26 @@ describe("public guest Booking creation", () => {
     });
     expect(result).toMatchObject({ ok: true, managementToken: freshToken });
     if (!result.ok) throw new Error("Expected retry to succeed");
+
+    const persisted = await db
+      .selectFrom("booking")
+      .select([
+        "guest_management_token_hash",
+        "guest_management_token_encrypted",
+      ])
+      .where("status", "=", "confirmed")
+      .executeTakeFirstOrThrow();
+
+    expect(persisted.guest_management_token_hash).toBe(
+      hashGuestManagementToken(freshToken),
+    );
+    expect(
+      decryptGuestManagementToken(
+        persisted.guest_management_token_encrypted ?? "",
+        config.GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY,
+      ),
+    ).toBe(freshToken);
+
     expect(
       await db
         .selectFrom("outbox_event")

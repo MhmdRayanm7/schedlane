@@ -163,6 +163,7 @@ type CreateTestBookingInput = {
   cancellationReason?: string | null;
   cancellationCutoffMinutes?: number;
   guestManagementTokenHash?: string | null;
+  guestManagementTokenEncrypted?: string | null;
 };
 
 export async function createTestBooking({
@@ -184,6 +185,7 @@ export async function createTestBooking({
   cancellationReason = null,
   cancellationCutoffMinutes = 0,
   guestManagementTokenHash = null,
+  guestManagementTokenEncrypted = null,
 }: CreateTestBookingInput) {
   const serviceEndAt = new Date(startAt.getTime() + durationMinutes * 60_000);
   const occupiedUntilAt = new Date(
@@ -213,6 +215,7 @@ export async function createTestBooking({
       cancellation_reason: cancellationReason,
       cancellation_cutoff_minutes: cancellationCutoffMinutes,
       guest_management_token_hash: guestManagementTokenHash,
+      guest_management_token_encrypted: guestManagementTokenEncrypted,
     })
     .returningAll()
     .executeTakeFirstOrThrow();

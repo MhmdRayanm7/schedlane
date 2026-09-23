@@ -1,3 +1,4 @@
+import { config } from "../../../config.js";
 import { db } from "../../../db.js";
 import { insertOutboxEventInTransaction } from "../../../outbox/persistence.js";
 import {
@@ -14,6 +15,7 @@ import {
   normalizeIsraeliGuestPhone,
 } from "../domain/guest-contact.js";
 import {
+  encryptGuestManagementToken,
   generateGuestManagementToken,
   hashGuestManagementToken,
 } from "../domain/management-token.js";
@@ -108,6 +110,7 @@ async function executePublicBookingTransaction(
   publicReference: string,
   now: Date,
   guestManagementTokenHash: string,
+  guestManagementTokenEncrypted: string,
 ): Promise<PublicBookingTransactionResult> {
   return db
     .transaction()
@@ -152,6 +155,7 @@ async function executePublicBookingTransaction(
         cancellationCutoffMinutes:
           availability.context.cancellationCutoffMinutes,
         guestManagementTokenHash,
+        guestManagementTokenEncrypted,
       });
       await insertOutboxEventInTransaction(trx, {
         aggregateType: "booking",
@@ -170,6 +174,7 @@ const GUEST_MANAGEMENT_TOKEN_CONSTRAINT =
 
 type CreatePublicBookingDependencies = {
   generateManagementToken?: () => string;
+  encryptionKey?: string | Buffer;
 };
 
 export async function createPublicBooking(
@@ -182,6 +187,8 @@ export async function createPublicBooking(
 
   const generateManagementToken =
     dependencies.generateManagementToken ?? generateGuestManagementToken;
+  const encryptionKey =
+    dependencies.encryptionKey ?? config.GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY;
   for (
     let tokenAttempt = 1;
     tokenAttempt <= MAX_GUEST_MANAGEMENT_TOKEN_ATTEMPTS;
@@ -189,6 +196,10 @@ export async function createPublicBooking(
   ) {
     const managementToken = generateManagementToken();
     const managementTokenHash = hashGuestManagementToken(managementToken);
+    const managementTokenEncrypted = encryptGuestManagementToken(
+      managementToken,
+      encryptionKey,
+    );
     try {
       const result = await runConfirmedBookingWriteWithRetries({
         executeTransactionAttempt: (publicReference) =>
@@ -197,6 +208,7 @@ export async function createPublicBooking(
             publicReference,
             new Date(now.getTime()),
             managementTokenHash,
+            managementTokenEncrypted,
           ),
       });
       return result.ok ? { ...result, managementToken } : result;

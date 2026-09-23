@@ -11,6 +11,10 @@ vi.stubEnv("BETTER_AUTH_SECRET", "schedlane-integration-test-secret-only");
 vi.stubEnv("BETTER_AUTH_URL", "http://localhost:3000");
 vi.stubEnv("WEB_ORIGIN", "http://localhost:5173");
 vi.stubEnv("EMAIL_PROVIDER", "console");
+vi.stubEnv(
+  "GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY",
+  "a2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2s=",
+);
 
 try {
   const { db } = await import("../src/db.js");

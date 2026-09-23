@@ -185,6 +185,7 @@ export interface BookingTable {
   cancellation_reason: string | null;
   cancellation_cutoff_minutes: Generated<number>;
   guest_management_token_hash: string | null;
+  guest_management_token_encrypted: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }

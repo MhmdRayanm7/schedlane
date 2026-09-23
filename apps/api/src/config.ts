@@ -56,6 +56,10 @@ const configSchema = Type.Object({
       minLength: 1,
     }),
   ),
+
+  GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY: Type.String({
+    minLength: 1,
+  }),
 });
 
 export type Config = Type.Static<typeof configSchema>;
@@ -68,3 +72,13 @@ export const config = envSchema<Config>({
     path: envPath,
   },
 });
+
+const decodedKey = Buffer.from(
+  config.GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY,
+  "base64",
+);
+if (decodedKey.length !== 32) {
+  throw new Error(
+    "GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY must be a base64-encoded 32-byte key",
+  );
+}
