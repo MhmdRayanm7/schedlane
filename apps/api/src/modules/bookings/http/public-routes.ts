@@ -15,6 +15,7 @@ import {
   type UpdateGuestManagedBookingContactResult,
   updateGuestManagedBookingContact,
 } from "../application/guest/write.js";
+import { getPublicBookingContext } from "../application/public-booking-context.js";
 import { parseGuestManagementBearer } from "./guest-authorization.js";
 
 type PublicBookingRoutesOptions = {
@@ -169,6 +170,21 @@ export const publicBookingRoutes: FastifyPluginAsyncTypebox<
   PublicBookingRoutesOptions
 > = async (app, options) => {
   app.setValidatorCompiler(typeboxValidatorCompiler);
+
+  app.get(
+    "/api/public/organizations/:slug/booking-context",
+    { schema: { params: paramsSchema } },
+    async (request, reply) => {
+      const result = await getPublicBookingContext(request.params.slug);
+      if (!result.ok)
+        return reply.code(404).send({
+          code: "PUBLIC_BOOKING_CONTEXT_NOT_FOUND",
+          message: "Public booking option not found",
+          requestId: request.id,
+        });
+      return reply.code(200).send(result.context);
+    },
+  );
 
   app.post(
     "/api/public/organizations/:slug/bookings",
