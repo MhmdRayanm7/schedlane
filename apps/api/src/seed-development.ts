@@ -1,12 +1,7 @@
 import type { Transaction } from "kysely";
 import { db } from "./db.js";
 import type { Database } from "./db-types.js";
-
-const organization = {
-  id: "00000000-0000-7000-8000-000000000001",
-  name: "Schedlane Demo Barbers",
-  slug: "demo-barbers",
-} as const;
+import { demoOrganization as organization } from "./development/demo-organization.js";
 
 const services = [
   {

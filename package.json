@@ -13,7 +13,8 @@
     "typecheck": "turbo typecheck",
     "check": "biome check .",
     "check:fix": "biome check --write .",
-    "db:seed": "pnpm --filter @schedlane/api db:seed"
+    "db:seed": "pnpm --filter @schedlane/api db:seed",
+    "db:seed:demo-owner": "pnpm --filter @schedlane/api db:seed:demo-owner"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.10",

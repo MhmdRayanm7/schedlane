@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run",
     "db:migrate": "tsx src/migrate.ts",
-    "db:seed": "tsx src/seed-development.ts"
+    "db:seed": "tsx src/seed-development.ts",
+    "db:seed:demo-owner": "tsx src/seed-development-owner.ts"
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",
