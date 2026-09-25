@@ -12,11 +12,14 @@ import {
   formatPriceAgorot,
 } from "../lib/booking-format";
 import type { ManagementBooking } from "../types";
+import { BookingLifecycleActions } from "./booking-lifecycle-actions";
 import { BookingStatus } from "./booking-status";
 
 type BookingDetailsSheetProps = {
   booking: ManagementBooking | null;
+  isReadOnly: boolean;
   onOpenChange: (open: boolean) => void;
+  organizationId: string;
 };
 
 function DetailItem({ label, value }: { label: string; value: string }) {
@@ -30,7 +33,9 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 export function BookingDetailsSheet({
   booking,
+  isReadOnly,
   onOpenChange,
+  organizationId,
 }: BookingDetailsSheetProps) {
   return (
     <Sheet onOpenChange={onOpenChange} open={Boolean(booking)}>
@@ -169,6 +174,15 @@ export function BookingDetailsSheet({
                 </section>
               ) : null}
             </div>
+
+            {!isReadOnly && booking.status !== "cancelled" ? (
+              <div className="border-t border-border px-6 py-5 sm:px-7">
+                <BookingLifecycleActions
+                  booking={booking}
+                  organizationId={organizationId}
+                />
+              </div>
+            ) : null}
 
             <footer className="mt-auto border-t border-border px-6 py-5 text-xs leading-5 text-subtle-foreground sm:px-7">
               <p>Reference {booking.publicReference}</p>

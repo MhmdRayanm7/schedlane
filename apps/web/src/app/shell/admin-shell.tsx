@@ -420,7 +420,7 @@ export function AdminShell() {
         ) : null}
 
         <main className="flex-1 px-5 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12 xl:px-16">
-          <Outlet />
+          <Outlet context={organizationAccess} />
         </main>
       </div>
     </div>

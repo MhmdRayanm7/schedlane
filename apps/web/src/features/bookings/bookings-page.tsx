@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { useOutletContext, useParams, useSearchParams } from "react-router";
+import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
 import { PageHeader } from "@/shared/components/page-header";
 import { formatLocalDate, schedulingToday } from "@/shared/lib/date-time";
 import { BookingDetailsSheet } from "./components/booking-details-sheet";
@@ -21,6 +22,7 @@ import {
 } from "./lib/booking-date-range";
 
 export function BookingsPage() {
+  const { currentOrganization } = useOutletContext<OrganizationAccessContext>();
   const { organizationId } = useParams<{ organizationId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
@@ -113,9 +115,13 @@ export function BookingsPage() {
       </section>
       <BookingDetailsSheet
         booking={selectedBooking}
+        isReadOnly={Boolean(
+          currentOrganization.archivedAt || currentOrganization.suspendedAt,
+        )}
         onOpenChange={(open) => {
           if (!open) setSelectedBookingId(null);
         }}
+        organizationId={organizationId}
       />
     </div>
   );
