@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  assignResourceToService,
   createService,
   deactivateService,
+  getServiceResources,
   getServices,
   reactivateService,
+  unassignResourceFromService,
   updateService,
 } from "../api/services-api";
 import type { CreateServiceInput, UpdateServiceInput } from "../types";
@@ -76,6 +79,66 @@ export function useReactivateService(organizationId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: servicesQueryKey(organizationId),
+      });
+    },
+  });
+}
+
+export function serviceResourcesQueryKey(
+  organizationId: string,
+  serviceId: string,
+) {
+  return [
+    "organizations",
+    organizationId,
+    "services",
+    serviceId,
+    "resources",
+  ] as const;
+}
+
+export function useServiceResources(
+  organizationId: string,
+  serviceId: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: serviceResourcesQueryKey(organizationId, serviceId),
+    queryFn: ({ signal }) =>
+      getServiceResources(organizationId, serviceId, signal),
+    enabled: Boolean(organizationId && serviceId && enabled),
+  });
+}
+
+export function useAssignResourceToService(
+  organizationId: string,
+  serviceId: string,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (resourceId: string) =>
+      assignResourceToService(organizationId, serviceId, resourceId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: serviceResourcesQueryKey(organizationId, serviceId),
+      });
+    },
+  });
+}
+
+export function useUnassignResourceFromService(
+  organizationId: string,
+  serviceId: string,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (resourceId: string) =>
+      unassignResourceFromService(organizationId, serviceId, resourceId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: serviceResourcesQueryKey(organizationId, serviceId),
       });
     },
   });

@@ -18,9 +18,11 @@ import {
 import { cn } from "@/shared/lib/cn";
 import { formatDuration, formatPriceIls } from "../lib/pricing";
 import type { Service } from "../types";
+import { ServiceResourceAssignments } from "./service-resource-assignments";
 
 type ServiceDetailsSheetProps = {
   service: Service | null;
+  organizationId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (service: Service) => void;
@@ -28,12 +30,11 @@ type ServiceDetailsSheetProps = {
   onReactivate: (serviceId: string) => Promise<void>;
   isReadOnly: boolean;
   isActionPending?: boolean;
-  /** Child node for assigned resources (populated in assignment flow) */
-  children?: React.ReactNode;
 };
 
 export function ServiceDetailsSheet({
   service,
+  organizationId,
   open,
   onOpenChange,
   onEdit,
@@ -41,7 +42,6 @@ export function ServiceDetailsSheet({
   onReactivate,
   isReadOnly,
   isActionPending = false,
-  children,
 }: ServiceDetailsSheetProps) {
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -183,10 +183,15 @@ export function ServiceDetailsSheet({
             </div>
           ) : null}
 
-          {/* Slot for Resource Assignments */}
-          {children ? (
-            <div className="mt-8 border-t border-border pt-6">{children}</div>
-          ) : null}
+          {/* Resource Assignments */}
+          <div className="mt-8 border-t border-border pt-6">
+            <ServiceResourceAssignments
+              organizationId={organizationId}
+              serviceId={service.id}
+              isServiceActive={isActive}
+              isReadOnly={isReadOnly}
+            />
+          </div>
         </SheetContent>
       </Sheet>
 

@@ -26,3 +26,13 @@ export type UpdateServiceInput = {
   priceAgorot?: number | null;
   bufferAfterMinutes?: number;
 };
+
+export type ServiceResourceAssignment = {
+  id: string;
+  name: string;
+  deactivatedAt: string | null;
+};
+
+export type ServiceResourcesResponse = {
+  items: ServiceResourceAssignment[];
+};

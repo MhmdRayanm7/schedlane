@@ -63,3 +63,40 @@ export function reactivateService(
     },
   );
 }
+
+export function getServiceResources(
+  organizationId: string,
+  serviceId: string,
+  signal?: AbortSignal,
+): Promise<import("../types").ServiceResourcesResponse> {
+  return apiClient<import("../types").ServiceResourcesResponse>(
+    `/api/organizations/${organizationId}/services/${serviceId}/resources`,
+    { signal },
+  );
+}
+
+export function assignResourceToService(
+  organizationId: string,
+  serviceId: string,
+  resourceId: string,
+): Promise<{ serviceId: string; resourceId: string; assigned: boolean }> {
+  return apiClient(
+    `/api/organizations/${organizationId}/services/${serviceId}/resources/${resourceId}`,
+    {
+      method: "PUT",
+    },
+  );
+}
+
+export function unassignResourceFromService(
+  organizationId: string,
+  serviceId: string,
+  resourceId: string,
+): Promise<{ serviceId: string; resourceId: string; assigned: boolean }> {
+  return apiClient(
+    `/api/organizations/${organizationId}/services/${serviceId}/resources/${resourceId}`,
+    {
+      method: "DELETE",
+    },
+  );
+}

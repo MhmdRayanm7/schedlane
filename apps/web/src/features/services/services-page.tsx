@@ -182,6 +182,7 @@ export function ServicesPage() {
       {/* Details Sheet */}
       <ServiceDetailsSheet
         service={selectedService}
+        organizationId={organizationId}
         open={Boolean(selectedService)}
         onOpenChange={(open) => {
           if (!open) setSelectedServiceId(null);
