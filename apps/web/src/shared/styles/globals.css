@@ -29,7 +29,7 @@
   --surface: #ffffff;
   --foreground: #181b1b;
   --muted-foreground: #66706e;
-  --subtle-foreground: #8b9391;
+  --subtle-foreground: #6f7876;
   --border: #e5e9e8;
   --border-strong: #d5dcda;
   --primary: #0f766e;
@@ -86,5 +86,15 @@ a {
     transition-duration: 0.01ms;
     animation-duration: 0.01ms;
     animation-iteration-count: 1;
+  }
+}
+
+@keyframes sidebar-in {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
   }
 }
