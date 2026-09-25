@@ -1,6 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router";
 import { AdminShell } from "@/app/shell/admin-shell";
-import { BrandedLoadingState } from "@/features/auth/components/branded-loading-state";
 import { SignInPage } from "@/features/auth/routes/sign-in-page";
 import { SignUpPage } from "@/features/auth/routes/sign-up-page";
 import { VerifyEmailPage } from "@/features/auth/routes/verify-email-page";
@@ -10,6 +9,10 @@ import {
   RootRoute,
 } from "@/features/auth/routing/session-guards";
 import { BookingsPage } from "@/features/bookings/bookings-page";
+import {
+  OrganizationAccessGate,
+  OrganizationResolver,
+} from "@/features/organizations/components/organization-route-states";
 import { ResourcesPage } from "@/features/resources/resources-page";
 import { SchedulePage } from "@/features/schedule/schedule-page";
 import { ServicesPage } from "@/features/services/services-page";
@@ -33,18 +36,23 @@ export const router = createBrowserRouter([
     path: "/app",
     element: <RequireSession />,
     children: [
-      { index: true, element: <BrandedLoadingState /> },
+      { index: true, element: <OrganizationResolver /> },
       {
         path: ":organizationId",
-        element: <AdminShell />,
+        element: <OrganizationAccessGate />,
         children: [
-          { index: true, element: <Navigate replace to="bookings" /> },
-          { path: "bookings", element: <BookingsPage /> },
-          { path: "services", element: <ServicesPage /> },
-          { path: "resources", element: <ResourcesPage /> },
-          { path: "schedule", element: <SchedulePage /> },
-          { path: "team", element: <TeamPage /> },
-          { path: "settings", element: <SettingsPage /> },
+          {
+            element: <AdminShell />,
+            children: [
+              { index: true, element: <Navigate replace to="bookings" /> },
+              { path: "bookings", element: <BookingsPage /> },
+              { path: "services", element: <ServicesPage /> },
+              { path: "resources", element: <ResourcesPage /> },
+              { path: "schedule", element: <SchedulePage /> },
+              { path: "team", element: <TeamPage /> },
+              { path: "settings", element: <SettingsPage /> },
+            ],
+          },
         ],
       },
     ],
