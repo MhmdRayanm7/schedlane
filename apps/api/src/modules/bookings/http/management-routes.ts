@@ -18,6 +18,10 @@ import {
   type RescheduleManagementBookingResult,
   rescheduleManagementBooking,
 } from "../application/reschedule.js";
+import {
+  type GetBookingRescheduleOptionsResult,
+  getBookingRescheduleOptions,
+} from "../application/reschedule-options.js";
 
 type BookingRoutesOptions = {
   now?: () => Date;
@@ -50,6 +54,13 @@ const rescheduleBodySchema = Type.Object(
     resourceId: uuidSchema,
     date: Type.String(),
     startMinute: Type.Integer({ minimum: 0, maximum: 1439 }),
+  },
+  { additionalProperties: Type.Never() },
+);
+const rescheduleOptionsQuerySchema = Type.Object(
+  {
+    date: Type.String(),
+    resourceId: Type.Optional(uuidSchema),
   },
   { additionalProperties: Type.Never() },
 );
@@ -160,6 +171,52 @@ function sendBookingRescheduleError(
   return reply.code(status).send({ code, message, requestId });
 }
 
+function sendBookingRescheduleOptionsError(
+  reply: FastifyReply,
+  requestId: string,
+  reason: Extract<GetBookingRescheduleOptionsResult, { ok: false }>["reason"],
+) {
+  const errors = {
+    organization_not_found: [
+      404,
+      "ORGANIZATION_NOT_FOUND",
+      "Organization not found",
+    ],
+    booking_not_found: [404, "BOOKING_NOT_FOUND", "Booking not found"],
+    resource_not_found: [404, "RESOURCE_NOT_FOUND", "Resource not found"],
+    service_not_found: [404, "SERVICE_NOT_FOUND", "Service not found"],
+    insufficient_role: [
+      403,
+      "INSUFFICIENT_ROLE",
+      "Your organization role does not allow this Booking action",
+    ],
+    organization_archived: [
+      409,
+      "ORGANIZATION_ARCHIVED",
+      "Restore the organization before making changes",
+    ],
+    organization_suspended: [
+      409,
+      "ORGANIZATION_SUSPENDED",
+      "The organization is suspended and read-only",
+    ],
+    invalid_booking_status: [
+      409,
+      "INVALID_BOOKING_STATUS",
+      "Booking status does not allow this action",
+    ],
+    resource_inactive: [409, "RESOURCE_INACTIVE", "Resource is inactive"],
+    service_not_assigned: [
+      409,
+      "SERVICE_NOT_ASSIGNED",
+      "Service is not assigned to this Resource",
+    ],
+    invalid_date: [400, "INVALID_DATE", "Date is invalid"],
+  } as const;
+  const [status, code, message] = errors[reason];
+  return reply.code(status).send({ code, message, requestId });
+}
+
 export const bookingRoutes: FastifyPluginAsyncTypebox<
   BookingRoutesOptions
 > = async (app, options) => {
@@ -220,6 +277,33 @@ export const bookingRoutes: FastifyPluginAsyncTypebox<
       if (!result.ok)
         return sendBookingRescheduleError(reply, request.id, result.reason);
       return reply.code(200).send(result.booking);
+    },
+  );
+
+  app.get(
+    "/api/organizations/:organizationId/bookings/:bookingId/reschedule-options",
+    {
+      schema: {
+        params: bookingParamsSchema,
+        querystring: rescheduleOptionsQuerySchema,
+      },
+    },
+    async (request, reply) => {
+      const result = await getBookingRescheduleOptions(
+        {
+          userId: request.verifiedUser.id,
+          ...request.params,
+          ...request.query,
+        },
+        options.now?.() ?? new Date(),
+      );
+      if (!result.ok)
+        return sendBookingRescheduleOptionsError(
+          reply,
+          request.id,
+          result.reason,
+        );
+      return reply.code(200).send(result.options);
     },
   );
 
