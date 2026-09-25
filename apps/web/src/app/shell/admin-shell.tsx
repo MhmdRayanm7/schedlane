@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useParams } from "react-router";
+import { BrandLockup } from "@/shared/brand/brand-lockup";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/cn";
 
@@ -79,9 +80,7 @@ function Sidebar({ id, organizationId, onNavigate, onClose }: SidebarProps) {
       className="flex h-full w-[232px] shrink-0 flex-col border-r border-border bg-[#fafbfb]"
     >
       <div className="flex h-16 items-center justify-between px-5">
-        <span className="text-[17px] font-semibold tracking-[-0.02em] text-foreground">
-          Schedlane
-        </span>
+        <BrandLockup />
         {onClose ? (
           <Button
             aria-label="Close navigation"
@@ -219,9 +218,11 @@ export function AdminShell() {
           >
             <Menu aria-hidden="true" className="size-5" />
           </Button>
-          <span className="ml-2 text-sm font-semibold tracking-[-0.01em]">
-            Schedlane
-          </span>
+          <BrandLockup
+            className="ml-2 gap-1.5"
+            markClassName="size-[21px]"
+            wordmarkClassName="text-[15px]"
+          />
         </header>
 
         <main className="flex-1 px-5 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12 xl:px-16">

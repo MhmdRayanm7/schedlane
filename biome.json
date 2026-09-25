@@ -29,6 +29,21 @@
       "tailwindDirectives": true
     }
   },
+  "overrides": [
+    {
+      "includes": ["apps/web/public/favicon.svg"],
+      "formatter": {
+        "enabled": false
+      },
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noSvgWithoutTitle": "off"
+          }
+        }
+      }
+    }
+  ],
   "assist": {
     "enabled": true,
     "actions": {
