@@ -20,6 +20,25 @@ export function formatBookingTimeRange(booking: ManagementBooking) {
   return `${formatBookingTime(booking.startAt)}–${formatBookingTime(booking.serviceEndAt)}`;
 }
 
+export function formatBookingDate(instant: string) {
+  return bookingDateTime(instant).toFormat("cccc, LLLL d, yyyy");
+}
+
+export function formatBookingDateTime(instant: string) {
+  return bookingDateTime(instant).toFormat("LLL d, yyyy 'at' HH:mm");
+}
+
+const priceFormatter = new Intl.NumberFormat("en-IL", {
+  style: "currency",
+  currency: "ILS",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+export function formatPriceAgorot(priceAgorot: number) {
+  return priceFormatter.format(priceAgorot / 100);
+}
+
 export function groupBookingsByLocalDate(bookings: ManagementBooking[]) {
   return bookings.reduce<Map<string, ManagementBooking[]>>(
     (groups, booking) => {

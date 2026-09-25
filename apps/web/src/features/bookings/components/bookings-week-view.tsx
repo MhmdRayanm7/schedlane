@@ -12,7 +12,7 @@ import { BookingStatus } from "./booking-status";
 type BookingsWeekViewProps = {
   bookings: ManagementBooking[];
   date: DateTime;
-  onSelectBooking?: (bookingId: string) => void;
+  onSelectBooking: (bookingId: string) => void;
   selectedBookingId?: string | null;
   today: DateTime;
 };
@@ -23,7 +23,7 @@ function WeekBooking({
   selected,
 }: {
   booking: ManagementBooking;
-  onSelectBooking?: (bookingId: string) => void;
+  onSelectBooking: (bookingId: string) => void;
   selected: boolean;
 }) {
   return (
@@ -34,7 +34,7 @@ function WeekBooking({
         selected && "border-primary bg-primary-subtle",
         booking.status === "cancelled" && "text-muted-foreground",
       )}
-      onClick={() => onSelectBooking?.(booking.id)}
+      onClick={() => onSelectBooking(booking.id)}
       type="button"
     >
       <span className="block text-xs font-semibold tabular-nums">

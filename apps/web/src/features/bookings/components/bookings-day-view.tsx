@@ -7,7 +7,7 @@ import { BookingStatus } from "./booking-status";
 
 type BookingsDayViewProps = {
   bookings: ManagementBooking[];
-  onSelectBooking?: (bookingId: string) => void;
+  onSelectBooking: (bookingId: string) => void;
   selectedBookingId?: string | null;
 };
 
@@ -39,7 +39,7 @@ export function BookingsDayView({
             className={`flex min-w-0 flex-1 flex-col gap-3 rounded-md px-3 py-4 text-left transition-colors duration-150 hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-5 ${
               selectedBookingId === booking.id ? "bg-primary-subtle" : ""
             } ${booking.status === "cancelled" ? "text-muted-foreground" : ""}`}
-            onClick={() => onSelectBooking?.(booking.id)}
+            onClick={() => onSelectBooking(booking.id)}
             type="button"
           >
             <span className="min-w-0">

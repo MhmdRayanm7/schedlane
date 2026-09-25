@@ -30,7 +30,7 @@ export function BookingsToolbar({
   view,
 }: BookingsToolbarProps) {
   return (
-    <div className="flex flex-col gap-3 border-b border-border py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+    <div className="relative flex flex-col gap-3 border-b border-border py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
       <div className="flex items-center gap-2">
         <Button
           className={cn(isCurrentRange && "text-subtle-foreground")}

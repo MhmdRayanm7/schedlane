@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { PageHeader } from "@/shared/components/page-header";
 import { formatLocalDate, schedulingToday } from "@/shared/lib/date-time";
+import { BookingDetailsSheet } from "./components/booking-details-sheet";
 import { BookingsDayView } from "./components/bookings-day-view";
 import {
   BookingsErrorState,
@@ -22,6 +23,9 @@ import {
 export function BookingsPage() {
   const { organizationId } = useParams<{ organizationId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
+    null,
+  );
   const today = schedulingToday();
   const { date, view } = resolveBookingsUrlState(
     searchParams.get("date"),
@@ -29,6 +33,7 @@ export function BookingsPage() {
     today,
   );
   const range = bookingDateRange(date, view);
+  const rangeKey = `${range.fromDate}:${range.toDate}`;
   const bookingsQuery = useBookings({
     organizationId: organizationId ?? "",
     fromDate: range.fromDate,
@@ -41,6 +46,10 @@ export function BookingsPage() {
       : formatLocalDate(sundayStart(date)) ===
         formatLocalDate(sundayStart(today));
 
+  useEffect(() => {
+    if (rangeKey) setSelectedBookingId(null);
+  }, [rangeKey]);
+
   function updateSearch(nextDate: string, nextView: BookingsView) {
     const next = new URLSearchParams(searchParams);
     next.set("date", nextDate);
@@ -48,22 +57,10 @@ export function BookingsPage() {
     setSearchParams(next);
   }
 
-  const content = useMemo(() => {
-    if (bookingsQuery.isPending) return <BookingsLoadingState />;
-    if (bookingsQuery.isError) {
-      return <BookingsErrorState retry={() => void bookingsQuery.refetch()} />;
-    }
-
-    return view === "day" ? (
-      <BookingsDayView bookings={bookingsQuery.data.bookings} />
-    ) : (
-      <BookingsWeekView
-        bookings={bookingsQuery.data.bookings}
-        date={date}
-        today={today}
-      />
-    );
-  }, [bookingsQuery, date, today, view]);
+  const selectedBooking =
+    bookingsQuery.data?.bookings.find(
+      (booking) => booking.id === selectedBookingId,
+    ) ?? null;
 
   if (!organizationId) return null;
 
@@ -93,8 +90,33 @@ export function BookingsPage() {
         view={view}
       />
       <section aria-label={`${view === "day" ? "Day" : "Week"} bookings`}>
-        {content}
+        {bookingsQuery.isPending ? <BookingsLoadingState /> : null}
+        {bookingsQuery.isError ? (
+          <BookingsErrorState retry={() => void bookingsQuery.refetch()} />
+        ) : null}
+        {bookingsQuery.isSuccess && view === "day" ? (
+          <BookingsDayView
+            bookings={bookingsQuery.data.bookings}
+            onSelectBooking={setSelectedBookingId}
+            selectedBookingId={selectedBookingId}
+          />
+        ) : null}
+        {bookingsQuery.isSuccess && view === "week" ? (
+          <BookingsWeekView
+            bookings={bookingsQuery.data.bookings}
+            date={date}
+            onSelectBooking={setSelectedBookingId}
+            selectedBookingId={selectedBookingId}
+            today={today}
+          />
+        ) : null}
       </section>
+      <BookingDetailsSheet
+        booking={selectedBooking}
+        onOpenChange={(open) => {
+          if (!open) setSelectedBookingId(null);
+        }}
+      />
     </div>
   );
 }
