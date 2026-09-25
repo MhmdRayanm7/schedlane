@@ -1,8 +1,5 @@
 import { ApiError } from "./api-error";
-
-const apiUrl = (
-  import.meta.env.VITE_API_URL ?? "http://localhost:3000"
-).replace(/\/$/, "");
+import { apiBaseUrl } from "./config";
 
 type ApiClientOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
@@ -41,7 +38,7 @@ export async function apiClient<T>(
   path: string,
   { body, headers, ...options }: ApiClientOptions = {},
 ): Promise<T> {
-  const response = await fetch(`${apiUrl}${path}`, {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,
     credentials: "include",
     headers: {
