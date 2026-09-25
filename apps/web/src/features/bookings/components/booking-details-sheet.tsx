@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -13,12 +14,14 @@ import {
 } from "../lib/booking-format";
 import type { ManagementBooking } from "../types";
 import { BookingLifecycleActions } from "./booking-lifecycle-actions";
+import { BookingRescheduleForm } from "./booking-reschedule-form";
 import { BookingStatus } from "./booking-status";
 
 type BookingDetailsSheetProps = {
   booking: ManagementBooking | null;
   isReadOnly: boolean;
   onOpenChange: (open: boolean) => void;
+  onRescheduled: (date: string) => void;
   organizationId: string;
 };
 
@@ -35,12 +38,33 @@ export function BookingDetailsSheet({
   booking,
   isReadOnly,
   onOpenChange,
+  onRescheduled,
   organizationId,
 }: BookingDetailsSheetProps) {
+  const [mode, setMode] = useState<"details" | "reschedule">("details");
+
+  useEffect(() => {
+    if (!booking) setMode("details");
+  }, [booking]);
+
   return (
-    <Sheet onOpenChange={onOpenChange} open={Boolean(booking)}>
+    <Sheet
+      onOpenChange={(open) => {
+        if (!open) setMode("details");
+        onOpenChange(open);
+      }}
+      open={Boolean(booking)}
+    >
       <SheetContent>
-        {booking ? (
+        {booking && mode === "reschedule" ? (
+          <BookingRescheduleForm
+            booking={booking}
+            onBack={() => setMode("details")}
+            onRescheduled={onRescheduled}
+            organizationId={organizationId}
+          />
+        ) : null}
+        {booking && mode === "details" ? (
           <div className="flex min-h-full flex-col">
             <SheetHeader className="border-b border-border px-6 pb-6 pt-7 pr-14 sm:px-7 sm:pt-8">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -179,6 +203,7 @@ export function BookingDetailsSheet({
               <div className="border-t border-border px-6 py-5 sm:px-7">
                 <BookingLifecycleActions
                   booking={booking}
+                  onReschedule={() => setMode("reschedule")}
                   organizationId={organizationId}
                 />
               </div>

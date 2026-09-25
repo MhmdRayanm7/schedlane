@@ -121,6 +121,10 @@ export function BookingsPage() {
         onOpenChange={(open) => {
           if (!open) setSelectedBookingId(null);
         }}
+        onRescheduled={(targetDate) => {
+          updateSearch(targetDate, view);
+          setSelectedBookingId(null);
+        }}
         organizationId={organizationId}
       />
     </div>

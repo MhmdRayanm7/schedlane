@@ -19,11 +19,13 @@ type LifecycleAction = "cancel" | "mark-no-show" | "revert-no-show";
 
 type BookingLifecycleActionsProps = {
   booking: ManagementBooking;
+  onReschedule: () => void;
   organizationId: string;
 };
 
 export function BookingLifecycleActions({
   booking,
+  onReschedule,
   organizationId,
 }: BookingLifecycleActionsProps) {
   const [action, setAction] = useState<LifecycleAction | null>(null);
@@ -95,6 +97,7 @@ export function BookingLifecycleActions({
       <div className="flex flex-wrap gap-2">
         {booking.status === "confirmed" ? (
           <>
+            <Button onClick={onReschedule}>Reschedule</Button>
             {canMarkNoShow ? (
               <Button
                 onClick={() => openAction("mark-no-show")}

@@ -16,6 +16,12 @@ export function formatBookingTime(instant: string) {
   return bookingDateTime(instant).toFormat("HH:mm");
 }
 
+export function formatMinuteOfDay(minute: number) {
+  const hour = Math.floor(minute / 60);
+  const remainder = minute % 60;
+  return `${String(hour).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+}
+
 export function formatBookingTimeRange(booking: ManagementBooking) {
   return `${formatBookingTime(booking.startAt)}–${formatBookingTime(booking.serviceEndAt)}`;
 }
