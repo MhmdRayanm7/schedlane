@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import { sendOrganizationWriteStateError } from "../../organizations/http/errors.js";
+import { getResourceLinkCandidates } from "../application/link-candidates.js";
 import {
   linkResourceToMember,
   unlinkResource,
@@ -7,6 +8,59 @@ import {
 import { linkResourceBody, resourceParams } from "./schemas.js";
 
 export const membershipRoutes: FastifyPluginAsyncTypebox = async (app) => {
+  app.get(
+    "/api/organizations/:organizationId/resources/:resourceId/link-candidates",
+    {
+      schema: {
+        params: resourceParams,
+      },
+    },
+    async (request, reply) => {
+      const user = request.verifiedUser;
+
+      const result = await getResourceLinkCandidates({
+        userId: user.id,
+        organizationId: request.params.organizationId,
+        resourceId: request.params.resourceId,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "organization_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_NOT_FOUND",
+              message: "Organization not found",
+              requestId: request.id,
+            });
+
+          case "resource_not_found":
+            return reply.code(404).send({
+              code: "RESOURCE_NOT_FOUND",
+              message: "Resource not found",
+              requestId: request.id,
+            });
+
+          case "insufficient_role":
+            return reply.code(403).send({
+              code: "RESOURCE_MANAGEMENT_NOT_ALLOWED",
+              message:
+                "Your organization role does not allow this Resource link",
+              requestId: request.id,
+            });
+
+          case "resource_deactivated":
+            return reply.code(409).send({
+              code: "RESOURCE_DEACTIVATED",
+              message: "The Resource is deactivated",
+              requestId: request.id,
+            });
+        }
+      }
+
+      return reply.code(200).send(result.data);
+    },
+  );
+
   app.put(
     "/api/organizations/:organizationId/resources/:resourceId/link",
     {
