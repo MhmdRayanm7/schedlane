@@ -19,6 +19,7 @@ const app = Fastify({
 await app.register(cors, {
   origin: config.WEB_ORIGIN,
   credentials: true,
+  methods: ["GET", "HEAD", "PUT", "POST", "DELETE", "PATCH"],
 });
 
 registerAuthRoutes(app);

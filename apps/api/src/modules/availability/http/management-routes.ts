@@ -2,6 +2,7 @@ import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
 import { requireVerifiedUser } from "../../../http/auth-guard.js";
 import { typeboxValidatorCompiler } from "../../../http/typebox-validator.js";
+import { listManageableScheduleResources } from "../application/manageable-resources.js";
 import {
   replaceOrganizationWeeklyHours,
   updateOrganizationAvailabilitySettings,
@@ -78,6 +79,20 @@ export const availabilityRoutes: FastifyPluginAsyncTypebox = async (app) => {
   await app.register(organizationDateOverrideRoutes);
   await app.register(resourceDateOverrideRoutes);
   await app.register(resourceTimeBlockRoutes);
+
+  app.get(
+    "/api/organizations/:organizationId/availability/resources",
+    { schema: { params: organizationAvailabilityParamsSchema } },
+    async (request, reply) => {
+      const result = await listManageableScheduleResources({
+        userId: request.verifiedUser.id,
+        organizationId: request.params.organizationId,
+      });
+      if (!result.ok)
+        return sendAvailabilityError(reply, request.id, result.reason);
+      return reply.code(200).send({ items: result.items });
+    },
+  );
 
   app.get(
     "/api/organizations/:organizationId/availability/settings",
