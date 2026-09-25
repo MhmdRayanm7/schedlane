@@ -20,7 +20,7 @@ export function BrandLockup({
       />
       <span
         className={cn(
-          "text-[17px] font-semibold tracking-[-0.025em] text-foreground",
+          "text-[17px] font-semibold tracking text-foreground",
           wordmarkClassName,
         )}
       >
