@@ -8,6 +8,7 @@ import { BookingRulesTab } from "./components/booking-rules-tab";
 import { OrganizationWeeklyHours } from "./components/organization-weekly-hours";
 import { ResourceWeeklyHours } from "./components/resource-weekly-hours";
 import { ScheduleExceptionsTab } from "./components/schedule-exceptions-tab";
+import { ScheduleQueryError } from "./components/schedule-query-error";
 import {
   useManageableScheduleResources,
   useOrganizationWeeklyHours,
@@ -26,9 +27,9 @@ function HoursSkeleton() {
       className="space-y-6"
       role="status"
     >
-      <div className="rounded-lg border border-border bg-surface p-6">
+      <div className="border-t border-border p-6">
         <div className="h-5 w-48 rounded bg-border animate-pulse" />
-        <div className="mt-2 h-4 w-72 rounded bg-border-subtle animate-pulse" />
+        <div className="mt-2 h-4 w-60 max-w-full rounded bg-border/60 animate-pulse" />
         <div className="mt-6 divide-y divide-border">
           {[1, 2, 3, 4, 5, 6, 7].map((i) => (
             <div key={i} className="flex items-center justify-between py-3">
@@ -83,77 +84,63 @@ export function SchedulePage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-[1040px] space-y-5">
       <PageHeader
         title="Schedule"
         description="Configure working hours, availability, and time away."
       />
 
-      {/* Tabs navigation */}
       <div
-        className="flex gap-1 border-b border-border text-sm font-medium"
         role="tablist"
         aria-label="Schedule sections"
+        className="flex border-b border-border"
       >
-        <button
-          type="button"
-          role="tab"
-          id="tab-hours"
-          aria-controls="panel-hours"
-          aria-selected={activeTab === "hours"}
-          onClick={() => setActiveTab("hours")}
-          className={`border-b-2 px-4 py-2.5 transition-colors ${
-            activeTab === "hours"
-              ? "border-primary font-semibold text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Hours
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="tab-exceptions"
-          aria-controls="panel-exceptions"
-          aria-selected={activeTab === "exceptions"}
-          onClick={() => setActiveTab("exceptions")}
-          className={`border-b-2 px-4 py-2.5 transition-colors ${
-            activeTab === "exceptions"
-              ? "border-primary font-semibold text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Exceptions
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="tab-rules"
-          aria-controls="panel-rules"
-          aria-selected={activeTab === "rules"}
-          onClick={() => setActiveTab("rules")}
-          className={`border-b-2 px-4 py-2.5 transition-colors ${
-            activeTab === "rules"
-              ? "border-primary font-semibold text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Booking rules
-        </button>
+        {(
+          [
+            ["hours", "Hours"],
+            ["exceptions", "Exceptions"],
+            ["rules", "Booking rules"],
+          ] as const
+        ).map(([tab, label], index, tabs) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            id={`tab-${tab}`}
+            aria-controls={`panel-${tab}`}
+            aria-selected={activeTab === tab}
+            tabIndex={activeTab === tab ? 0 : -1}
+            onClick={() => setActiveTab(tab)}
+            onKeyDown={(event) => {
+              let next = index;
+              if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+              else if (event.key === "ArrowLeft")
+                next = (index + tabs.length - 1) % tabs.length;
+              else if (event.key === "Home") next = 0;
+              else if (event.key === "End") next = tabs.length - 1;
+              else return;
+              event.preventDefault();
+              setActiveTab(tabs[next][0]);
+              document.getElementById(`tab-${tabs[next][0]}`)?.focus();
+            }}
+            className={`min-h-10 border-b-2 px-3 py-2 text-sm transition-colors duration-150 hover:bg-surface-hover focus-visible:outline-offset-[-2px] sm:px-4 ${activeTab === tab ? "border-primary font-semibold text-foreground" : "border-transparent font-medium text-muted-foreground"}`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      {/* Hours Tab */}
       {activeTab === "hours" && (
         <div
           id="panel-hours"
           role="tabpanel"
           aria-labelledby="tab-hours"
-          className="space-y-8"
+          className="space-y-6"
         >
           {orgHoursQuery.isLoading ? (
             <HoursSkeleton />
           ) : orgHoursQuery.isError ? (
-            <div className="rounded-lg border border-border bg-surface p-8 text-center">
+            <div className="border-t border-border p-8 text-center">
               <h2 className="text-base font-semibold text-foreground">
                 Unable to load business hours
               </h2>
@@ -182,6 +169,18 @@ export function SchedulePage() {
                 isSaving={updateOrgHoursMutation.isPending}
               />
 
+              {manageableResourcesQuery.isError ? (
+                <ScheduleQueryError
+                  message="Could not load schedule resources."
+                  onRetry={() => void manageableResourcesQuery.refetch()}
+                />
+              ) : null}
+              {resourceHoursQuery.isError ? (
+                <ScheduleQueryError
+                  message="Could not load this resource's hours."
+                  onRetry={() => void resourceHoursQuery.refetch()}
+                />
+              ) : null}
               <ResourceWeeklyHours
                 resources={resources}
                 selectedResourceId={selectedResourceId}
@@ -191,7 +190,7 @@ export function SchedulePage() {
                 isLoadingResourceHours={
                   Boolean(selectedResourceId) && resourceHoursQuery.isLoading
                 }
-                isReadOnly={isReadOnly}
+                isReadOnly={isReadOnly || !resourceHoursQuery.data}
                 onSave={async (days) => {
                   await updateResourceHoursMutation.mutateAsync(days);
                 }}
@@ -202,7 +201,6 @@ export function SchedulePage() {
         </div>
       )}
 
-      {/* Exceptions Tab */}
       {activeTab === "exceptions" && (
         <div
           id="panel-exceptions"
@@ -220,7 +218,6 @@ export function SchedulePage() {
         </div>
       )}
 
-      {/* Booking Rules Tab */}
       {activeTab === "rules" && (
         <div id="panel-rules" role="tabpanel" aria-labelledby="tab-rules">
           <BookingRulesTab

@@ -14,7 +14,7 @@ function SelectTrigger({
   return (
     <SelectPrimitive.Trigger
       className={cn(
-        "flex h-10 w-full items-center justify-between rounded-md border border-border-strong bg-surface px-3 text-sm text-foreground outline-none transition-colors duration-150 hover:border-[#bcc6c3] focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-10 min-w-0 w-full items-center justify-between gap-2 [&>span:first-child]:truncate [&>span:first-child]:min-w-0 rounded-md border border-border-strong bg-surface [@media(pointer:coarse)]:text-base px-3 text-sm text-foreground outline-none transition-colors duration-150 enabled:hover:border-muted-foreground focus-visible:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus aria-invalid:border-destructive disabled:bg-background disabled:cursor-not-allowed disabled:opacity-65",
         className,
       )}
       {...props}
@@ -23,7 +23,7 @@ function SelectTrigger({
       <SelectPrimitive.Icon asChild>
         <ChevronDown
           aria-hidden="true"
-          className="size-4 text-muted-foreground"
+          className="size-4 shrink-0 text-muted-foreground"
         />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
@@ -39,14 +39,16 @@ function SelectContent({
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
         className={cn(
-          "z-[70] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-border bg-surface p-1 shadow-[0_10px_30px_rgba(24,27,27,0.12)]",
+          "z-[70] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] max-h-[var(--radix-select-content-available-height)] overflow-hidden rounded-md border border-border bg-surface p-1 shadow-lg data-[state=open]:animate-[menu-in_160ms_ease-out] data-[state=closed]:animate-[menu-out_120ms_ease-in]",
           className,
         )}
         position="popper"
         sideOffset={5}
         {...props}
       >
-        <SelectPrimitive.Viewport>{children}</SelectPrimitive.Viewport>
+        <SelectPrimitive.Viewport className="max-h-[min(320px,var(--radix-select-content-available-height))] overflow-y-auto">
+          {children}
+        </SelectPrimitive.Viewport>
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   );
@@ -60,7 +62,7 @@ function SelectItem({
   return (
     <SelectPrimitive.Item
       className={cn(
-        "relative flex h-9 cursor-default select-none items-center rounded px-8 text-sm outline-none data-[highlighted]:bg-primary-subtle data-[highlighted]:text-foreground",
+        "relative flex min-h-9 cursor-pointer select-none items-center rounded px-8 py-2 text-sm outline-none [overflow-wrap:anywhere] data-[state=checked]:font-semibold data-[disabled]:opacity-65 data-[disabled]:pointer-events-none data-[highlighted]:bg-surface-hover data-[highlighted]:text-foreground",
         className,
       )}
       {...props}

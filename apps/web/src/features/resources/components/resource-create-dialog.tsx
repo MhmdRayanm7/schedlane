@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/shared/api/api-error";
 import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/shared/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/shared/components/ui/dialog";
+import { Input } from "@/shared/components/ui/input";
 import type { CreateResourceInput } from "../types";
 
-type ResourceCreateSheetProps = {
+type ResourceCreateDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: CreateResourceInput) => Promise<void>;
@@ -19,13 +18,13 @@ type ResourceCreateSheetProps = {
   isReadOnly: boolean;
 };
 
-export function ResourceCreateSheet({
+export function ResourceCreateDialog({
   open,
   onOpenChange,
   onSubmit,
   isPending,
   isReadOnly,
-}: ResourceCreateSheetProps) {
+}: ResourceCreateDialogProps) {
   const [name, setName] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -77,19 +76,24 @@ export function ResourceCreateSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>New resource</SheetTitle>
-          <SheetDescription>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isPending) onOpenChange(nextOpen);
+      }}
+    >
+      <DialogContent className="max-w-[460px]" aria-busy={isPending}>
+        <header>
+          <DialogTitle>New resource</DialogTitle>
+          <DialogDescription>
             Add a person, room, chair, or other bookable resource.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </header>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {errorMessage ? (
             <div
-              className="rounded-md border border-[#e7b7b2] bg-[#fdf3f2] p-3 text-sm text-destructive"
+              className="rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
               role="alert"
             >
               {errorMessage}
@@ -99,7 +103,7 @@ export function ResourceCreateSheet({
           <div className="space-y-1.5">
             <label
               htmlFor="resource-name"
-              className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              className="block text-sm font-medium text-foreground"
             >
               Name
             </label>
@@ -113,9 +117,6 @@ export function ResourceCreateSheet({
               placeholder="e.g. Chair 1, Room 102, or Barber"
               maxLength={120}
             />
-            <p className="text-xs text-subtle-foreground">
-              A resource can be a staff member, chair, room, or equipment.
-            </p>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
@@ -127,12 +128,16 @@ export function ResourceCreateSheet({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isReadOnly || isPending}>
-              {isPending ? "Creating…" : "Create resource"}
+            <Button
+              loading={isPending}
+              type="submit"
+              disabled={isReadOnly || isPending}
+            >
+              Create resource
             </Button>
           </div>
         </form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

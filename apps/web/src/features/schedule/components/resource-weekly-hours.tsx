@@ -305,7 +305,7 @@ export function ResourceWeeklyHours({
 
   if (resources.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-surface p-6 text-center">
+      <div className="border-t border-border p-6 text-center">
         <h3 className="text-sm font-semibold text-foreground">
           No resources available for scheduling
         </h3>
@@ -317,15 +317,14 @@ export function ResourceWeeklyHours({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface">
-      <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+    <div className="border-t border-border">
+      <div className="flex flex-col gap-3 py-4 min-[800px]:flex-row min-[800px]:items-center min-[800px]:justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">
             Resource weekly hours
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Configure custom schedules for specific team resources or inherit
-            organization hours.
+            Set custom hours or inherit the organization schedule.
           </p>
         </div>
 
@@ -333,7 +332,7 @@ export function ResourceWeeklyHours({
           <label htmlFor="resource-select" className="sr-only">
             Select Resource
           </label>
-          <div className="w-56">
+          <div className="min-w-0 w-full sm:w-64">
             <Select
               value={selectedResourceId ?? ""}
               onValueChange={onSelectResource}
@@ -352,7 +351,7 @@ export function ResourceWeeklyHours({
           </div>
           {isResourceInactive && (
             <span
-              className="inline-flex items-center gap-1 rounded bg-surface-subtle px-2 py-1 text-xs font-medium text-muted-foreground border border-border"
+              className="inline-flex items-center gap-1 rounded bg-background px-2 py-1 text-xs font-medium text-muted-foreground border border-border"
               role="status"
             >
               <AlertCircle aria-hidden="true" className="size-3 text-warning" />
@@ -391,15 +390,15 @@ export function ResourceWeeklyHours({
             return (
               <div
                 key={weekday}
-                className="flex flex-col gap-2 p-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-6"
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 py-3 min-[800px]:grid-cols-[164px_minmax(0,1fr)_auto]"
               >
-                <div className="sm:w-36 sm:pt-1">
+                <div className="min-h-9 pt-2">
                   <span className="text-sm font-medium text-foreground">
                     {label}
                   </span>
                 </div>
 
-                <div className="flex-1 space-y-2">
+                <div className="col-span-2 min-w-0 space-y-2 min-[800px]:col-span-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <Select
                       value={dayDraft.mode}
@@ -410,7 +409,7 @@ export function ResourceWeeklyHours({
                     >
                       <SelectTrigger
                         aria-label={`Mode for ${label}`}
-                        className="h-8 w-44 text-xs"
+                        className="h-9 w-52 text-xs"
                       >
                         <SelectValue />
                       </SelectTrigger>
@@ -458,7 +457,7 @@ export function ResourceWeeklyHours({
                       {error && (
                         <p
                           role="alert"
-                          className="text-xs font-medium text-danger"
+                          className="text-sm font-medium text-destructive"
                         >
                           {error}
                         </p>
@@ -467,7 +466,7 @@ export function ResourceWeeklyHours({
                   )}
                 </div>
 
-                <div className="pt-1">
+                <div className="col-start-2 row-start-1 min-[800px]:col-start-3">
                   {dayDraft.mode === "custom" && (
                     <Button
                       type="button"
@@ -475,10 +474,11 @@ export function ResourceWeeklyHours({
                       size="sm"
                       disabled={isWritesDisabled}
                       onClick={() => handleAddInterval(weekday)}
-                      className="h-7 text-xs"
+                      className="size-9 px-0"
+                      aria-label={`Add interval for ${label}`}
+                      title="Add interval"
                     >
-                      <Plus aria-hidden="true" className="size-3" />
-                      Add interval
+                      <Plus aria-hidden="true" className="size-4" />
                     </Button>
                   )}
                 </div>
@@ -488,7 +488,7 @@ export function ResourceWeeklyHours({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-4">
         <div className="flex items-center gap-2">
           {saveSuccess && (
             <span
@@ -500,7 +500,7 @@ export function ResourceWeeklyHours({
             </span>
           )}
           {saveError && (
-            <span role="alert" className="text-xs font-medium text-danger">
+            <span role="alert" className="text-sm font-medium text-destructive">
               {saveError}
             </span>
           )}
@@ -517,9 +517,10 @@ export function ResourceWeeklyHours({
             hasAnyError ||
             !selectedResourceId
           }
-          className="text-xs"
+          className="text-sm"
+          loading={isSaving}
         >
-          {isSaving ? "Saving…" : "Save resource hours"}
+          Save resource hours
         </Button>
       </div>
     </div>

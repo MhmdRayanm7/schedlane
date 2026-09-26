@@ -4,7 +4,7 @@ import { useOutletContext, useParams } from "react-router";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
-import { ResourceCreateSheet } from "./components/resource-create-sheet";
+import { ResourceCreateDialog } from "./components/resource-create-dialog";
 import { ResourceDetailsSheet } from "./components/resource-details-sheet";
 import { ResourceList } from "./components/resource-list";
 import {
@@ -20,7 +20,7 @@ function ResourcesSkeleton() {
     <div
       aria-busy="true"
       aria-label="Loading resources"
-      className="divide-y divide-border rounded-lg border border-border bg-surface"
+      className="divide-y divide-border border-y border-border"
       role="status"
     >
       {[1, 2, 3, 4].map((i) => (
@@ -41,7 +41,7 @@ function ResourcesSkeleton() {
 
 function ResourcesErrorState({ retry }: { retry: () => void }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-8 text-center">
+    <div className="border-y border-border py-6 text-center">
       <h2 className="text-base font-semibold text-foreground">
         Unable to load resources
       </h2>
@@ -64,7 +64,7 @@ function ResourcesEmptyState({
   onNewResource: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-border bg-surface/50 p-12 text-center">
+    <div className="border-y border-border py-8 text-center">
       <h2 className="text-base font-semibold text-foreground">
         No resources yet.
       </h2>
@@ -94,7 +94,8 @@ export function ResourcesPage() {
   const deactivateResourceMutation = useDeactivateResource(organizationId);
   const reactivateResourceMutation = useReactivateResource(organizationId);
 
-  const [createSheetOpen, setCreateSheetOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedResourceId, setSelectedResourceId] = useState<string | null>(
     null,
   );
@@ -122,7 +123,7 @@ export function ResourcesPage() {
         description="Manage the people and resources that deliver your services."
         action={
           !isReadOnly ? (
-            <Button size="sm" onClick={() => setCreateSheetOpen(true)}>
+            <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
               <Plus aria-hidden="true" className="size-4" />
               New resource
             </Button>
@@ -137,29 +138,30 @@ export function ResourcesPage() {
           <ResourcesErrorState retry={() => void resourcesQuery.refetch()} />
         ) : null}
 
-        {resourcesQuery.isSuccess && resources.length === 0 ? (
+        {resourcesQuery.data && resources.length === 0 ? (
           <ResourcesEmptyState
             isReadOnly={isReadOnly}
-            onNewResource={() => setCreateSheetOpen(true)}
+            onNewResource={() => setCreateDialogOpen(true)}
           />
         ) : null}
 
-        {resourcesQuery.isSuccess && resources.length > 0 ? (
+        {resourcesQuery.data && resources.length > 0 ? (
           <ResourceList
             resources={resources}
-            onSelectResource={(resource) => setSelectedResourceId(resource.id)}
+            onSelectResource={(resource) => {
+              setSelectedResourceId(resource.id);
+              setDetailsOpen(true);
+            }}
           />
         ) : null}
       </section>
 
-      {/* Details Sheet */}
       <ResourceDetailsSheet
+        key={selectedResourceId}
         resource={selectedResource}
         organizationId={organizationId}
-        open={Boolean(selectedResource)}
-        onOpenChange={(open) => {
-          if (!open) setSelectedResourceId(null);
-        }}
+        open={detailsOpen && Boolean(selectedResource)}
+        onOpenChange={setDetailsOpen}
         onDeactivate={handleDeactivate}
         onReactivate={handleReactivate}
         isReadOnly={isReadOnly}
@@ -169,10 +171,9 @@ export function ResourcesPage() {
         }
       />
 
-      {/* Create Sheet */}
-      <ResourceCreateSheet
-        open={createSheetOpen}
-        onOpenChange={setCreateSheetOpen}
+      <ResourceCreateDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
         onSubmit={handleCreateResource}
         isPending={createResourceMutation.isPending}
         isReadOnly={isReadOnly}

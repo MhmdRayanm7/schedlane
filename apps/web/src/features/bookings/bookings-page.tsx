@@ -25,6 +25,7 @@ export function BookingsPage() {
   const { currentOrganization } = useOutletContext<OrganizationAccessContext>();
   const { organizationId } = useParams<{ organizationId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
     null,
   );
@@ -96,31 +97,37 @@ export function BookingsPage() {
         {bookingsQuery.isError ? (
           <BookingsErrorState retry={() => void bookingsQuery.refetch()} />
         ) : null}
-        {bookingsQuery.isSuccess && view === "day" ? (
+        {bookingsQuery.data && view === "day" ? (
           <BookingsDayView
             bookings={bookingsQuery.data.bookings}
-            onSelectBooking={setSelectedBookingId}
-            selectedBookingId={selectedBookingId}
+            onSelectBooking={(id) => {
+              setSelectedBookingId(id);
+              setDetailsOpen(true);
+            }}
+            selectedBookingId={detailsOpen ? selectedBookingId : null}
           />
         ) : null}
-        {bookingsQuery.isSuccess && view === "week" ? (
+        {bookingsQuery.data && view === "week" ? (
           <BookingsWeekView
             bookings={bookingsQuery.data.bookings}
             date={date}
-            onSelectBooking={setSelectedBookingId}
-            selectedBookingId={selectedBookingId}
+            onSelectBooking={(id) => {
+              setSelectedBookingId(id);
+              setDetailsOpen(true);
+            }}
+            selectedBookingId={detailsOpen ? selectedBookingId : null}
             today={today}
           />
         ) : null}
       </section>
       <BookingDetailsSheet
+        key={selectedBookingId}
+        open={detailsOpen && Boolean(selectedBooking)}
         booking={selectedBooking}
         isReadOnly={Boolean(
           currentOrganization.archivedAt || currentOrganization.suspendedAt,
         )}
-        onOpenChange={(open) => {
-          if (!open) setSelectedBookingId(null);
-        }}
+        onOpenChange={setDetailsOpen}
         onRescheduled={(targetDate) => {
           updateSearch(targetDate, view);
           setSelectedBookingId(null);

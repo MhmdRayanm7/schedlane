@@ -191,8 +191,8 @@ export function OrganizationDateOverride({
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface">
-      <div className="border-b border-border p-4 sm:px-6">
+    <div className="border-t border-border">
+      <div className="py-4">
         <h3 className="text-sm font-semibold text-foreground">
           Organization exception
         </h3>
@@ -201,7 +201,7 @@ export function OrganizationDateOverride({
         </p>
       </div>
 
-      <div className="space-y-4 p-4 sm:p-6">
+      <div className="space-y-4 pb-5">
         <div className="flex flex-wrap items-center gap-3">
           <label htmlFor="org-date-mode" className="sr-only">
             Organization exception mode
@@ -259,7 +259,7 @@ export function OrganizationDateOverride({
             </div>
 
             {validationError && (
-              <p role="alert" className="text-xs font-medium text-danger">
+              <p role="alert" className="text-sm font-medium text-destructive">
                 {validationError}
               </p>
             )}
@@ -270,7 +270,7 @@ export function OrganizationDateOverride({
               size="sm"
               disabled={isReadOnly || isSaving}
               onClick={handleAddInterval}
-              className="h-7 text-xs"
+              className="h-9 text-xs"
             >
               <Plus aria-hidden="true" className="size-3" />
               Add interval
@@ -279,7 +279,7 @@ export function OrganizationDateOverride({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-4">
         <div className="flex items-center gap-2">
           {saveSuccess && (
             <span
@@ -291,7 +291,7 @@ export function OrganizationDateOverride({
             </span>
           )}
           {saveError && (
-            <span role="alert" className="text-xs font-medium text-danger">
+            <span role="alert" className="text-sm font-medium text-destructive">
               {saveError}
             </span>
           )}
@@ -303,9 +303,10 @@ export function OrganizationDateOverride({
           disabled={
             isReadOnly || isSaving || !isDirty || Boolean(validationError)
           }
-          className="text-xs"
+          className="text-sm"
+          loading={isSaving}
         >
-          {isSaving ? "Saving…" : "Save organization exception"}
+          Save organization exception
         </Button>
       </div>
     </div>

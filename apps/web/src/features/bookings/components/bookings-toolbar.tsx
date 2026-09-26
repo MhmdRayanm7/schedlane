@@ -30,7 +30,7 @@ export function BookingsToolbar({
   view,
 }: BookingsToolbarProps) {
   return (
-    <div className="relative flex flex-col gap-3 border-b border-border py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+    <div className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border py-4 xl:grid-cols-[auto_1fr_auto]">
       <div className="flex items-center gap-2">
         <Button
           className={cn(isCurrentRange && "text-subtle-foreground")}
@@ -58,10 +58,10 @@ export function BookingsToolbar({
         </Button>
       </div>
 
-      <div className="flex min-w-0 items-center gap-2 sm:absolute sm:left-1/2 sm:-translate-x-1/2">
+      <div className="order-3 col-span-2 flex min-w-0 flex-wrap items-center justify-between gap-2 xl:order-none xl:col-span-1 xl:justify-center">
         <p
           aria-live="polite"
-          className="min-w-0 flex-1 truncate text-sm font-semibold tabular-nums sm:min-w-44 sm:text-center"
+          className="min-w-0 text-sm font-semibold tabular-nums"
         >
           {dateLabel}
         </p>
@@ -69,7 +69,7 @@ export function BookingsToolbar({
           <span className="sr-only">Jump to date</span>
           <Input
             aria-label="Jump to date"
-            className="h-9 w-[132px] px-2 text-xs"
+            className="h-9 w-[148px] px-2 text-sm"
             id="bookings-date"
             onChange={(event) => onDateChange(event.target.value)}
             type="date"
@@ -87,8 +87,9 @@ export function BookingsToolbar({
           <button
             aria-pressed={view === option}
             className={cn(
-              "h-8 rounded px-3 text-xs font-medium capitalize text-muted-foreground transition-colors duration-150 hover:text-foreground",
-              view === option && "bg-surface text-foreground shadow-sm",
+              "h-8 rounded border border-transparent px-3 text-sm capitalize text-muted-foreground transition-colors duration-150 hover:bg-surface-hover hover:text-foreground",
+              view === option &&
+                "border-border-strong bg-surface font-semibold text-foreground shadow-sm",
             )}
             key={option}
             onClick={() => onViewChange(option)}

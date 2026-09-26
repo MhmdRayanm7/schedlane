@@ -30,10 +30,11 @@ function WeekBooking({
     <button
       aria-label={`View ${booking.guestName}'s ${booking.serviceName} booking at ${formatBookingTime(booking.startAt)}`}
       className={cn(
-        "w-full rounded-md border border-border bg-surface px-2.5 py-2.5 text-left transition-colors duration-150 hover:border-border-strong hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+        "w-full rounded-md border border-border bg-surface px-2.5 py-2.5 text-left transition-colors duration-150 hover:border-border-strong hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
         selected && "border-primary bg-primary-subtle",
         booking.status === "cancelled" && "text-muted-foreground",
       )}
+      aria-pressed={selected}
       onClick={() => onSelectBooking(booking.id)}
       type="button"
     >
@@ -62,7 +63,7 @@ export function BookingsWeekView({
 }: BookingsWeekViewProps) {
   if (bookings.length === 0) {
     return (
-      <div className="py-16 text-center">
+      <div className="py-10 text-center">
         <h2 className="text-base font-semibold">No bookings for this week.</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
           Appointments will appear here when customers book.
@@ -76,7 +77,7 @@ export function BookingsWeekView({
 
   return (
     <>
-      <div className="hidden grid-cols-7 divide-x divide-border md:grid">
+      <div className="hidden grid-cols-7 divide-x divide-border xl:grid">
         {dates.map((day) => {
           const localDate = formatLocalDate(day);
           const dayBookings = groupedBookings.get(localDate) ?? [];
@@ -88,7 +89,7 @@ export function BookingsWeekView({
               key={localDate}
             >
               <header className={cn("mb-3 px-1", isToday && "text-primary")}>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em]">
+                <p className="text-[11px] font-semibold uppercase">
                   {day.toFormat("ccc")}
                 </p>
                 <p className="mt-1 text-lg font-semibold tabular-nums">
@@ -116,7 +117,7 @@ export function BookingsWeekView({
         })}
       </div>
 
-      <div className="divide-y divide-border md:hidden">
+      <div className="divide-y divide-border xl:hidden">
         {dates.map((day) => {
           const localDate = formatLocalDate(day);
           const dayBookings = groupedBookings.get(localDate) ?? [];

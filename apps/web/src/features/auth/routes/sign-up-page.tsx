@@ -83,7 +83,7 @@ export function SignUpPage() {
     >
       {error ? (
         <p
-          className="mb-5 rounded-md border border-[#f0c8c4] bg-[#fff7f6] px-3 py-2.5 text-sm text-destructive"
+          className="mb-5 rounded-md border border-destructive/25 bg-destructive-subtle px-3 py-2.5 text-sm text-destructive"
           id="sign-up-error"
           role="alert"
         >
@@ -154,8 +154,13 @@ export function SignUpPage() {
             value={fields.confirmPassword}
           />
         </div>
-        <Button className="w-full" disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Creating account…" : "Create account"}
+        <Button
+          className="w-full"
+          loading={isSubmitting}
+          disabled={isSubmitting}
+          type="submit"
+        >
+          Create account
         </Button>
       </form>
 

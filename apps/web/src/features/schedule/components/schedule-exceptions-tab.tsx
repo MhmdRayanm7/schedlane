@@ -27,6 +27,7 @@ import type { ManageableResource, WeeklyHoursResponse } from "../types";
 import { OrganizationDateOverride } from "./organization-date-override";
 import { ResourceDateOverride } from "./resource-date-override";
 import { ResourceTimeBlocks } from "./resource-time-blocks";
+import { ScheduleQueryError } from "./schedule-query-error";
 
 type ScheduleExceptionsTabProps = {
   organizationId: string;
@@ -104,8 +105,7 @@ export function ScheduleExceptionsTab({
 
   return (
     <div className="space-y-6">
-      {/* Date Picker Section */}
-      <div className="rounded-lg border border-border bg-surface p-4 sm:p-6">
+      <div className="border-b border-border pb-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <label
@@ -120,7 +120,7 @@ export function ScheduleExceptionsTab({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <span className="text-xs font-medium text-foreground">
               {formatDateDisplay(selectedDate)}
             </span>
@@ -139,23 +139,33 @@ export function ScheduleExceptionsTab({
         </div>
       </div>
 
-      {/* Organization Date Override */}
-      <OrganizationDateOverride
-        key={selectedDate}
-        date={selectedDate}
-        weekday={selectedWeekday}
-        override={orgOverrideQuery.data}
-        orgWeeklyHours={orgWeeklyHours}
-        isReadOnly={isReadOnly}
-        onSave={async (data) => {
-          await updateOrgOverrideMutation.mutateAsync(data);
-        }}
-        isSaving={updateOrgOverrideMutation.isPending}
-      />
+      {orgOverrideQuery.isError ? (
+        <ScheduleQueryError
+          message="Could not load the organization exception."
+          onRetry={() => void orgOverrideQuery.refetch()}
+        />
+      ) : null}
+      {orgOverrideQuery.data ? (
+        <OrganizationDateOverride
+          key={selectedDate}
+          date={selectedDate}
+          weekday={selectedWeekday}
+          override={orgOverrideQuery.data}
+          orgWeeklyHours={orgWeeklyHours}
+          isReadOnly={isReadOnly}
+          onSave={async (data) => {
+            await updateOrgOverrideMutation.mutateAsync(data);
+          }}
+          isSaving={updateOrgOverrideMutation.isPending}
+        />
+      ) : orgOverrideQuery.isPending ? (
+        <p role="status" className="py-5 text-sm text-muted-foreground">
+          Loading organization exception...
+        </p>
+      ) : null}
 
-      {/* Resource Section Header / Selector */}
       {resources.length === 0 ? (
-        <div className="rounded-lg border border-border bg-surface p-6 text-center">
+        <div className="border-t border-border p-6 text-center">
           <h3 className="text-sm font-semibold text-foreground">
             No resources available for scheduling
           </h3>
@@ -166,22 +176,21 @@ export function ScheduleExceptionsTab({
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex flex-col gap-3 border-t border-border pt-5 min-[800px]:flex-row min-[800px]:items-center min-[800px]:justify-between">
             <div>
               <h3 className="text-sm font-semibold text-foreground">
                 Resource schedule exceptions
               </h3>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Select a team resource to customize their schedule or log
-                blocked time.
+                Select a resource to manage exceptions and blocked time.
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
               <label htmlFor="exceptions-resource-select" className="sr-only">
                 Select Resource
               </label>
-              <div className="w-56">
+              <div className="min-w-0 w-full sm:w-64">
                 <Select
                   value={selectedResourceId ?? ""}
                   onValueChange={onSelectResource}
@@ -203,7 +212,7 @@ export function ScheduleExceptionsTab({
               </div>
               {isResourceInactive && (
                 <span
-                  className="inline-flex items-center gap-1 rounded bg-surface-subtle px-2 py-1 text-xs font-medium text-muted-foreground border border-border"
+                  className="inline-flex items-center gap-1 rounded bg-background px-2 py-1 text-xs font-medium text-muted-foreground border border-border"
                   role="status"
                 >
                   <AlertCircle
@@ -218,29 +227,45 @@ export function ScheduleExceptionsTab({
 
           {selectedResourceId && (
             <>
-              {/* Resource Date Override */}
-              <ResourceDateOverride
-                key={`${selectedResourceId}-${selectedDate}`}
-                date={selectedDate}
-                weekday={selectedWeekday}
-                resource={selectedResource}
-                override={resourceOverrideQuery.data}
-                resourceWeeklyHours={resourceWeeklyHoursQuery.data}
-                orgWeeklyHours={orgWeeklyHours}
-                isReadOnly={isReadOnly}
-                onSave={async (data) => {
-                  await updateResourceOverrideMutation.mutateAsync(data);
-                }}
-                isSaving={updateResourceOverrideMutation.isPending}
-              />
+              {resourceOverrideQuery.isError ? (
+                <ScheduleQueryError
+                  message="Could not load the resource exception."
+                  onRetry={() => void resourceOverrideQuery.refetch()}
+                />
+              ) : null}
+              {resourceOverrideQuery.data ? (
+                <ResourceDateOverride
+                  key={`${selectedResourceId}-${selectedDate}`}
+                  date={selectedDate}
+                  weekday={selectedWeekday}
+                  resource={selectedResource}
+                  override={resourceOverrideQuery.data}
+                  resourceWeeklyHours={resourceWeeklyHoursQuery.data}
+                  orgWeeklyHours={orgWeeklyHours}
+                  isReadOnly={isReadOnly}
+                  onSave={async (data) => {
+                    await updateResourceOverrideMutation.mutateAsync(data);
+                  }}
+                  isSaving={updateResourceOverrideMutation.isPending}
+                />
+              ) : resourceOverrideQuery.isPending ? (
+                <p role="status" className="py-5 text-sm text-muted-foreground">
+                  Loading resource exception...
+                </p>
+              ) : null}
 
-              {/* Resource Time Blocks */}
+              {timeBlocksQuery.isError ? (
+                <ScheduleQueryError
+                  message="Could not load blocked time."
+                  onRetry={() => void timeBlocksQuery.refetch()}
+                />
+              ) : null}
               <ResourceTimeBlocks
                 date={selectedDate}
                 resource={selectedResource}
                 timeBlocks={timeBlocksQuery.data?.items ?? []}
                 isLoading={timeBlocksQuery.isLoading}
-                isReadOnly={isReadOnly}
+                isReadOnly={isReadOnly || !timeBlocksQuery.data}
                 onCreateBlock={async (interval) => {
                   await createTimeBlockMutation.mutateAsync(interval);
                 }}

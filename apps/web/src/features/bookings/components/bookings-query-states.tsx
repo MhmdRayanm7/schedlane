@@ -16,7 +16,7 @@ export function BookingsLoadingState() {
             <span className="block h-4 w-10 animate-pulse rounded bg-[#e9edec]" />
           </div>
           <div className="flex-1">
-            <span className="block h-4 w-32 animate-pulse rounded bg-[#e2e7e6]" />
+            <span className="block h-4 w-32 animate-pulse rounded bg-border" />
             <span className="mt-2 block h-3 w-48 max-w-full animate-pulse rounded bg-[#edf0ef]" />
           </div>
           <span

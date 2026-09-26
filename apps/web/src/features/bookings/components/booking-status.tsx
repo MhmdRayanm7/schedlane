@@ -23,7 +23,7 @@ export function BookingStatus({ status }: { status: BookingStatusValue }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${presentation.className}`}
+      className={`inline-flex w-fit shrink-0 items-center whitespace-nowrap gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${presentation.className}`}
     >
       <span
         aria-hidden="true"

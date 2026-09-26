@@ -196,8 +196,8 @@ export function OrganizationWeeklyHours({
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface">
-      <div className="border-b border-border p-4 sm:px-6">
+    <div>
+      <div className="py-4">
         <h2 className="text-base font-semibold text-foreground">
           Organization business hours
         </h2>
@@ -216,24 +216,27 @@ export function OrganizationWeeklyHours({
           return (
             <div
               key={weekday}
-              className="flex flex-col gap-2 p-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-6"
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 py-3 min-[800px]:grid-cols-[164px_minmax(0,1fr)_auto]"
             >
-              <div className="flex items-center gap-3 sm:w-36 sm:pt-1">
-                <span className="w-24 text-sm font-medium text-foreground">
+              <div className="flex min-h-9 items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-4 shrink-0 accent-primary"
+                  aria-label={`${label} open`}
+                  checked={isOpen}
+                  disabled={isReadOnly || isSaving}
+                  onChange={(event) =>
+                    event.target.checked
+                      ? handleDayToggleOpen(weekday)
+                      : handleDayClose(weekday)
+                  }
+                />
+                <span className="text-sm font-medium text-foreground">
                   {label}
-                </span>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                    isOpen
-                      ? "bg-primary/10 text-primary"
-                      : "bg-surface-subtle text-muted-foreground"
-                  }`}
-                >
-                  {isOpen ? "Open" : "Closed"}
                 </span>
               </div>
 
-              <div className="flex-1 space-y-2">
+              <div className="col-span-2 min-w-0 space-y-2 min-[800px]:col-span-1">
                 {isOpen ? (
                   <div className="space-y-2">
                     {dayDrafts.map((intervalDraft, idx) => (
@@ -252,7 +255,7 @@ export function OrganizationWeeklyHours({
                     {error && (
                       <p
                         role="alert"
-                        className="text-xs font-medium text-danger"
+                        className="text-sm font-medium text-destructive"
                       >
                         {error}
                       </p>
@@ -265,42 +268,24 @@ export function OrganizationWeeklyHours({
                 )}
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
+              <div className="col-start-2 row-start-1 flex items-center gap-2 min-[800px]:col-start-3">
                 {isOpen ? (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isReadOnly || isSaving}
-                      onClick={() => handleAddInterval(weekday)}
-                      className="h-7 text-xs"
-                    >
-                      <Plus aria-hidden="true" className="size-3" />
-                      Add interval
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isReadOnly || isSaving}
-                      onClick={() => handleDayClose(weekday)}
-                      className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      Close
-                    </Button>
-                  </>
-                ) : (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     disabled={isReadOnly || isSaving}
-                    onClick={() => handleDayToggleOpen(weekday)}
-                    className="h-7 text-xs"
+                    onClick={() => handleAddInterval(weekday)}
+                    className="size-9 px-0"
+                    aria-label={`Add interval for ${label}`}
+                    title="Add interval"
                   >
-                    Open
+                    <Plus aria-hidden="true" className="size-4" />
                   </Button>
+                ) : (
+                  <span className="py-2 text-xs text-muted-foreground">
+                    Closed
+                  </span>
                 )}
               </div>
             </div>
@@ -308,7 +293,7 @@ export function OrganizationWeeklyHours({
         })}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-4">
         <div className="flex items-center gap-2">
           {saveSuccess && (
             <span
@@ -320,7 +305,7 @@ export function OrganizationWeeklyHours({
             </span>
           )}
           {saveError && (
-            <span role="alert" className="text-xs font-medium text-danger">
+            <span role="alert" className="text-sm font-medium text-destructive">
               {saveError}
             </span>
           )}
@@ -330,9 +315,10 @@ export function OrganizationWeeklyHours({
           type="button"
           onClick={handleSave}
           disabled={isReadOnly || isSaving || !isDirty || hasAnyError}
-          className="text-xs"
+          className="text-sm"
+          loading={isSaving}
         >
-          {isSaving ? "Saving…" : "Save business hours"}
+          Save business hours
         </Button>
       </div>
     </div>

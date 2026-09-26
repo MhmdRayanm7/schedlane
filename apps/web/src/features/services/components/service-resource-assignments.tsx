@@ -129,14 +129,13 @@ export function ServiceResourceAssignments({
 
       {actionError ? (
         <div
-          className="rounded-md border border-[#e7b7b2] bg-[#fdf3f2] p-3 text-xs text-destructive"
+          className="rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-xs text-destructive"
           role="alert"
         >
           {actionError}
         </div>
       ) : null}
 
-      {/* Loading state */}
       {assignedQuery.isPending ? (
         <div aria-busy="true" className="space-y-2 py-2" role="status">
           <div className="h-4 w-32 rounded bg-border animate-pulse" />
@@ -155,7 +154,7 @@ export function ServiceResourceAssignments({
           ) : (
             <ul
               aria-label="Assigned resources list"
-              className="divide-y divide-border rounded-lg border border-border bg-background"
+              className="divide-y divide-border border-y border-border"
             >
               {assignedResources.map((resource) => {
                 const isResourceActive = resource.deactivatedAt === null;
@@ -169,15 +168,17 @@ export function ServiceResourceAssignments({
                       <span
                         className={cn(
                           "size-2 shrink-0 rounded-full",
-                          isResourceActive ? "bg-[#2e7d32]" : "bg-[#9aa0a6]",
+                          isResourceActive
+                            ? "bg-primary"
+                            : "bg-subtle-foreground",
                         )}
                         aria-hidden="true"
                       />
-                      <span className="text-sm font-medium text-foreground truncate">
+                      <span className="text-sm font-medium text-foreground [overflow-wrap:anywhere]">
                         {resource.name}
                       </span>
                       {!isResourceActive ? (
-                        <span className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium bg-[#f1f3f4] text-[#5f6368]">
+                        <span className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium bg-background text-muted-foreground">
                           Inactive
                         </span>
                       ) : null}
@@ -188,10 +189,11 @@ export function ServiceResourceAssignments({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="size-7 text-muted-foreground hover:text-destructive"
+                        className="size-9 text-muted-foreground hover:text-destructive"
                         onClick={() => handleUnassign(resource.id)}
                         disabled={unassignMutation.isPending}
                         aria-label={`Unassign ${resource.name}`}
+                        title="Unassign resource"
                       >
                         <Trash2 aria-hidden="true" className="size-3.5" />
                       </Button>
@@ -202,7 +204,6 @@ export function ServiceResourceAssignments({
             </ul>
           )}
 
-          {/* Assignment form */}
           {!isReadOnly ? (
             <div className="pt-2">
               {!isServiceActive ? (
@@ -221,14 +222,14 @@ export function ServiceResourceAssignments({
                   All organization resources are assigned to this service.
                 </p>
               ) : (
-                <form onSubmit={handleAssign} className="flex gap-2">
-                  <div className="flex-1">
+                <form onSubmit={handleAssign} className="flex flex-wrap gap-2">
+                  <div className="min-w-0 flex-1">
                     <label htmlFor="assign-resource-select" className="sr-only">
                       Select resource to assign
                     </label>
                     <select
                       id="assign-resource-select"
-                      className="h-9 w-full rounded-md border border-border-strong bg-surface px-2.5 text-xs text-foreground transition-colors duration-150 outline-none hover:border-[#bcc6c3] focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-focus"
+                      className="h-9 min-w-0 w-full rounded-md border border-border-strong bg-surface [@media(pointer:coarse)]:text-base px-2.5 text-xs text-foreground transition-colors duration-150 outline-none enabled:hover:border-muted-foreground focus-visible:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-focus"
                       value={selectedResourceId}
                       onChange={(e) => setSelectedResourceId(e.target.value)}
                       disabled={assignMutation.isPending}

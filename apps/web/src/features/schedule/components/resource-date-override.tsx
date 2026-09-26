@@ -216,8 +216,8 @@ export function ResourceDateOverride({
   if (!resource) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-surface">
-      <div className="border-b border-border p-4 sm:px-6">
+    <div className="border-t border-border">
+      <div className="py-4">
         <h3 className="text-sm font-semibold text-foreground">
           Resource exception: {resource.name}
         </h3>
@@ -226,7 +226,7 @@ export function ResourceDateOverride({
         </p>
       </div>
 
-      <div className="space-y-4 p-4 sm:p-6">
+      <div className="space-y-4 pb-5">
         <div className="flex flex-wrap items-center gap-3">
           <label htmlFor="resource-date-mode" className="sr-only">
             Resource exception mode
@@ -285,7 +285,7 @@ export function ResourceDateOverride({
             </div>
 
             {validationError && (
-              <p role="alert" className="text-xs font-medium text-danger">
+              <p role="alert" className="text-sm font-medium text-destructive">
                 {validationError}
               </p>
             )}
@@ -296,7 +296,7 @@ export function ResourceDateOverride({
               size="sm"
               disabled={isWritesDisabled}
               onClick={handleAddInterval}
-              className="h-7 text-xs"
+              className="h-9 text-xs"
             >
               <Plus aria-hidden="true" className="size-3" />
               Add interval
@@ -305,7 +305,7 @@ export function ResourceDateOverride({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-4">
         <div className="flex items-center gap-2">
           {saveSuccess && (
             <span
@@ -317,7 +317,7 @@ export function ResourceDateOverride({
             </span>
           )}
           {saveError && (
-            <span role="alert" className="text-xs font-medium text-danger">
+            <span role="alert" className="text-sm font-medium text-destructive">
               {saveError}
             </span>
           )}
@@ -327,9 +327,10 @@ export function ResourceDateOverride({
           type="button"
           onClick={handleSave}
           disabled={isWritesDisabled || !isDirty || Boolean(validationError)}
-          className="text-xs"
+          className="text-sm"
+          loading={isSaving}
         >
-          {isSaving ? "Saving…" : "Save resource exception"}
+          Save resource exception
         </Button>
       </div>
     </div>

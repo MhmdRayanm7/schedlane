@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ApiError } from "@/shared/api/api-error";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -46,6 +46,10 @@ export function ServiceDetailsSheet({
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (open) setActionError(null);
+  }, [open]);
+
   if (!service) return null;
 
   const isActive = service.deactivatedAt === null;
@@ -81,22 +85,22 @@ export function ServiceDetailsSheet({
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet open={open && !deactivateDialogOpen} onOpenChange={onOpenChange}>
         <SheetContent>
           <SheetHeader>
             <div className="flex items-center gap-2.5">
               <span
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
+                  "inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium",
                   isActive
-                    ? "bg-[#e8f5e9] text-[#2e7d32]"
-                    : "bg-[#f1f3f4] text-[#5f6368]",
+                    ? "bg-primary-subtle text-primary"
+                    : "bg-background text-muted-foreground",
                 )}
               >
                 <span
                   className={cn(
                     "size-1.5 rounded-full",
-                    isActive ? "bg-[#2e7d32]" : "bg-[#9aa0a6]",
+                    isActive ? "bg-primary" : "bg-subtle-foreground",
                   )}
                   aria-hidden="true"
                 />
@@ -106,37 +110,36 @@ export function ServiceDetailsSheet({
             <SheetTitle className="text-xl font-semibold text-foreground">
               {service.name}
             </SheetTitle>
-            <SheetDescription>
-              Service configuration, pricing, and resource assignments.
+            <SheetDescription className="sr-only">
+              Service details
             </SheetDescription>
           </SheetHeader>
 
           {actionError ? (
             <div
-              className="mt-4 rounded-md border border-[#e7b7b2] bg-[#fdf3f2] p-3 text-sm text-destructive"
+              className="mt-4 rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
               role="alert"
             >
               {actionError}
             </div>
           ) : null}
 
-          {/* Service Attributes */}
-          <div className="mt-6 space-y-4 rounded-lg border border-border bg-background p-4 text-sm">
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
+          <div className="mt-4 space-y-3 text-sm">
+            <div className="flex justify-between items-center gap-4 py-2 border-b border-border/50">
               <span className="text-muted-foreground">Duration</span>
               <span className="font-medium text-foreground">
                 {formatDuration(service.durationMinutes)}
               </span>
             </div>
 
-            <div className="flex justify-between items-center py-1 border-b border-border/50">
+            <div className="flex justify-between items-center gap-4 py-2 border-b border-border/50">
               <span className="text-muted-foreground">Price</span>
               <span className="font-medium text-foreground">
                 {formatPriceIls(service.priceAgorot) ?? "—"}
               </span>
             </div>
 
-            <div className="flex justify-between items-center py-1">
+            <div className="flex justify-between items-center gap-4 py-2">
               <span className="text-muted-foreground">Buffer after</span>
               <span className="font-medium text-foreground">
                 {service.bufferAfterMinutes > 0
@@ -146,7 +149,6 @@ export function ServiceDetailsSheet({
             </div>
           </div>
 
-          {/* Action buttons */}
           {!isReadOnly ? (
             <div className="mt-6 flex flex-wrap gap-2.5">
               <Button
@@ -164,7 +166,10 @@ export function ServiceDetailsSheet({
                 <Button
                   variant="destructiveOutline"
                   size="sm"
-                  onClick={() => setDeactivateDialogOpen(true)}
+                  onClick={() => {
+                    setActionError(null);
+                    setDeactivateDialogOpen(true);
+                  }}
                   disabled={isActionPending}
                 >
                   Deactivate
@@ -183,8 +188,7 @@ export function ServiceDetailsSheet({
             </div>
           ) : null}
 
-          {/* Resource Assignments */}
-          <div className="mt-8 border-t border-border pt-6">
+          <div className="mt-6 border-t border-border pt-5">
             <ServiceResourceAssignments
               organizationId={organizationId}
               serviceId={service.id}
@@ -195,19 +199,28 @@ export function ServiceDetailsSheet({
         </SheetContent>
       </Sheet>
 
-      {/* Deactivation Confirmation Dialog */}
       <Dialog
         open={deactivateDialogOpen}
-        onOpenChange={setDeactivateDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (!isActionPending) setDeactivateDialogOpen(nextOpen);
+        }}
       >
-        <DialogContent>
+        <DialogContent aria-busy={isActionPending}>
           <DialogTitle>Deactivate service</DialogTitle>
           <DialogDescription>
             Are you sure you want to deactivate "{service.name}"? It will no
             longer be available for new bookings. Existing appointments are
             preserved.
           </DialogDescription>
-          <div className="mt-6 flex justify-end gap-3">
+          {actionError ? (
+            <p
+              role="alert"
+              className="mt-4 rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
+            >
+              {actionError}
+            </p>
+          ) : null}
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
             <DialogClose asChild>
               <Button variant="outline" disabled={isActionPending}>
                 Cancel

@@ -104,9 +104,7 @@ export function OrganizationResolver() {
   return (
     <ApplicationFrame>
       <section className="w-full">
-        <h1 className="text-2xl font-semibold tracking-[-0.02em]">
-          Choose an organization
-        </h1>
+        <h1 className="text-2xl font-semibold">Choose an organization</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Select the workspace you want to manage.
         </p>

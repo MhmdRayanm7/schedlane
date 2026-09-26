@@ -1,5 +1,5 @@
 import { AlertCircle, Link2, Unlink2, UserCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ApiError } from "@/shared/api/api-error";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -38,7 +38,7 @@ type ResourceDetailsSheetProps = {
 function roleBadge(role: string) {
   const label = role.charAt(0).toUpperCase() + role.slice(1);
   return (
-    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium bg-[#eef1f0] text-foreground">
+    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium bg-surface-hover text-foreground">
       {label}
     </span>
   );
@@ -57,6 +57,12 @@ export function ResourceDetailsSheet({
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [selectedMembershipId, setSelectedMembershipId] = useState<string>("");
+
+  useEffect(() => {
+    if (!open) return;
+    setActionError(null);
+    setSelectedMembershipId("");
+  }, [open]);
 
   const isActive = resource ? resource.deactivatedAt === null : false;
 
@@ -167,22 +173,22 @@ export function ResourceDetailsSheet({
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet open={open && !deactivateDialogOpen} onOpenChange={onOpenChange}>
         <SheetContent>
           <SheetHeader>
             <div className="flex items-center gap-2.5">
               <span
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
+                  "inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium",
                   isActive
-                    ? "bg-[#e8f5e9] text-[#2e7d32]"
-                    : "bg-[#f1f3f4] text-[#5f6368]",
+                    ? "bg-primary-subtle text-primary"
+                    : "bg-background text-muted-foreground",
                 )}
               >
                 <span
                   className={cn(
                     "size-1.5 rounded-full",
-                    isActive ? "bg-[#2e7d32]" : "bg-[#9aa0a6]",
+                    isActive ? "bg-primary" : "bg-subtle-foreground",
                   )}
                   aria-hidden="true"
                 />
@@ -192,28 +198,30 @@ export function ResourceDetailsSheet({
             <SheetTitle className="text-xl font-semibold text-foreground">
               {resource.name}
             </SheetTitle>
-            <SheetDescription>
-              Resource details, lifecycle, and team member linking.
+            <SheetDescription className="sr-only">
+              Resource details
             </SheetDescription>
           </SheetHeader>
 
           {actionError ? (
             <div
-              className="mt-4 rounded-md border border-[#e7b7b2] bg-[#fdf3f2] p-3 text-sm text-destructive"
+              className="mt-4 rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
               role="alert"
             >
               {actionError}
             </div>
           ) : null}
 
-          {/* Lifecycle actions */}
           {!isReadOnly ? (
             <div className="mt-5 flex gap-2.5">
               {isActive ? (
                 <Button
                   variant="destructiveOutline"
                   size="sm"
-                  onClick={() => setDeactivateDialogOpen(true)}
+                  onClick={() => {
+                    setActionError(null);
+                    setDeactivateDialogOpen(true);
+                  }}
                   disabled={isActionPending}
                 >
                   Deactivate resource
@@ -232,10 +240,9 @@ export function ResourceDetailsSheet({
             </div>
           ) : null}
 
-          {/* Member Linking Section */}
           <section
             aria-labelledby="member-linking-heading"
-            className="mt-8 border-t border-border pt-6"
+            className="mt-6 border-t border-border pt-5"
           >
             <h3
               id="member-linking-heading"
@@ -260,10 +267,9 @@ export function ResourceDetailsSheet({
                 </p>
               ) : linkData ? (
                 <div className="space-y-4">
-                  {/* Pending invitation warning */}
                   {linkData.pendingInvitation ? (
                     <div
-                      className="flex items-start gap-2.5 rounded-lg border border-[#ead9aa] bg-[#fffaf0] p-3 text-xs text-[#725b18]"
+                      className="flex items-start gap-2.5 rounded-lg border border-warning/25 bg-warning-subtle p-3 text-xs text-warning"
                       role="alert"
                     >
                       <AlertCircle className="size-4 shrink-0 mt-0.5" />
@@ -279,23 +285,22 @@ export function ResourceDetailsSheet({
                     </div>
                   ) : null}
 
-                  {/* Current link state */}
                   {linkData.currentLink ? (
-                    <div className="rounded-lg border border-border bg-background p-4">
-                      <div className="flex items-center justify-between gap-3">
+                    <div className="border-y border-border py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <UserCheck
                             aria-hidden="true"
                             className="size-4 text-primary shrink-0"
                           />
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm text-foreground truncate">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium text-sm text-foreground [overflow-wrap:anywhere]">
                                 {linkData.currentLink.name}
                               </span>
                               {roleBadge(linkData.currentLink.role)}
                             </div>
-                            <span className="text-xs text-muted-foreground truncate block">
+                            <span className="text-xs text-muted-foreground [overflow-wrap:anywhere] block">
                               {linkData.currentLink.email}
                             </span>
                           </div>
@@ -344,13 +349,13 @@ export function ResourceDetailsSheet({
                           <div className="space-y-1.5">
                             <label
                               htmlFor="link-member-select"
-                              className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                              className="block text-sm font-medium text-foreground"
                             >
                               Select member to link
                             </label>
                             <select
                               id="link-member-select"
-                              className="h-10 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-foreground transition-colors duration-150 outline-none hover:border-[#bcc6c3] focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus"
+                              className="h-10 min-w-0 w-full rounded-md border border-border-strong bg-surface [@media(pointer:coarse)]:text-base px-3 text-sm text-foreground transition-colors duration-150 outline-none enabled:hover:border-muted-foreground focus-visible:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus"
                               value={selectedMembershipId}
                               onChange={(e) =>
                                 setSelectedMembershipId(e.target.value)
@@ -394,19 +399,28 @@ export function ResourceDetailsSheet({
         </SheetContent>
       </Sheet>
 
-      {/* Deactivation Confirmation Dialog */}
       <Dialog
         open={deactivateDialogOpen}
-        onOpenChange={setDeactivateDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (!isActionPending) setDeactivateDialogOpen(nextOpen);
+        }}
       >
-        <DialogContent>
+        <DialogContent aria-busy={isActionPending}>
           <DialogTitle>Deactivate resource</DialogTitle>
           <DialogDescription>
             Are you sure you want to deactivate "{resource.name}"? It will no
             longer be available for new bookings. Existing appointments and
             member links are retained.
           </DialogDescription>
-          <div className="mt-6 flex justify-end gap-3">
+          {actionError ? (
+            <p
+              role="alert"
+              className="mt-4 rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
+            >
+              {actionError}
+            </p>
+          ) : null}
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
             <DialogClose asChild>
               <Button variant="outline" disabled={isActionPending}>
                 Cancel

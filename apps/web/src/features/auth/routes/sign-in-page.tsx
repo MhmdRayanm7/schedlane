@@ -59,7 +59,7 @@ export function SignInPage() {
     >
       {wasVerified ? (
         <p
-          className="mb-5 rounded-md border border-[#b7dfd8] bg-primary-subtle px-3 py-2.5 text-sm text-primary"
+          className="mb-5 rounded-md border border-primary/25 bg-primary-subtle px-3 py-2.5 text-sm text-primary"
           role="status"
         >
           Your email is verified. You can sign in now.
@@ -68,7 +68,7 @@ export function SignInPage() {
 
       {verificationError ? (
         <p
-          className="mb-5 rounded-md border border-[#f0c8c4] bg-[#fff7f6] px-3 py-2.5 text-sm text-destructive"
+          className="mb-5 rounded-md border border-destructive/25 bg-destructive-subtle px-3 py-2.5 text-sm text-destructive"
           role="alert"
         >
           {verificationErrors[verificationError] ??
@@ -78,7 +78,7 @@ export function SignInPage() {
 
       {error ? (
         <p
-          className="mb-5 rounded-md border border-[#f0c8c4] bg-[#fff7f6] px-3 py-2.5 text-sm text-destructive"
+          className="mb-5 rounded-md border border-destructive/25 bg-destructive-subtle px-3 py-2.5 text-sm text-destructive"
           id="sign-in-error"
           role="alert"
         >
@@ -88,7 +88,7 @@ export function SignInPage() {
 
       {unverified ? (
         <div
-          className="mb-5 rounded-md border border-[#ead9aa] bg-[#fffaf0] px-3 py-2.5 text-sm text-[#725b18]"
+          className="mb-5 rounded-md border border-warning/25 bg-warning-subtle px-3 py-2.5 text-sm text-warning"
           role="alert"
         >
           <p>Verify your email before signing in.</p>
@@ -133,8 +133,13 @@ export function SignInPage() {
             value={password}
           />
         </div>
-        <Button className="w-full" disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Signing in…" : "Sign in"}
+        <Button
+          className="w-full"
+          loading={isSubmitting}
+          disabled={isSubmitting}
+          type="submit"
+        >
+          Sign in
         </Button>
       </form>
 

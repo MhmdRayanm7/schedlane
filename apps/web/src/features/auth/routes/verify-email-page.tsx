@@ -70,7 +70,7 @@ export function VerifyEmailPage() {
 
       {wasSent ? (
         <p
-          className="mb-5 rounded-md border border-[#b7dfd8] bg-primary-subtle px-3 py-2.5 text-sm text-primary"
+          className="mb-5 rounded-md border border-primary/25 bg-primary-subtle px-3 py-2.5 text-sm text-primary"
           role="status"
         >
           If an account exists for that email, a new verification link is on its
@@ -80,7 +80,7 @@ export function VerifyEmailPage() {
 
       {error ? (
         <p
-          className="mb-5 rounded-md border border-[#f0c8c4] bg-[#fff7f6] px-3 py-2.5 text-sm text-destructive"
+          className="mb-5 rounded-md border border-destructive/25 bg-destructive-subtle px-3 py-2.5 text-sm text-destructive"
           id="resend-error"
           role="alert"
         >

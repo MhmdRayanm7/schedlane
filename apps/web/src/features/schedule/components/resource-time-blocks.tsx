@@ -2,13 +2,13 @@ import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ApiError } from "@/shared/api/api-error";
 import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
 import { formatInterval, timeToMinute, validateInterval } from "../lib/time";
 import type {
   ManageableResource,
   MinuteInterval,
   TimeBlockItem,
 } from "../types";
+import { TimeInput } from "./time-input";
 
 type ResourceTimeBlocksProps = {
   date: string;
@@ -117,8 +117,8 @@ export function ResourceTimeBlocks({
   if (!resource) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-surface">
-      <div className="border-b border-border p-4 sm:px-6">
+    <div className="border-t border-border">
+      <div className="py-4">
         <h3 className="text-sm font-semibold text-foreground">
           Time away / blocked time
         </h3>
@@ -128,8 +128,7 @@ export function ResourceTimeBlocks({
         </p>
       </div>
 
-      <div className="space-y-4 p-4 sm:p-6">
-        {/* Existing Blocks List */}
+      <div className="space-y-4 pb-5">
         {isLoading ? (
           <div aria-busy="true" className="space-y-2 py-2" role="status">
             <div className="h-6 w-48 rounded bg-border animate-pulse" />
@@ -159,7 +158,7 @@ export function ResourceTimeBlocks({
                   size="sm"
                   disabled={isWritesDisabled || deletingBlockId === block.id}
                   onClick={() => handleDelete(block.id)}
-                  className="h-7 text-xs text-muted-foreground hover:text-danger"
+                  className="h-9 text-xs text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 aria-hidden="true" className="size-3.5" />
                   {deletingBlockId === block.id ? "Removing…" : "Remove"}
@@ -169,53 +168,40 @@ export function ResourceTimeBlocks({
           </div>
         )}
 
-        {/* Add Block Form */}
         {!isWritesDisabled && (
           <form
             onSubmit={handleAdd}
             className="flex flex-wrap items-end gap-3 pt-2"
           >
             <div>
-              <label
-                htmlFor="block-start"
-                className="block text-[11px] font-medium text-muted-foreground"
-              >
+              <p className="mb-1.5 block text-sm font-medium text-muted-foreground">
                 Start
-              </label>
-              <Input
-                id="block-start"
-                type="text"
+              </p>
+              <TimeInput
+                label="Time block start"
+                boundary="start"
                 value={startStr}
-                onChange={(e) => {
+                onChange={(value) => {
                   setErrorMessage(null);
-                  setStartStr(e.target.value);
+                  setStartStr(value);
                 }}
                 disabled={isCreating}
-                maxLength={5}
-                placeholder="12:00"
-                className="h-8 w-24 px-2 text-center font-mono text-xs"
               />
             </div>
 
             <div>
-              <label
-                htmlFor="block-end"
-                className="block text-[11px] font-medium text-muted-foreground"
-              >
+              <p className="mb-1.5 block text-sm font-medium text-muted-foreground">
                 End
-              </label>
-              <Input
-                id="block-end"
-                type="text"
+              </p>
+              <TimeInput
+                label="Time block end"
+                boundary="end"
                 value={endStr}
-                onChange={(e) => {
+                onChange={(value) => {
                   setErrorMessage(null);
-                  setEndStr(e.target.value);
+                  setEndStr(value);
                 }}
                 disabled={isCreating}
-                maxLength={5}
-                placeholder="13:00"
-                className="h-8 w-24 px-2 text-center font-mono text-xs"
               />
             </div>
 
@@ -233,7 +219,7 @@ export function ResourceTimeBlocks({
         )}
 
         {errorMessage && (
-          <p role="alert" className="text-xs font-medium text-danger">
+          <p role="alert" className="text-sm font-medium text-destructive">
             {errorMessage}
           </p>
         )}

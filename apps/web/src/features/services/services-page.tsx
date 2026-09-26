@@ -5,7 +5,7 @@ import type { OrganizationAccessContext } from "@/features/organizations/compone
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
 import { ServiceDetailsSheet } from "./components/service-details-sheet";
-import { ServiceFormSheet } from "./components/service-form-sheet";
+import { ServiceFormDialog } from "./components/service-form-dialog";
 import { ServiceList } from "./components/service-list";
 import {
   useCreateService,
@@ -21,7 +21,7 @@ function ServicesSkeleton() {
     <div
       aria-busy="true"
       aria-label="Loading services"
-      className="divide-y divide-border rounded-lg border border-border bg-surface"
+      className="divide-y divide-border border-y border-border"
       role="status"
     >
       {[1, 2, 3, 4].map((i) => (
@@ -42,7 +42,7 @@ function ServicesSkeleton() {
 
 function ServicesErrorState({ retry }: { retry: () => void }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-8 text-center">
+    <div className="border-y border-border py-6 text-center">
       <h2 className="text-base font-semibold text-foreground">
         Unable to load services
       </h2>
@@ -65,7 +65,7 @@ function ServicesEmptyState({
   onNewService: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-border bg-surface/50 p-12 text-center">
+    <div className="border-y border-border py-8 text-center">
       <h2 className="text-base font-semibold text-foreground">
         No services yet.
       </h2>
@@ -96,7 +96,8 @@ export function ServicesPage() {
   const deactivateServiceMutation = useDeactivateService(organizationId);
   const reactivateServiceMutation = useReactivateService(organizationId);
 
-  const [createSheetOpen, setCreateSheetOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
     null,
   );
@@ -144,7 +145,7 @@ export function ServicesPage() {
               size="sm"
               onClick={() => {
                 setEditingService(null);
-                setCreateSheetOpen(true);
+                setFormDialogOpen(true);
               }}
             >
               <Plus aria-hidden="true" className="size-4" />
@@ -161,35 +162,37 @@ export function ServicesPage() {
           <ServicesErrorState retry={() => void servicesQuery.refetch()} />
         ) : null}
 
-        {servicesQuery.isSuccess && services.length === 0 ? (
+        {servicesQuery.data && services.length === 0 ? (
           <ServicesEmptyState
             isReadOnly={isReadOnly}
             onNewService={() => {
               setEditingService(null);
-              setCreateSheetOpen(true);
+              setFormDialogOpen(true);
             }}
           />
         ) : null}
 
-        {servicesQuery.isSuccess && services.length > 0 ? (
+        {servicesQuery.data && services.length > 0 ? (
           <ServiceList
             services={services}
-            onSelectService={(service) => setSelectedServiceId(service.id)}
+            onSelectService={(service) => {
+              setSelectedServiceId(service.id);
+              setDetailsOpen(true);
+            }}
           />
         ) : null}
       </section>
 
-      {/* Details Sheet */}
       <ServiceDetailsSheet
+        key={selectedServiceId}
         service={selectedService}
         organizationId={organizationId}
-        open={Boolean(selectedService)}
-        onOpenChange={(open) => {
-          if (!open) setSelectedServiceId(null);
-        }}
+        open={detailsOpen && Boolean(selectedService)}
+        onOpenChange={setDetailsOpen}
         onEdit={(service) => {
-          setSelectedServiceId(null);
+          setDetailsOpen(false);
           setEditingService(service);
+          setFormDialogOpen(true);
         }}
         onDeactivate={handleDeactivate}
         onReactivate={handleReactivate}
@@ -200,15 +203,9 @@ export function ServicesPage() {
         }
       />
 
-      {/* Create / Edit Form Sheet */}
-      <ServiceFormSheet
-        open={createSheetOpen || Boolean(editingService)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setCreateSheetOpen(false);
-            setEditingService(null);
-          }
-        }}
+      <ServiceFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
         service={editingService}
         onSubmit={editingService ? handleUpdateService : handleCreateService}
         isPending={

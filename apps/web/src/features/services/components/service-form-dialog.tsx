@@ -1,18 +1,17 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/shared/api/api-error";
 import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/shared/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/shared/components/ui/dialog";
+import { Input } from "@/shared/components/ui/input";
 import { agorotToIls, ilsToAgorot } from "../lib/pricing";
 import type { CreateServiceInput, Service, UpdateServiceInput } from "../types";
 
-type ServiceFormSheetProps = {
+type ServiceFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   service?: Service | null;
@@ -23,7 +22,7 @@ type ServiceFormSheetProps = {
   pricingEnabled?: boolean;
 };
 
-export function ServiceFormSheet({
+export function ServiceFormDialog({
   open,
   onOpenChange,
   service,
@@ -31,7 +30,7 @@ export function ServiceFormSheet({
   isPending,
   isReadOnly,
   pricingEnabled,
-}: ServiceFormSheetProps) {
+}: ServiceFormDialogProps) {
   const isEditing = Boolean(service);
 
   const [name, setName] = useState("");
@@ -40,7 +39,6 @@ export function ServiceFormSheet({
   const [bufferAfterMinutes, setBufferAfterMinutes] = useState("0");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Sync form state when sheet opens or target service changes
   useEffect(() => {
     if (open) {
       if (service) {
@@ -137,21 +135,28 @@ export function ServiceFormSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>{isEditing ? "Edit service" : "New service"}</SheetTitle>
-          <SheetDescription>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isPending) onOpenChange(nextOpen);
+      }}
+    >
+      <DialogContent className="max-w-[520px]" aria-busy={isPending}>
+        <header>
+          <DialogTitle>
+            {isEditing ? "Edit service" : "New service"}
+          </DialogTitle>
+          <DialogDescription>
             {isEditing
               ? "Update service details, timing, and pricing."
               : "Add a service that can be booked by clients."}
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </header>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {errorMessage ? (
             <div
-              className="rounded-md border border-[#e7b7b2] bg-[#fdf3f2] p-3 text-sm text-destructive"
+              className="rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
               role="alert"
             >
               {errorMessage}
@@ -161,7 +166,7 @@ export function ServiceFormSheet({
           <div className="space-y-1.5">
             <label
               htmlFor="service-name"
-              className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              className="block text-sm font-medium text-foreground"
             >
               Name
             </label>
@@ -177,11 +182,11 @@ export function ServiceFormSheet({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2">
             <div className="space-y-1.5">
               <label
                 htmlFor="service-duration"
-                className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                className="block text-sm font-medium text-foreground"
               >
                 Duration (min)
               </label>
@@ -200,7 +205,7 @@ export function ServiceFormSheet({
             <div className="space-y-1.5">
               <label
                 htmlFor="service-buffer"
-                className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                className="block text-sm font-medium text-foreground"
               >
                 Buffer after (min)
               </label>
@@ -219,7 +224,7 @@ export function ServiceFormSheet({
           <div className="space-y-1.5">
             <label
               htmlFor="service-price"
-              className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              className="block text-sm font-medium text-foreground"
             >
               Price (ILS ₪)
             </label>
@@ -247,16 +252,16 @@ export function ServiceFormSheet({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isReadOnly || isPending}>
-              {isPending
-                ? "Saving…"
-                : isEditing
-                  ? "Save changes"
-                  : "Create service"}
+            <Button
+              loading={isPending}
+              type="submit"
+              disabled={isReadOnly || isPending}
+            >
+              {isEditing ? "Save changes" : "Create service"}
             </Button>
           </div>
         </form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

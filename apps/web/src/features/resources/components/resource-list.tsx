@@ -14,7 +14,7 @@ export function ResourceList({
   return (
     <ul
       aria-label="Resources list"
-      className="divide-y divide-border rounded-lg border border-border bg-surface"
+      className="divide-y divide-border border-y border-border"
     >
       {resources.map((resource) => {
         const isActive = resource.deactivatedAt === null;
@@ -24,18 +24,17 @@ export function ResourceList({
             <button
               type="button"
               className={cn(
-                "group flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition-colors duration-150 hover:bg-background/80 sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
-                !isActive && "opacity-65 bg-background/40",
+                "group flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition-colors duration-150 hover:bg-surface-hover sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
+                !isActive && "bg-background text-muted-foreground",
               )}
               onClick={() => onSelectResource(resource)}
               aria-label={`${resource.name}, ${isActive ? "Active" : "Inactive"}, ${resource.isLinked ? "Linked to team member" : "Unlinked"}`}
             >
               <div className="flex items-center gap-3.5 min-w-0">
-                {/* Status Dot */}
                 <span
                   className={cn(
                     "size-2 shrink-0 rounded-full",
-                    isActive ? "bg-[#2e7d32]" : "bg-[#9aa0a6]",
+                    isActive ? "bg-primary" : "bg-subtle-foreground",
                   )}
                   title={isActive ? "Active" : "Inactive"}
                   aria-hidden="true"
@@ -47,7 +46,7 @@ export function ResourceList({
                       {resource.name}
                     </span>
                     {!isActive ? (
-                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium bg-muted text-muted-foreground">
+                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium bg-background text-muted-foreground">
                         Inactive
                       </span>
                     ) : null}
@@ -74,7 +73,7 @@ export function ResourceList({
 
               <ChevronRight
                 aria-hidden="true"
-                className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-foreground"
+                className="size-4 shrink-0 text-muted-foreground transition-colors duration-150 group-hover:text-foreground"
               />
             </button>
           </li>

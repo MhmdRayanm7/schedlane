@@ -47,11 +47,11 @@ export function BookingRulesTab({
       <div
         aria-busy="true"
         aria-label="Loading booking rules"
-        className="space-y-4 rounded-lg border border-border bg-surface p-6"
+        className="space-y-4 border-t border-border p-6"
         role="status"
       >
         <div className="h-5 w-48 rounded bg-border animate-pulse" />
-        <div className="h-4 w-72 rounded bg-border-subtle animate-pulse" />
+        <div className="h-4 w-60 max-w-full rounded bg-border/60 animate-pulse" />
         <div className="space-y-6 pt-4">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="space-y-2">
@@ -66,7 +66,7 @@ export function BookingRulesTab({
 
   if (settingsQuery.isError) {
     return (
-      <div className="rounded-lg border border-border bg-surface p-8 text-center">
+      <div className="border-t border-border p-8 text-center">
         <h2 className="text-base font-semibold text-foreground">
           Unable to load booking rules
         </h2>
@@ -147,11 +147,8 @@ export function BookingRulesTab({
   const isWritesDisabled = isReadOnly || updateSettingsMutation.isPending;
 
   return (
-    <form
-      onSubmit={handleSave}
-      className="rounded-lg border border-border bg-surface"
-    >
-      <div className="border-b border-border p-4 sm:px-6">
+    <form onSubmit={handleSave} className="max-w-[880px]">
+      <div className="py-4">
         <h2 className="text-base font-semibold text-foreground">
           Booking rules & availability settings
         </h2>
@@ -161,9 +158,8 @@ export function BookingRulesTab({
         </p>
       </div>
 
-      <div className="space-y-6 p-4 sm:p-6">
-        {/* Slot Interval */}
-        <div className="grid gap-2 sm:grid-cols-3 sm:items-start">
+      <div className="space-y-5 pb-5">
+        <div className="grid gap-2 sm:grid-cols-[minmax(200px,1fr)_minmax(0,1fr)] sm:items-start">
           <div>
             <label
               htmlFor="slot-interval"
@@ -171,13 +167,13 @@ export function BookingRulesTab({
             >
               Time slot interval
             </label>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
               Spacing between available start times. Supports any minute value
               from 1 to 1440.
             </p>
           </div>
-          <div className="sm:col-span-2">
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <Input
                 id="slot-interval"
                 type="number"
@@ -189,15 +185,16 @@ export function BookingRulesTab({
                   setSaveSuccess(false);
                   setSlotInterval(e.target.value);
                 }}
-                className="h-9 w-24 text-xs font-mono"
+                className="h-9 w-24 text-sm tabular-nums shrink-0"
               />
-              <span className="text-xs text-muted-foreground">minutes</span>
+              <span className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
+                minutes
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Minimum Booking Notice */}
-        <div className="grid gap-2 border-t border-border pt-6 sm:grid-cols-3 sm:items-start">
+        <div className="grid gap-2 border-t border-border pt-5 sm:grid-cols-[minmax(200px,1fr)_minmax(0,1fr)] sm:items-start">
           <div>
             <label
               htmlFor="min-notice"
@@ -205,13 +202,13 @@ export function BookingRulesTab({
             >
               Minimum booking notice
             </label>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
               Prevents last-minute bookings. Appointments must be scheduled at
               least this far in advance.
             </p>
           </div>
-          <div className="sm:col-span-2">
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <Input
                 id="min-notice"
                 type="number"
@@ -222,17 +219,16 @@ export function BookingRulesTab({
                   setSaveSuccess(false);
                   setMinNotice(e.target.value);
                 }}
-                className="h-9 w-24 text-xs font-mono"
+                className="h-9 w-24 text-sm tabular-nums shrink-0"
               />
-              <span className="text-xs text-muted-foreground">
+              <span className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
                 minutes before appointment
               </span>
             </div>
           </div>
         </div>
 
-        {/* Booking Horizon */}
-        <div className="grid gap-2 border-t border-border pt-6 sm:grid-cols-3 sm:items-start">
+        <div className="grid gap-2 border-t border-border pt-5 sm:grid-cols-[minmax(200px,1fr)_minmax(0,1fr)] sm:items-start">
           <div>
             <label
               htmlFor="horizon-days"
@@ -240,14 +236,14 @@ export function BookingRulesTab({
             >
               Booking horizon
             </label>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
               How far in advance customers can see open slots and book
               appointments.
             </p>
           </div>
-          <div className="sm:col-span-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
                 Customers can book up to
               </span>
               <Input
@@ -260,15 +256,16 @@ export function BookingRulesTab({
                   setSaveSuccess(false);
                   setHorizonDays(e.target.value);
                 }}
-                className="h-9 w-24 text-xs font-mono"
+                className="h-9 w-24 text-sm tabular-nums shrink-0"
               />
-              <span className="text-xs text-muted-foreground">days ahead</span>
+              <span className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
+                days ahead
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Cancellation Cutoff */}
-        <div className="grid gap-2 border-t border-border pt-6 sm:grid-cols-3 sm:items-start">
+        <div className="grid gap-2 border-t border-border pt-5 sm:grid-cols-[minmax(200px,1fr)_minmax(0,1fr)] sm:items-start">
           <div>
             <label
               htmlFor="cancellation-cutoff"
@@ -276,14 +273,14 @@ export function BookingRulesTab({
             >
               Cancellation cutoff
             </label>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
               Deadline for customer self-cancellations before an appointment
               starts.
             </p>
           </div>
-          <div className="sm:col-span-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
                 Customer cancellation closes
               </span>
               <Input
@@ -296,9 +293,9 @@ export function BookingRulesTab({
                   setSaveSuccess(false);
                   setCancellationCutoff(e.target.value);
                 }}
-                className="h-9 w-24 text-xs font-mono"
+                className="h-9 w-24 text-sm tabular-nums shrink-0"
               />
-              <span className="text-xs text-muted-foreground">
+              <span className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
                 minutes before appointment
               </span>
             </div>
@@ -306,16 +303,16 @@ export function BookingRulesTab({
         </div>
 
         {/* Public Booking Pause Toggle */}
-        <div className="grid gap-2 border-t border-border pt-6 sm:grid-cols-3 sm:items-start">
+        <div className="grid gap-2 border-t border-border pt-5 sm:grid-cols-[minmax(200px,1fr)_minmax(0,1fr)] sm:items-start">
           <div>
             <span className="text-sm font-medium text-foreground">
               Public booking status
             </span>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
               Pause public self-scheduling across your booking page.
             </p>
           </div>
-          <div className="sm:col-span-2">
+          <div className="min-w-0">
             <div className="flex items-start gap-3">
               <input
                 id="pause-public-booking"
@@ -338,7 +335,7 @@ export function BookingRulesTab({
                 </label>
                 <p
                   id="pause-public-booking-desc"
-                  className="text-xs text-muted-foreground"
+                  className="mt-1 max-w-md text-sm leading-5 text-muted-foreground"
                 >
                   When paused, the public booking flow will show that scheduling
                   is unavailable. Existing bookings remain intact and staff can
@@ -350,14 +347,14 @@ export function BookingRulesTab({
         </div>
 
         {validationError && (
-          <p role="alert" className="text-xs font-medium text-danger">
+          <p role="alert" className="text-sm font-medium text-destructive">
             {validationError}
           </p>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4 sm:px-6">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-4">
+        <div className="flex flex-wrap items-center gap-2">
           {saveSuccess && (
             <span
               role="status"
@@ -368,7 +365,7 @@ export function BookingRulesTab({
             </span>
           )}
           {saveError && (
-            <span role="alert" className="text-xs font-medium text-danger">
+            <span role="alert" className="text-sm font-medium text-destructive">
               {saveError}
             </span>
           )}
@@ -377,9 +374,10 @@ export function BookingRulesTab({
         <Button
           type="submit"
           disabled={isWritesDisabled || !isDirty || Boolean(validationError)}
-          className="text-xs"
+          className="text-sm"
+          loading={updateSettingsMutation.isPending}
         >
-          {updateSettingsMutation.isPending ? "Saving…" : "Save booking rules"}
+          Save booking rules
         </Button>
       </div>
     </form>

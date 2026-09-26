@@ -16,7 +16,7 @@ function DropdownMenuContent({
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         className={cn(
-          "z-50 min-w-48 overflow-hidden rounded-lg border border-border bg-surface p-1 text-foreground shadow-[0_8px_24px_rgba(24,27,27,0.10)] data-[state=closed]:animate-[menu-out_120ms_ease-in] data-[state=open]:animate-[menu-in_160ms_ease-out]",
+          "z-50 min-w-48 max-w-[calc(100vw-2rem)] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface p-1 text-foreground shadow-[0_8px_24px_rgba(24,27,27,0.10)] data-[state=closed]:animate-[menu-out_120ms_ease-in] data-[state=open]:animate-[menu-in_160ms_ease-out]",
           className,
         )}
         sideOffset={sideOffset}
@@ -34,7 +34,7 @@ function DropdownMenuItem({
   return (
     <DropdownMenuPrimitive.Item
       className={cn(
-        "relative flex cursor-default select-none items-center gap-2 rounded-md px-2.5 py-2 text-sm outline-none transition-colors duration-150 focus:bg-primary-subtle focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex cursor-default select-none items-center gap-2 rounded-md px-2.5 py-2 text-sm outline-none transition-colors duration-150 focus:bg-surface-hover focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         inset && "pl-8",
         className,
       )}
@@ -80,7 +80,7 @@ function DropdownMenuCheckboxItem({
   return (
     <DropdownMenuPrimitive.CheckboxItem
       className={cn(
-        "relative flex cursor-default select-none items-center rounded-md py-2 pl-8 pr-2.5 text-sm outline-none transition-colors duration-150 focus:bg-primary-subtle data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex cursor-default select-none items-center rounded-md py-2 pl-8 pr-2.5 text-sm outline-none transition-colors duration-150 focus:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}
       {...props}
@@ -106,7 +106,7 @@ function DropdownMenuSubTrigger({
   return (
     <DropdownMenuPrimitive.SubTrigger
       className={cn(
-        "flex cursor-default select-none items-center rounded-md px-2.5 py-2 text-sm outline-none focus:bg-primary-subtle data-[state=open]:bg-primary-subtle",
+        "flex cursor-default select-none items-center rounded-md px-2.5 py-2 text-sm outline-none focus:bg-surface-hover data-[state=open]:bg-primary-subtle",
         inset && "pl-8",
         className,
       )}
