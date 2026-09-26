@@ -1,0 +1,437 @@
+.page {
+  position: relative;
+  display: grid;
+  gap: var(--space-6);
+}
+.list,
+.skeletonList,
+.assignmentList {
+  margin: 0;
+  padding: 0;
+  border-block: 1px solid var(--color-border);
+  list-style: none;
+}
+.list > *,
+.skeletonList > *,
+.assignmentList > * {
+  border-top: 1px solid var(--color-border);
+}
+.list > :first-child,
+.skeletonList > :first-child,
+.assignmentList > :first-child {
+  border-top: 0;
+}
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+}
+.skeletonSummary {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+.skeletonCopy {
+  display: grid;
+  gap: var(--space-2);
+}
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: var(--color-border);
+  animation: pulse 2s ease-in-out infinite;
+}
+.skeletonDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--color-border-strong);
+}
+.skeletonTitle {
+  width: 9rem;
+  height: 1rem;
+  background: var(--color-border-strong);
+}
+.skeletonMeta {
+  width: 6rem;
+  height: 0.75rem;
+}
+.skeletonChevron {
+  width: 1rem;
+  height: 1rem;
+}
+.state {
+  padding-block: var(--space-6);
+  border-block: 1px solid var(--color-border);
+  text-align: center;
+}
+.emptyState {
+  padding-block: var(--space-8);
+}
+.stateTitle {
+  margin: 0;
+  color: var(--color-foreground);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.stateDescription {
+  margin: 0.375rem 0 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+}
+.stateAction {
+  margin-top: var(--space-4);
+}
+.emptyState .stateAction {
+  margin-top: var(--space-5);
+}
+.icon {
+  width: 1rem;
+  height: 1rem;
+}
+.smallIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+.row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0.875rem var(--space-4);
+  border: 0;
+  background: transparent;
+  text-align: left;
+  transition: background-color var(--duration-normal);
+}
+.row:hover {
+  background: var(--color-surface-hover);
+}
+.row:focus-visible {
+  outline-offset: -2px;
+}
+.row[data-active="false"] {
+  background: var(--color-background);
+  color: var(--color-muted-foreground);
+}
+.rowSummary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.875rem;
+}
+.statusDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+[data-active="false"] .statusDot {
+  background: var(--color-subtle-foreground);
+}
+.rowCopy {
+  min-width: 0;
+}
+.nameLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.serviceName {
+  overflow: hidden;
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inactiveBadge {
+  flex-shrink: 0;
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+.metadata {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.625rem;
+  margin-top: 0.125rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+.metadataSeparator {
+  color: var(--color-border-strong);
+}
+.price {
+  color: var(--color-foreground);
+  font-weight: 500;
+}
+.chevron {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--color-muted-foreground);
+  transition: color var(--duration-normal);
+}
+.row:hover .chevron {
+  color: var(--color-foreground);
+}
+.formDialog {
+  max-width: 32.5rem;
+}
+.form {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+.formActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.alert {
+  padding: var(--space-3);
+}
+.statusLine {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.statusBadge[data-active="false"] {
+  background: var(--color-background);
+  color: var(--color-muted-foreground);
+}
+.statusBadgeDot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+.sheetTitle {
+  color: var(--color-foreground);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.sheetAlert {
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+}
+.facts {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  font-size: 0.875rem;
+}
+.fact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+.fact:last-child {
+  border-bottom: 0;
+}
+.factLabel {
+  color: var(--color-muted-foreground);
+}
+.factValue {
+  color: var(--color-foreground);
+  font-weight: 500;
+}
+.sheetActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: var(--space-6);
+}
+.reactivate {
+  color: var(--color-primary);
+}
+.reactivate:hover {
+  background: var(--color-primary-subtle);
+}
+.assignmentsArea {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+.assignments {
+  display: grid;
+  gap: var(--space-4);
+}
+.sectionTitle {
+  margin: 0;
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.sectionDescription {
+  margin: var(--space-1) 0 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+.compactAlert {
+  padding: var(--space-3);
+  font-size: 0.75rem;
+}
+.loading {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+}
+.loadingTitle {
+  width: 8rem;
+  height: 1rem;
+}
+.loadingControl {
+  width: 100%;
+  height: 2rem;
+  opacity: 0.6;
+}
+.error {
+  margin: 0;
+  color: var(--color-destructive);
+  font-size: 0.75rem;
+}
+.assignmentContent {
+  display: grid;
+  gap: var(--space-3);
+}
+.emptyAssignment {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+.assignmentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0.625rem 0.875rem;
+}
+.assignmentSummary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
+}
+.assignmentName {
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.removeButton {
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--color-muted-foreground);
+}
+.removeButton:hover {
+  color: var(--color-destructive);
+}
+.assignmentControls {
+  padding-top: var(--space-2);
+}
+.hint {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+.subtleHint {
+  color: var(--color-subtle-foreground);
+}
+.assignForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.selectWrapper {
+  min-width: 0;
+  flex: 1;
+}
+.nativeSelect {
+  width: 100%;
+  min-width: 0;
+  height: 2.25rem;
+  padding-inline: 0.625rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  outline: none;
+  background: var(--color-surface);
+  color: var(--color-foreground);
+  font-size: 0.75rem;
+  transition: border-color var(--duration-normal);
+}
+.nativeSelect:enabled:hover {
+  border-color: var(--color-muted-foreground);
+}
+.nativeSelect:focus-visible {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-focus);
+}
+@media (pointer: coarse) {
+  .nativeSelect {
+    font-size: 1rem;
+  }
+}
+@media (min-width: 25rem) {
+  .formGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 40rem) {
+  .skeletonRow,
+  .row {
+    padding-inline: var(--space-5);
+  }
+}

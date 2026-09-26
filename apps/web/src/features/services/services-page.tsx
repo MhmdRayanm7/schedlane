@@ -14,6 +14,7 @@ import {
   useServices,
   useUpdateService,
 } from "./hooks/use-services";
+import styles from "./services.module.css";
 import type { CreateServiceInput, Service, UpdateServiceInput } from "./types";
 
 function ServicesSkeleton() {
@@ -21,19 +22,19 @@ function ServicesSkeleton() {
     <div
       aria-busy="true"
       aria-label="Loading services"
-      className="divide-y divide-border border-y border-border"
+      className={styles.skeletonList}
       role="status"
     >
       {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="flex items-center justify-between p-4 sm:px-5">
-          <div className="flex items-center gap-3.5">
-            <div className="size-2 rounded-full bg-border-strong animate-pulse" />
-            <div className="space-y-2">
-              <div className="h-4 w-36 rounded bg-border-strong animate-pulse" />
-              <div className="h-3 w-24 rounded bg-border animate-pulse" />
+        <div key={i} className={styles.skeletonRow}>
+          <div className={styles.skeletonSummary}>
+            <div className={`${styles.skeleton} ${styles.skeletonDot}`} />
+            <div className={styles.skeletonCopy}>
+              <div className={`${styles.skeleton} ${styles.skeletonTitle}`} />
+              <div className={`${styles.skeleton} ${styles.skeletonMeta}`} />
             </div>
           </div>
-          <div className="h-4 w-4 rounded bg-border animate-pulse" />
+          <div className={`${styles.skeleton} ${styles.skeletonChevron}`} />
         </div>
       ))}
     </div>
@@ -42,15 +43,18 @@ function ServicesSkeleton() {
 
 function ServicesErrorState({ retry }: { retry: () => void }) {
   return (
-    <div className="border-y border-border py-6 text-center">
-      <h2 className="text-base font-semibold text-foreground">
-        Unable to load services
-      </h2>
-      <p className="mt-1.5 text-sm text-muted-foreground">
+    <div className={styles.state}>
+      <h2 className={styles.stateTitle}>Unable to load services</h2>
+      <p className={styles.stateDescription}>
         We encountered an error loading your organization's services.
       </p>
-      <Button variant="outline" size="sm" onClick={retry} className="mt-4">
-        <RefreshCw aria-hidden="true" className="size-3.5" />
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={retry}
+        className={styles.stateAction}
+      >
+        <RefreshCw aria-hidden="true" className={styles.smallIcon} />
         Try again
       </Button>
     </div>
@@ -65,16 +69,14 @@ function ServicesEmptyState({
   onNewService: () => void;
 }) {
   return (
-    <div className="border-y border-border py-8 text-center">
-      <h2 className="text-base font-semibold text-foreground">
-        No services yet.
-      </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
+    <div className={`${styles.state} ${styles.emptyState}`}>
+      <h2 className={styles.stateTitle}>No services yet.</h2>
+      <p className={styles.stateDescription}>
         Add the first service your organization offers.
       </p>
       {!isReadOnly ? (
-        <Button onClick={onNewService} size="sm" className="mt-5">
-          <Plus aria-hidden="true" className="size-4" />
+        <Button onClick={onNewService} size="sm" className={styles.stateAction}>
+          <Plus aria-hidden="true" className={styles.icon} />
           New service
         </Button>
       ) : null}
@@ -135,7 +137,7 @@ export function ServicesPage() {
   }
 
   return (
-    <div className="relative space-y-6">
+    <div className={styles.page}>
       <PageHeader
         title="Services"
         description="Manage the services your organization offers."
@@ -148,7 +150,7 @@ export function ServicesPage() {
                 setFormDialogOpen(true);
               }}
             >
-              <Plus aria-hidden="true" className="size-4" />
+              <Plus aria-hidden="true" className={styles.icon} />
               New service
             </Button>
           ) : null

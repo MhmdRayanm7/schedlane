@@ -7,6 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/shared/components/ui/sheet";
+import styles from "../bookings.module.css";
 import {
   formatBookingDate,
   formatBookingDateTime,
@@ -33,10 +34,8 @@ type BookingDetailsSheetProps = {
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-medium text-subtle-foreground">{label}</dt>
-      <dd className="mt-1 text-sm text-foreground [overflow-wrap:anywhere]">
-        {value}
-      </dd>
+      <dt className={styles.detailLabel}>{label}</dt>
+      <dd className={styles.detailValue}>{value}</dd>
     </div>
   );
 }
@@ -68,10 +67,10 @@ export function BookingDetailsSheet({
       <Sheet onOpenChange={onOpenChange} open={open && !dialogOpen}>
         <SheetContent>
           {booking ? (
-            <div className="flex min-h-full flex-col">
-              <SheetHeader className="pb-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <SheetTitle className="min-w-0 flex-1">
+            <div className={styles.details}>
+              <SheetHeader className={styles.detailsHeader}>
+                <div className={styles.detailsHeading}>
+                  <SheetTitle className={styles.detailsTitle}>
                     {booking.guestName}
                   </SheetTitle>
                   <BookingStatus status={booking.status} />
@@ -81,15 +80,15 @@ export function BookingDetailsSheet({
                 </SheetDescription>
               </SheetHeader>
 
-              <div className="divide-y divide-border">
-                <section aria-labelledby="appointment-heading" className="py-5">
-                  <h2
-                    className="text-sm font-semibold text-foreground"
-                    id="appointment-heading"
-                  >
+              <div className={styles.detailsSections}>
+                <section
+                  aria-labelledby="appointment-heading"
+                  className={styles.detailSection}
+                >
+                  <h2 className={styles.sectionTitle} id="appointment-heading">
                     Appointment
                   </h2>
-                  <dl className="mt-3 grid grid-cols-2 gap-x-5 gap-y-4">
+                  <dl className={styles.detailGrid}>
                     <DetailItem
                       label="Date"
                       value={formatBookingDate(booking.startAt)}
@@ -118,22 +117,20 @@ export function BookingDetailsSheet({
                 </section>
 
                 {booking.guestPhone || booking.guestEmail ? (
-                  <section aria-labelledby="contact-heading" className="py-5">
-                    <h2
-                      className="text-sm font-semibold text-foreground"
-                      id="contact-heading"
-                    >
+                  <section
+                    aria-labelledby="contact-heading"
+                    className={styles.detailSection}
+                  >
+                    <h2 className={styles.sectionTitle} id="contact-heading">
                       Guest contact
                     </h2>
-                    <dl className="mt-4 grid gap-4">
+                    <dl className={styles.singleColumnGrid}>
                       {booking.guestPhone ? (
                         <div>
-                          <dt className="text-xs font-medium text-subtle-foreground">
-                            Phone
-                          </dt>
-                          <dd className="mt-1 text-sm">
+                          <dt className={styles.detailLabel}>Phone</dt>
+                          <dd className={styles.detailValue}>
                             <a
-                              className="text-primary underline-offset-4 hover:underline"
+                              className={styles.contactLink}
                               href={`tel:${booking.guestPhone}`}
                             >
                               {booking.guestPhone}
@@ -143,12 +140,12 @@ export function BookingDetailsSheet({
                       ) : null}
                       {booking.guestEmail ? (
                         <div>
-                          <dt className="text-xs font-medium text-subtle-foreground">
-                            Email
-                          </dt>
-                          <dd className="mt-1 break-all text-sm">
+                          <dt className={styles.detailLabel}>Email</dt>
+                          <dd
+                            className={`${styles.detailValue} ${styles.breakAll}`}
+                          >
                             <a
-                              className="text-primary underline-offset-4 hover:underline"
+                              className={styles.contactLink}
                               href={`mailto:${booking.guestEmail}`}
                             >
                               {booking.guestEmail}
@@ -161,16 +158,14 @@ export function BookingDetailsSheet({
                 ) : null}
 
                 {booking.customerNote ? (
-                  <section aria-labelledby="note-heading" className="py-5">
-                    <h2
-                      className="text-sm font-semibold text-foreground"
-                      id="note-heading"
-                    >
+                  <section
+                    aria-labelledby="note-heading"
+                    className={styles.detailSection}
+                  >
+                    <h2 className={styles.sectionTitle} id="note-heading">
                       Customer note
                     </h2>
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                      {booking.customerNote}
-                    </p>
+                    <p className={styles.note}>{booking.customerNote}</p>
                   </section>
                 ) : null}
 
@@ -178,15 +173,15 @@ export function BookingDetailsSheet({
                 (booking.cancelledAt || booking.cancellationReason) ? (
                   <section
                     aria-labelledby="cancellation-heading"
-                    className="py-5"
+                    className={styles.detailSection}
                   >
                     <h2
-                      className="text-sm font-semibold text-foreground"
+                      className={styles.sectionTitle}
                       id="cancellation-heading"
                     >
                       Cancellation
                     </h2>
-                    <dl className="mt-4 grid gap-4">
+                    <dl className={styles.singleColumnGrid}>
                       {booking.cancelledAt ? (
                         <DetailItem
                           label="Cancelled at"
@@ -205,8 +200,8 @@ export function BookingDetailsSheet({
               </div>
 
               {!isReadOnly && booking.status !== "cancelled" ? (
-                <div className="border-t border-border py-5">
-                  <div className="flex flex-wrap gap-2">
+                <div className={styles.detailsActions}>
+                  <div className={styles.buttonGroup}>
                     {booking.status === "confirmed" ? (
                       <>
                         <Button onClick={() => openDialog("reschedule")}>
@@ -240,7 +235,7 @@ export function BookingDetailsSheet({
                 </div>
               ) : null}
 
-              <footer className="mt-auto border-t border-border pt-4 text-xs leading-5 text-subtle-foreground">
+              <footer className={styles.detailsFooter}>
                 <p>Created {formatBookingDateTime(booking.createdAt)}</p>
               </footer>
             </div>

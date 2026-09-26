@@ -27,6 +27,7 @@ import type { ManageableResource, WeeklyHoursResponse } from "../types";
 import { OrganizationDateOverride } from "./organization-date-override";
 import { ResourceDateOverride } from "./resource-date-override";
 import { ResourceTimeBlocks } from "./resource-time-blocks";
+import styles from "./schedule-exceptions.module.css";
 import { ScheduleQueryError } from "./schedule-query-error";
 
 type ScheduleExceptionsTabProps = {
@@ -104,24 +105,21 @@ export function ScheduleExceptionsTab({
   );
 
   return (
-    <div className="space-y-6">
-      <div className="border-b border-border pb-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className={styles.tab}>
+      <div className={styles.toolbar}>
+        <div className={styles.toolbarRow}>
           <div>
-            <label
-              htmlFor="exception-date-input"
-              className="text-sm font-semibold text-foreground"
-            >
+            <label htmlFor="exception-date-input" className={styles.title}>
               Selected calendar date
             </label>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className={styles.description}>
               Manage overrides and time away for a specific Jerusalem calendar
               date.
             </p>
           </div>
 
-          <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <span className="text-xs font-medium text-foreground">
+          <div className={styles.dateControls}>
+            <span className={styles.controlLabel}>
               {formatDateDisplay(selectedDate)}
             </span>
             <Input
@@ -133,7 +131,7 @@ export function ScheduleExceptionsTab({
                   setSelectedDate(e.target.value);
                 }
               }}
-              className="h-9 w-40 text-xs"
+              className={styles.dateInput}
             />
           </div>
         </div>
@@ -159,51 +157,56 @@ export function ScheduleExceptionsTab({
           isSaving={updateOrgOverrideMutation.isPending}
         />
       ) : orgOverrideQuery.isPending ? (
-        <p role="status" className="py-5 text-sm text-muted-foreground">
+        <p role="status" className={styles.loadingMessage}>
           Loading organization exception...
         </p>
       ) : null}
 
       {resources.length === 0 ? (
-        <div className="border-t border-border p-6 text-center">
-          <h3 className="text-sm font-semibold text-foreground">
+        <div className={styles.emptyState}>
+          <h3 className={styles.emptyTitle}>
             No resources available for scheduling
           </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className={styles.emptyDescription}>
             Create or link a resource before configuring individual
             availability.
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
-          <div className="flex flex-col gap-3 border-t border-border pt-5 min-[800px]:flex-row min-[800px]:items-center min-[800px]:justify-between">
+        <div className={styles.resourceArea}>
+          <div className={styles.resourceHeader}>
             <div>
-              <h3 className="text-sm font-semibold text-foreground">
-                Resource schedule exceptions
-              </h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <h3 className={styles.title}>Resource schedule exceptions</h3>
+              <p className={styles.description}>
                 Select a resource to manage exceptions and blocked time.
               </p>
             </div>
 
-            <div className="flex min-w-0 flex-wrap items-center gap-3">
-              <label htmlFor="exceptions-resource-select" className="sr-only">
+            <div className={styles.resourceControls}>
+              <label
+                htmlFor="exceptions-resource-select"
+                className={styles.visuallyHidden}
+              >
                 Select Resource
               </label>
-              <div className="min-w-0 w-full sm:w-64">
+              <div className={styles.selectWrapper}>
                 <Select
                   value={selectedResourceId ?? ""}
                   onValueChange={onSelectResource}
                 >
                   <SelectTrigger
                     id="exceptions-resource-select"
-                    className="h-9 text-xs"
+                    className={styles.compactSelect}
                   >
                     <SelectValue placeholder="Select resource" />
                   </SelectTrigger>
                   <SelectContent>
                     {resources.map((r) => (
-                      <SelectItem key={r.id} value={r.id} className="text-xs">
+                      <SelectItem
+                        key={r.id}
+                        value={r.id}
+                        className={styles.compactItem}
+                      >
                         {r.name} {r.deactivatedAt ? "(Inactive)" : ""}
                       </SelectItem>
                     ))}
@@ -211,13 +214,10 @@ export function ScheduleExceptionsTab({
                 </Select>
               </div>
               {isResourceInactive && (
-                <span
-                  className="inline-flex items-center gap-1 rounded bg-background px-2 py-1 text-xs font-medium text-muted-foreground border border-border"
-                  role="status"
-                >
+                <span className={styles.inactiveNotice} role="status">
                   <AlertCircle
                     aria-hidden="true"
-                    className="size-3 text-warning"
+                    className={styles.warningIcon}
                   />
                   Inactive
                 </span>
@@ -249,7 +249,7 @@ export function ScheduleExceptionsTab({
                   isSaving={updateResourceOverrideMutation.isPending}
                 />
               ) : resourceOverrideQuery.isPending ? (
-                <p role="status" className="py-5 text-sm text-muted-foreground">
+                <p role="status" className={styles.loadingMessage}>
                   Loading resource exception...
                 </p>
               ) : null}

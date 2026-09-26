@@ -8,6 +8,7 @@ import {
 } from "@/shared/components/ui/dialog";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Textarea } from "@/shared/components/ui/textarea";
+import styles from "../bookings.module.css";
 import { useBookingActions } from "../hooks/use-booking-actions";
 import { bookingActionErrorMessage } from "../lib/booking-action-errors";
 import {
@@ -114,16 +115,11 @@ export function BookingLifecycleDialog({
         <DialogDescription>{description}</DialogDescription>
 
         {action === "cancel" ? (
-          <label
-            className="mt-5 block text-sm font-medium"
-            htmlFor="cancellation-reason"
-          >
+          <label className={styles.dialogField} htmlFor="cancellation-reason">
             Cancellation reason{" "}
-            <span className="font-normal text-muted-foreground">
-              (optional)
-            </span>
+            <span className={styles.optional}>(optional)</span>
             <Textarea
-              className="mt-2"
+              className={styles.dialogControl}
               disabled={activeMutation.isPending}
               id="cancellation-reason"
               maxLength={500}
@@ -135,12 +131,12 @@ export function BookingLifecycleDialog({
         ) : null}
 
         {errorMessage ? (
-          <InlineAlert as="p" variant="error" className="mt-4">
+          <InlineAlert as="p" variant="error" className={styles.dialogAlert}>
             {errorMessage}
           </InlineAlert>
         ) : null}
 
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <div className={styles.dialogActions}>
           <Button
             disabled={activeMutation.isPending}
             onClick={() => onClose()}

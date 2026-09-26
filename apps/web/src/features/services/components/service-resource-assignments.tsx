@@ -4,12 +4,12 @@ import { useResources } from "@/features/resources/hooks/use-resources";
 import { ApiError } from "@/shared/api/api-error";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
-import { cn } from "@/shared/lib/cn";
 import {
   useAssignResourceToService,
   useServiceResources,
   useUnassignResourceFromService,
 } from "../hooks/use-services";
+import styles from "../services.module.css";
 
 type ServiceResourceAssignmentsProps = {
   organizationId: string;
@@ -114,71 +114,60 @@ export function ServiceResourceAssignments({
   }
 
   return (
-    <section aria-labelledby="service-resources-heading" className="space-y-4">
+    <section
+      aria-labelledby="service-resources-heading"
+      className={styles.assignments}
+    >
       <div>
-        <h3
-          id="service-resources-heading"
-          className="text-sm font-semibold text-foreground"
-        >
+        <h3 id="service-resources-heading" className={styles.sectionTitle}>
           Assigned resources
         </h3>
-        <p className="mt-1 text-xs text-muted-foreground leading-normal">
+        <p className={styles.sectionDescription}>
           Bookable resources (people, chairs, rooms) that can deliver this
           service.
         </p>
       </div>
 
       {actionError ? (
-        <InlineAlert variant="error" className="p-3 text-xs">
+        <InlineAlert variant="error" className={styles.compactAlert}>
           {actionError}
         </InlineAlert>
       ) : null}
 
       {assignedQuery.isPending ? (
-        <div aria-busy="true" className="space-y-2 py-2" role="status">
-          <div className="h-4 w-32 rounded bg-border animate-pulse" />
-          <div className="h-8 w-full rounded bg-border/60 animate-pulse" />
+        <div aria-busy="true" className={styles.loading} role="status">
+          <div className={`${styles.skeleton} ${styles.loadingTitle}`} />
+          <div className={`${styles.skeleton} ${styles.loadingControl}`} />
         </div>
       ) : assignedQuery.isError ? (
-        <p className="text-xs text-destructive">
-          Could not load assigned resources.
-        </p>
+        <p className={styles.error}>Could not load assigned resources.</p>
       ) : (
-        <div className="space-y-3">
+        <div className={styles.assignmentContent}>
           {assignedResources.length === 0 ? (
-            <p className="text-xs text-muted-foreground rounded-lg border border-border bg-background p-3">
+            <p className={styles.emptyAssignment}>
               No resources assigned to this service yet.
             </p>
           ) : (
             <ul
               aria-label="Assigned resources list"
-              className="divide-y divide-border border-y border-border"
+              className={styles.assignmentList}
             >
               {assignedResources.map((resource) => {
                 const isResourceActive = resource.deactivatedAt === null;
 
                 return (
-                  <li
-                    key={resource.id}
-                    className="flex items-center justify-between gap-3 px-3.5 py-2.5"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <li key={resource.id} className={styles.assignmentRow}>
+                    <div className={styles.assignmentSummary}>
                       <span
-                        className={cn(
-                          "size-2 shrink-0 rounded-full",
-                          isResourceActive
-                            ? "bg-primary"
-                            : "bg-subtle-foreground",
-                        )}
+                        className={styles.statusDot}
+                        data-active={isResourceActive}
                         aria-hidden="true"
                       />
-                      <span className="text-sm font-medium text-foreground [overflow-wrap:anywhere]">
+                      <span className={styles.assignmentName}>
                         {resource.name}
                       </span>
                       {!isResourceActive ? (
-                        <span className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium bg-background text-muted-foreground">
-                          Inactive
-                        </span>
+                        <span className={styles.inactiveBadge}>Inactive</span>
                       ) : null}
                     </div>
 
@@ -187,13 +176,16 @@ export function ServiceResourceAssignments({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="size-9 text-muted-foreground hover:text-destructive"
+                        className={styles.removeButton}
                         onClick={() => handleUnassign(resource.id)}
                         disabled={unassignMutation.isPending}
                         aria-label={`Unassign ${resource.name}`}
                         title="Unassign resource"
                       >
-                        <Trash2 aria-hidden="true" className="size-3.5" />
+                        <Trash2
+                          aria-hidden="true"
+                          className={styles.smallIcon}
+                        />
                       </Button>
                     ) : null}
                   </li>
@@ -203,39 +195,36 @@ export function ServiceResourceAssignments({
           )}
 
           {!isReadOnly ? (
-            <div className="pt-2">
+            <div className={styles.assignmentControls}>
               {!isServiceActive ? (
-                <p className="text-xs text-subtle-foreground">
+                <p className={`${styles.hint} ${styles.subtleHint}`}>
                   Reactivate this service to assign resources.
                 </p>
               ) : allResourcesQuery.isPending ? (
-                <div className="h-9 w-full rounded bg-border/40 animate-pulse" />
+                <div
+                  className={`${styles.skeleton} ${styles.loadingControl}`}
+                />
               ) : allResources.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
+                <p className={styles.hint}>
                   No resources exist in this organization yet. Add resources in
                   the Resources tab.
                 </p>
               ) : unassignedResources.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
+                <p className={styles.hint}>
                   All organization resources are assigned to this service.
                 </p>
               ) : (
-                <form onSubmit={handleAssign} className="flex flex-wrap gap-2">
-                  <div className="min-w-0 flex-1">
-                    <label htmlFor="assign-resource-select" className="sr-only">
+                <form onSubmit={handleAssign} className={styles.assignForm}>
+                  <div className={styles.selectWrapper}>
+                    <label
+                      htmlFor="assign-resource-select"
+                      className={styles.visuallyHidden}
+                    >
                       Select resource to assign
                     </label>
                     <select
                       id="assign-resource-select"
-                      className={cn(
-                        "h-9 min-w-0 w-full px-2.5",
-                        "rounded-md border border-border-strong bg-surface",
-                        "text-xs text-foreground",
-                        "transition-colors duration-150 outline-none",
-                        "enabled:hover:border-muted-foreground",
-                        "focus-visible:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-focus",
-                        "[@media(pointer:coarse)]:text-base",
-                      )}
+                      className={styles.nativeSelect}
                       value={selectedResourceId}
                       onChange={(e) => setSelectedResourceId(e.target.value)}
                       disabled={assignMutation.isPending}
@@ -258,7 +247,7 @@ export function ServiceResourceAssignments({
                     size="sm"
                     disabled={!selectedResourceId || assignMutation.isPending}
                   >
-                    <Plus aria-hidden="true" className="size-3.5" />
+                    <Plus aria-hidden="true" className={styles.smallIcon} />
                     {assignMutation.isPending ? "Assigning…" : "Assign"}
                   </Button>
                 </form>

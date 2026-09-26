@@ -16,8 +16,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/shared/components/ui/sheet";
-import { cn } from "@/shared/lib/cn";
 import { formatDuration, formatPriceIls } from "../lib/pricing";
+import styles from "../services.module.css";
 import type { Service } from "../types";
 import { ServiceResourceAssignments } from "./service-resource-assignments";
 
@@ -89,57 +89,44 @@ export function ServiceDetailsSheet({
       <Sheet open={open && !deactivateDialogOpen} onOpenChange={onOpenChange}>
         <SheetContent>
           <SheetHeader>
-            <div className="flex items-center gap-2.5">
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium",
-                  isActive
-                    ? "bg-primary-subtle text-primary"
-                    : "bg-background text-muted-foreground",
-                )}
-              >
-                <span
-                  className={cn(
-                    "size-1.5 rounded-full",
-                    isActive ? "bg-primary" : "bg-subtle-foreground",
-                  )}
-                  aria-hidden="true"
-                />
+            <div className={styles.statusLine}>
+              <span className={styles.statusBadge} data-active={isActive}>
+                <span className={styles.statusBadgeDot} aria-hidden="true" />
                 {isActive ? "Active" : "Inactive"}
               </span>
             </div>
-            <SheetTitle className="text-xl font-semibold text-foreground">
+            <SheetTitle className={styles.sheetTitle}>
               {service.name}
             </SheetTitle>
-            <SheetDescription className="sr-only">
+            <SheetDescription className={styles.visuallyHidden}>
               Service details
             </SheetDescription>
           </SheetHeader>
 
           {actionError ? (
-            <InlineAlert variant="error" className="mt-4 p-3">
+            <InlineAlert variant="error" className={styles.sheetAlert}>
               {actionError}
             </InlineAlert>
           ) : null}
 
-          <div className="mt-4 space-y-3 text-sm">
-            <div className="flex justify-between items-center gap-4 py-2 border-b border-border/50">
-              <span className="text-muted-foreground">Duration</span>
-              <span className="font-medium text-foreground">
+          <div className={styles.facts}>
+            <div className={styles.fact}>
+              <span className={styles.factLabel}>Duration</span>
+              <span className={styles.factValue}>
                 {formatDuration(service.durationMinutes)}
               </span>
             </div>
 
-            <div className="flex justify-between items-center gap-4 py-2 border-b border-border/50">
-              <span className="text-muted-foreground">Price</span>
-              <span className="font-medium text-foreground">
+            <div className={styles.fact}>
+              <span className={styles.factLabel}>Price</span>
+              <span className={styles.factValue}>
                 {formatPriceIls(service.priceAgorot) ?? "—"}
               </span>
             </div>
 
-            <div className="flex justify-between items-center gap-4 py-2">
-              <span className="text-muted-foreground">Buffer after</span>
-              <span className="font-medium text-foreground">
+            <div className={styles.fact}>
+              <span className={styles.factLabel}>Buffer after</span>
+              <span className={styles.factValue}>
                 {service.bufferAfterMinutes > 0
                   ? `${service.bufferAfterMinutes} min`
                   : "None"}
@@ -148,7 +135,7 @@ export function ServiceDetailsSheet({
           </div>
 
           {!isReadOnly ? (
-            <div className="mt-6 flex flex-wrap gap-2.5">
+            <div className={styles.sheetActions}>
               <Button
                 variant="outline"
                 size="sm"
@@ -178,7 +165,7 @@ export function ServiceDetailsSheet({
                   size="sm"
                   onClick={handleReactivate}
                   disabled={isActionPending}
-                  className="text-primary hover:bg-primary-subtle"
+                  className={styles.reactivate}
                 >
                   Reactivate
                 </Button>
@@ -186,7 +173,7 @@ export function ServiceDetailsSheet({
             </div>
           ) : null}
 
-          <div className="mt-6 border-t border-border pt-5">
+          <div className={styles.assignmentsArea}>
             <ServiceResourceAssignments
               organizationId={organizationId}
               serviceId={service.id}
@@ -211,11 +198,11 @@ export function ServiceDetailsSheet({
             preserved.
           </DialogDescription>
           {actionError ? (
-            <InlineAlert as="p" variant="error" className="mt-4 p-3">
+            <InlineAlert as="p" variant="error" className={styles.sheetAlert}>
               {actionError}
             </InlineAlert>
           ) : null}
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <div className={styles.dialogActions}>
             <DialogClose asChild>
               <Button variant="outline" disabled={isActionPending}>
                 Cancel

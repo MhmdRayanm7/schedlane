@@ -11,6 +11,7 @@ import { FormField } from "@/shared/components/ui/form-field";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
 import { agorotToIls, ilsToAgorot } from "../lib/pricing";
+import styles from "../services.module.css";
 import type { CreateServiceInput, Service, UpdateServiceInput } from "../types";
 
 type ServiceFormDialogProps = {
@@ -143,7 +144,7 @@ export function ServiceFormDialog({
         if (!isPending) onOpenChange(nextOpen);
       }}
     >
-      <DialogContent className="max-w-[520px]" aria-busy={isPending}>
+      <DialogContent className={styles.formDialog} aria-busy={isPending}>
         <header>
           <DialogTitle>
             {isEditing ? "Edit service" : "New service"}
@@ -155,9 +156,9 @@ export function ServiceFormDialog({
           </DialogDescription>
         </header>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className={styles.form}>
           {errorMessage ? (
-            <InlineAlert variant="error" className="p-3">
+            <InlineAlert variant="error" className={styles.alert}>
               {errorMessage}
             </InlineAlert>
           ) : null}
@@ -175,7 +176,7 @@ export function ServiceFormDialog({
             />
           </FormField>
 
-          <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2">
+          <div className={styles.formGrid}>
             <FormField htmlFor="service-duration" label="Duration (min)">
               <Input
                 id="service-duration"
@@ -219,7 +220,7 @@ export function ServiceFormDialog({
             />
           </FormField>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+          <div className={styles.formActions}>
             <Button
               type="button"
               variant="outline"

@@ -1,29 +1,31 @@
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/cn";
+import styles from "../bookings.module.css";
 
 export function BookingsLoadingState() {
   return (
     <div
       aria-busy="true"
       aria-label="Loading bookings"
-      className="divide-y divide-border"
+      className={styles.loadingList}
       role="status"
     >
-      <span className="sr-only">Loading bookings</span>
+      <span className={styles.visuallyHidden}>Loading bookings</span>
       {["one", "two", "three", "four"].map((item, index) => (
-        <div className="flex py-5" key={item}>
-          <div className="w-[88px] shrink-0 pr-4">
-            <span className="block h-4 w-10 animate-pulse rounded bg-[#e9edec]" />
+        <div className={styles.loadingRow} key={item}>
+          <div className={styles.loadingTime}>
+            <span className={cn(styles.skeleton, styles.skeletonTime)} />
           </div>
-          <div className="flex-1">
-            <span className="block h-4 w-32 animate-pulse rounded bg-border" />
-            <span className="mt-2 block h-3 w-48 max-w-full animate-pulse rounded bg-[#edf0ef]" />
+          <div className={styles.loadingContent}>
+            <span className={cn(styles.skeleton, styles.skeletonTitle)} />
+            <span className={cn(styles.skeleton, styles.skeletonDescription)} />
           </div>
           <span
             className={cn(
-              "hidden h-6 w-20 animate-pulse rounded bg-[#edf0ef] sm:block",
-              index > 2 && "opacity-60",
+              styles.skeleton,
+              styles.skeletonStatus,
+              index > 2 && styles.skeletonFaded,
             )}
           />
         </div>
@@ -34,13 +36,13 @@ export function BookingsLoadingState() {
 
 export function BookingsErrorState({ retry }: { retry: () => void }) {
   return (
-    <div className="py-16 text-center" role="alert">
-      <h2 className="text-base font-semibold">Couldn't load bookings</h2>
-      <p className="mt-1.5 text-sm text-muted-foreground">
+    <div className={styles.errorState} role="alert">
+      <h2 className={styles.stateTitle}>Couldn't load bookings</h2>
+      <p className={styles.stateDescription}>
         Check your connection and try again.
       </p>
-      <Button className="mt-5" onClick={retry} variant="outline">
-        <RefreshCw aria-hidden="true" className="size-4" />
+      <Button className={styles.stateAction} onClick={retry} variant="outline">
+        <RefreshCw aria-hidden="true" className={styles.icon} />
         Retry
       </Button>
     </div>

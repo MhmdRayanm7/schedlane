@@ -1,6 +1,6 @@
 import type { DateTime } from "luxon";
-import { cn } from "@/shared/lib/cn";
 import { formatLocalDate } from "@/shared/lib/date-time";
+import styles from "../bookings.module.css";
 import { weekDates } from "../lib/booking-date-range";
 import {
   formatBookingTime,
@@ -29,28 +29,18 @@ function WeekBooking({
   return (
     <button
       aria-label={`View ${booking.guestName}'s ${booking.serviceName} booking at ${formatBookingTime(booking.startAt)}`}
-      className={cn(
-        "w-full rounded-md border border-border bg-surface px-2.5 py-2.5 text-left",
-        "transition-colors duration-150",
-        "hover:border-border-strong hover:bg-surface-hover",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-        selected && "border-primary bg-primary-subtle",
-        booking.status === "cancelled" && "text-muted-foreground",
-      )}
+      className={styles.weekBooking}
+      data-status={booking.status}
       aria-pressed={selected}
       onClick={() => onSelectBooking(booking.id)}
       type="button"
     >
-      <span className="block text-xs font-semibold tabular-nums">
+      <span className={styles.weekTime}>
         {formatBookingTime(booking.startAt)}
       </span>
-      <span className="mt-1 block truncate text-sm font-medium text-foreground">
-        {booking.guestName}
-      </span>
-      <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-        {booking.serviceName}
-      </span>
-      <span className="mt-2 block">
+      <span className={styles.weekGuest}>{booking.guestName}</span>
+      <span className={styles.weekService}>{booking.serviceName}</span>
+      <span className={styles.weekStatus}>
         <BookingStatus status={booking.status} />
       </span>
     </button>
@@ -66,9 +56,9 @@ export function BookingsWeekView({
 }: BookingsWeekViewProps) {
   if (bookings.length === 0) {
     return (
-      <div className="py-10 text-center">
-        <h2 className="text-base font-semibold">No bookings for this week.</h2>
-        <p className="mt-1.5 text-sm text-muted-foreground">
+      <div className={styles.emptyState}>
+        <h2 className={styles.emptyTitle}>No bookings for this week.</h2>
+        <p className={styles.emptyDescription}>
           Appointments will appear here when customers book.
         </p>
       </div>
@@ -80,26 +70,22 @@ export function BookingsWeekView({
 
   return (
     <>
-      <div className="hidden grid-cols-7 divide-x divide-border xl:grid">
+      <div className={styles.desktopWeek}>
         {dates.map((day) => {
           const localDate = formatLocalDate(day);
           const dayBookings = groupedBookings.get(localDate) ?? [];
           const isToday = localDate === formatLocalDate(today);
 
           return (
-            <section
-              className="min-w-0 px-2.5 py-4 first:pl-0 last:pr-0"
-              key={localDate}
-            >
-              <header className={cn("mb-3 px-1", isToday && "text-primary")}>
-                <p className="text-[11px] font-semibold uppercase">
-                  {day.toFormat("ccc")}
-                </p>
-                <p className="mt-1 text-lg font-semibold tabular-nums">
-                  {day.day}
-                </p>
+            <section className={styles.weekDay} key={localDate}>
+              <header
+                className={styles.dayHeader}
+                data-today={isToday || undefined}
+              >
+                <p className={styles.weekday}>{day.toFormat("ccc")}</p>
+                <p className={styles.dayNumber}>{day.day}</p>
               </header>
-              <div className="space-y-2">
+              <div className={styles.weekBookings}>
                 {dayBookings.length > 0 ? (
                   dayBookings.map((booking) => (
                     <WeekBooking
@@ -110,9 +96,7 @@ export function BookingsWeekView({
                     />
                   ))
                 ) : (
-                  <p className="px-1 py-2 text-xs text-subtle-foreground">
-                    No bookings
-                  </p>
+                  <p className={styles.noBookings}>No bookings</p>
                 )}
               </div>
             </section>
@@ -120,20 +104,23 @@ export function BookingsWeekView({
         })}
       </div>
 
-      <div className="divide-y divide-border xl:hidden">
+      <div className={styles.mobileWeek}>
         {dates.map((day) => {
           const localDate = formatLocalDate(day);
           const dayBookings = groupedBookings.get(localDate) ?? [];
           const isToday = localDate === formatLocalDate(today);
 
           return (
-            <section className="py-5" key={localDate}>
-              <header className={cn("mb-3", isToday && "text-primary")}>
-                <h2 className="text-sm font-semibold">
+            <section className={styles.mobileDay} key={localDate}>
+              <header
+                className={styles.mobileDayHeader}
+                data-today={isToday || undefined}
+              >
+                <h2 className={styles.mobileDayTitle}>
                   {day.toFormat("cccc, LLL d")}
                 </h2>
               </header>
-              <div className="space-y-2">
+              <div className={styles.weekBookings}>
                 {dayBookings.length > 0 ? (
                   dayBookings.map((booking) => (
                     <WeekBooking
@@ -144,9 +131,7 @@ export function BookingsWeekView({
                     />
                   ))
                 ) : (
-                  <p className="py-1 text-xs text-subtle-foreground">
-                    No bookings
-                  </p>
+                  <p className={styles.noBookings}>No bookings</p>
                 )}
               </div>
             </section>

@@ -10,6 +10,7 @@ import {
 import { FormField } from "@/shared/components/ui/form-field";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
+import styles from "../resources.module.css";
 import type { CreateResourceInput } from "../types";
 
 type ResourceCreateDialogProps = {
@@ -84,7 +85,7 @@ export function ResourceCreateDialog({
         if (!isPending) onOpenChange(nextOpen);
       }}
     >
-      <DialogContent className="max-w-[460px]" aria-busy={isPending}>
+      <DialogContent className={styles.formDialog} aria-busy={isPending}>
         <header>
           <DialogTitle>New resource</DialogTitle>
           <DialogDescription>
@@ -92,9 +93,9 @@ export function ResourceCreateDialog({
           </DialogDescription>
         </header>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className={styles.form}>
           {errorMessage ? (
-            <InlineAlert variant="error" className="p-3">
+            <InlineAlert variant="error" className={styles.alert}>
               {errorMessage}
             </InlineAlert>
           ) : null}
@@ -112,7 +113,7 @@ export function ResourceCreateDialog({
             />
           </FormField>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+          <div className={styles.formActions}>
             <Button
               type="button"
               variant="outline"

@@ -5,6 +5,7 @@ import { authClient } from "@/shared/auth/auth-client";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
+import styles from "../auth.module.css";
 import { AuthLayout } from "../components/auth-layout";
 import { safeReturnTo } from "../routing/return-to";
 
@@ -59,29 +60,36 @@ export function SignInPage() {
       title="Welcome back"
     >
       {wasVerified ? (
-        <InlineAlert as="p" variant="success" className="mb-5">
+        <InlineAlert as="p" variant="success" className={styles.alert}>
           Your email is verified. You can sign in now.
         </InlineAlert>
       ) : null}
 
       {verificationError ? (
-        <InlineAlert as="p" variant="error" className="mb-5">
+        <InlineAlert as="p" variant="error" className={styles.alert}>
           {verificationErrors[verificationError] ??
             "We couldn't verify that email link. Request a new one below."}
         </InlineAlert>
       ) : null}
 
       {error ? (
-        <InlineAlert as="p" variant="error" className="mb-5" id="sign-in-error">
+        <InlineAlert
+          as="p"
+          variant="error"
+          className={styles.alert}
+          id="sign-in-error"
+        >
           {error}
         </InlineAlert>
       ) : null}
 
       {unverified ? (
-        <InlineAlert variant="warning" className="mb-5">
-          <p>Verify your email before signing in.</p>
+        <InlineAlert variant="warning" className={styles.alert}>
+          <p className={styles.alertText}>
+            Verify your email before signing in.
+          </p>
           <Link
-            className="mt-1 inline-block font-medium text-primary underline-offset-4 hover:underline"
+            className={`${styles.link} ${styles.alertLink}`}
             state={{ email }}
             to="/verify-email"
           >
@@ -90,9 +98,9 @@ export function SignInPage() {
         </InlineAlert>
       ) : null}
 
-      <form className="space-y-5" onSubmit={handleSubmit}>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium" htmlFor="email">
+      <form className={styles.form} onSubmit={handleSubmit}>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="email">
             Email
           </label>
           <Input
@@ -104,11 +112,8 @@ export function SignInPage() {
             value={email}
           />
         </div>
-        <div>
-          <label
-            className="mb-1.5 block text-sm font-medium"
-            htmlFor="password"
-          >
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="password">
             Password
           </label>
           <Input
@@ -122,7 +127,7 @@ export function SignInPage() {
           />
         </div>
         <Button
-          className="w-full"
+          className={styles.submit}
           loading={isSubmitting}
           disabled={isSubmitting}
           type="submit"
@@ -131,12 +136,9 @@ export function SignInPage() {
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <p className={styles.footer}>
         New to Schedlane?{" "}
-        <Link
-          className="font-medium text-primary underline-offset-4 hover:underline"
-          to="/sign-up"
-        >
+        <Link className={styles.link} to="/sign-up">
           Create an account
         </Link>
       </p>

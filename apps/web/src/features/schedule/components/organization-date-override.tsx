@@ -1,4 +1,4 @@
-import { Check, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { useTransientSaveStatus } from "../hooks/use-transient-save-status";
 import {
   areIntervalsEqual,
   formatIntervalsSummary,
@@ -21,7 +22,9 @@ import type {
   MinuteInterval,
   WeeklyHoursResponse,
 } from "../types";
+import styles from "./schedule-exceptions.module.css";
 import { type IntervalDraft, TimeIntervalInput } from "./time-interval-input";
+import { TransientSaveStatus } from "./transient-save-status";
 
 type OrganizationDateOverrideProps = {
   date: string;
@@ -48,7 +51,8 @@ export function OrganizationDateOverride({
   const currentMode = override?.mode ?? "inherit";
   const [mode, setMode] = useState<AvailabilityMode>(currentMode);
   const [intervalsDraft, setIntervalsDraft] = useState<IntervalDraft[]>([]);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const { saveStatus, clearSaveSuccess, showSaveSuccess } =
+    useTransientSaveStatus();
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Normal weekly intervals for this weekday
@@ -70,7 +74,6 @@ export function OrganizationDateOverride({
     } else {
       setIntervalsDraft([]);
     }
-    setSaveSuccess(false);
     setSaveError(null);
   }, [override]);
 
@@ -109,7 +112,7 @@ export function OrganizationDateOverride({
     (mode === "custom" && !areIntervalsEqual(serverIntervals, parsedIntervals));
 
   const handleModeChange = (newMode: AvailabilityMode) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setMode(newMode);
 
@@ -138,7 +141,7 @@ export function OrganizationDateOverride({
   };
 
   const handleAddInterval = () => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     const last = intervalsDraft[intervalsDraft.length - 1];
     let newStart = "17:00";
@@ -157,7 +160,7 @@ export function OrganizationDateOverride({
   };
 
   const handleIntervalChange = (index: number, updated: IntervalDraft) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setIntervalsDraft((prev) => {
       const copy = [...prev];
@@ -167,7 +170,7 @@ export function OrganizationDateOverride({
   };
 
   const handleRemoveInterval = (index: number) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setIntervalsDraft((prev) => prev.filter((_, i) => i !== index));
   };
@@ -175,14 +178,14 @@ export function OrganizationDateOverride({
   const handleSave = async () => {
     if (isReadOnly || isSaving || !isDirty || validationError) return;
     setSaveError(null);
-    setSaveSuccess(false);
+    clearSaveSuccess();
 
     try {
       await onSave({
         mode,
         intervals: mode === "custom" ? parsedIntervals : [],
       });
-      setSaveSuccess(true);
+      showSaveSuccess();
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Failed to save date override.";
@@ -191,38 +194,39 @@ export function OrganizationDateOverride({
   };
 
   return (
-    <div className="border-t border-border">
-      <div className="py-4">
-        <h3 className="text-sm font-semibold text-foreground">
-          Organization exception
-        </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
+    <div className={styles.override}>
+      <div className={styles.sectionHeader}>
+        <h3 className={styles.title}>Organization exception</h3>
+        <p className={styles.description}>
           Override organization operating hours on {date}.
         </p>
       </div>
 
-      <div className="space-y-4 pb-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor="org-date-mode" className="sr-only">
+      <div className={styles.sectionContent}>
+        <div className={styles.modeRow}>
+          <label htmlFor="org-date-mode" className={styles.visuallyHidden}>
             Organization exception mode
           </label>
-          <div className="w-48">
+          <div className={styles.modeWrapper}>
             <Select
               value={mode}
               onValueChange={(val) => handleModeChange(val as AvailabilityMode)}
               disabled={isReadOnly || isSaving}
             >
-              <SelectTrigger id="org-date-mode" className="h-9 text-xs">
+              <SelectTrigger
+                id="org-date-mode"
+                className={styles.compactSelect}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="inherit" className="text-xs">
+                <SelectItem value="inherit" className={styles.compactItem}>
                   Use weekly hours
                 </SelectItem>
-                <SelectItem value="closed" className="text-xs">
+                <SelectItem value="closed" className={styles.compactItem}>
                   Closed all day
                 </SelectItem>
-                <SelectItem value="custom" className="text-xs">
+                <SelectItem value="custom" className={styles.compactItem}>
                   Custom hours
                 </SelectItem>
               </SelectContent>
@@ -230,21 +234,21 @@ export function OrganizationDateOverride({
           </div>
 
           {mode === "inherit" && (
-            <span className="text-xs text-muted-foreground">
+            <span className={styles.summary}>
               Normal hours: {formatIntervalsSummary(normalWeeklyIntervals)}
             </span>
           )}
 
           {mode === "closed" && (
-            <span className="text-xs text-muted-foreground">
+            <span className={styles.summary}>
               Organization is closed all day on this date.
             </span>
           )}
         </div>
 
         {mode === "custom" && (
-          <div className="space-y-3 pt-2">
-            <div className="space-y-2">
+          <div className={styles.customHours}>
+            <div className={styles.intervals}>
               {intervalsDraft.map((draft, idx) => (
                 <TimeIntervalInput
                   key={draft.id}
@@ -259,7 +263,7 @@ export function OrganizationDateOverride({
             </div>
 
             {validationError && (
-              <p role="alert" className="text-sm font-medium text-destructive">
+              <p role="alert" className={styles.error}>
                 {validationError}
               </p>
             )}
@@ -270,28 +274,20 @@ export function OrganizationDateOverride({
               size="sm"
               disabled={isReadOnly || isSaving}
               onClick={handleAddInterval}
-              className="h-9 text-xs"
+              className={styles.addButton}
             >
-              <Plus aria-hidden="true" className="size-3" />
+              <Plus aria-hidden="true" className={styles.tinyIcon} />
               Add interval
             </Button>
           </div>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-4">
-        <div className="flex items-center gap-2">
-          {saveSuccess && (
-            <span
-              role="status"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary"
-            >
-              <Check aria-hidden="true" className="size-3.5" />
-              Saved organization exception
-            </span>
-          )}
+      <div className={styles.footer}>
+        <div className={styles.feedback}>
+          {!saveError && <TransientSaveStatus status={saveStatus} />}
           {saveError && (
-            <span role="alert" className="text-sm font-medium text-destructive">
+            <span role="alert" className={styles.error}>
               {saveError}
             </span>
           )}
@@ -303,7 +299,7 @@ export function OrganizationDateOverride({
           disabled={
             isReadOnly || isSaving || !isDirty || Boolean(validationError)
           }
-          className="text-sm"
+          className={styles.saveButton}
           loading={isSaving}
         >
           Save organization exception

@@ -8,6 +8,7 @@ import type {
   MinuteInterval,
   TimeBlockItem,
 } from "../types";
+import styles from "./schedule-exceptions.module.css";
 import { TimeInput } from "./time-input";
 
 type ResourceTimeBlocksProps = {
@@ -117,35 +118,30 @@ export function ResourceTimeBlocks({
   if (!resource) return null;
 
   return (
-    <div className="border-t border-border">
-      <div className="py-4">
-        <h3 className="text-sm font-semibold text-foreground">
-          Time away / blocked time
-        </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
+    <div className={styles.blocks}>
+      <div className={styles.sectionHeader}>
+        <h3 className={styles.title}>Time away / blocked time</h3>
+        <p className={styles.description}>
           Set temporary unavailable periods inside {resource.name}'s day on{" "}
           {date}.
         </p>
       </div>
 
-      <div className="space-y-4 pb-5">
+      <div className={styles.sectionContent}>
         {isLoading ? (
-          <div aria-busy="true" className="space-y-2 py-2" role="status">
-            <div className="h-6 w-48 rounded bg-border animate-pulse" />
-            <div className="h-6 w-36 rounded bg-border animate-pulse" />
+          <div aria-busy="true" className={styles.blocksLoading} role="status">
+            <div className={`${styles.skeleton} ${styles.blockSkeletonWide}`} />
+            <div className={`${styles.skeleton} ${styles.blockSkeleton}`} />
           </div>
         ) : sortedBlocks.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
+          <p className={styles.emptyBlocks}>
             No blocked time recorded for this date.
           </p>
         ) : (
-          <div className="divide-y divide-border rounded-md border border-border">
+          <div className={styles.blockList}>
             {sortedBlocks.map((block) => (
-              <div
-                key={block.id}
-                className="flex items-center justify-between p-3"
-              >
-                <span className="font-mono text-xs font-medium text-foreground">
+              <div key={block.id} className={styles.blockRow}>
+                <span className={styles.blockTime}>
                   {formatInterval({
                     startMinute: block.startMinute,
                     endMinute: block.endMinute,
@@ -158,9 +154,9 @@ export function ResourceTimeBlocks({
                   size="sm"
                   disabled={isWritesDisabled || deletingBlockId === block.id}
                   onClick={() => handleDelete(block.id)}
-                  className="h-9 text-xs text-muted-foreground hover:text-destructive"
+                  className={styles.removeBlock}
                 >
-                  <Trash2 aria-hidden="true" className="size-3.5" />
+                  <Trash2 aria-hidden="true" className={styles.smallIcon} />
                   {deletingBlockId === block.id ? "Removing…" : "Remove"}
                 </Button>
               </div>
@@ -169,14 +165,9 @@ export function ResourceTimeBlocks({
         )}
 
         {!isWritesDisabled && (
-          <form
-            onSubmit={handleAdd}
-            className="flex flex-wrap items-end gap-3 pt-2"
-          >
+          <form onSubmit={handleAdd} className={styles.blockForm}>
             <div>
-              <p className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                Start
-              </p>
+              <p className={styles.fieldLabel}>Start</p>
               <TimeInput
                 label="Time block start"
                 boundary="start"
@@ -190,9 +181,7 @@ export function ResourceTimeBlocks({
             </div>
 
             <div>
-              <p className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                End
-              </p>
+              <p className={styles.fieldLabel}>End</p>
               <TimeInput
                 label="Time block end"
                 boundary="end"
@@ -210,16 +199,16 @@ export function ResourceTimeBlocks({
               variant="outline"
               size="sm"
               disabled={isCreating}
-              className="h-8 text-xs"
+              className={styles.addButton}
             >
-              <Plus aria-hidden="true" className="size-3.5" />
+              <Plus aria-hidden="true" className={styles.smallIcon} />
               {isCreating ? "Adding…" : "Add time block"}
             </Button>
           </form>
         )}
 
         {errorMessage && (
-          <p role="alert" className="text-sm font-medium text-destructive">
+          <p role="alert" className={styles.error}>
             {errorMessage}
           </p>
         )}

@@ -1,4 +1,4 @@
-import { Check, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { useTransientSaveStatus } from "../hooks/use-transient-save-status";
 import {
   areIntervalsEqual,
   formatIntervalsSummary,
@@ -23,7 +24,9 @@ import type {
   ResourceWeeklyHoursResponse,
   WeeklyHoursResponse,
 } from "../types";
+import styles from "./schedule-exceptions.module.css";
 import { type IntervalDraft, TimeIntervalInput } from "./time-interval-input";
+import { TransientSaveStatus } from "./transient-save-status";
 
 type ResourceDateOverrideProps = {
   date: string;
@@ -57,7 +60,8 @@ export function ResourceDateOverride({
   const currentMode = override?.mode ?? "inherit";
   const [mode, setMode] = useState<AvailabilityMode>(currentMode);
   const [intervalsDraft, setIntervalsDraft] = useState<IntervalDraft[]>([]);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const { saveStatus, clearSaveSuccess, showSaveSuccess } =
+    useTransientSaveStatus();
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Derive normal effective schedule for this weekday
@@ -91,7 +95,6 @@ export function ResourceDateOverride({
     } else {
       setIntervalsDraft([]);
     }
-    setSaveSuccess(false);
     setSaveError(null);
   }, [override]);
 
@@ -130,7 +133,7 @@ export function ResourceDateOverride({
     (mode === "custom" && !areIntervalsEqual(serverIntervals, parsedIntervals));
 
   const handleModeChange = (newMode: AvailabilityMode) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setMode(newMode);
 
@@ -159,7 +162,7 @@ export function ResourceDateOverride({
   };
 
   const handleAddInterval = () => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     const last = intervalsDraft[intervalsDraft.length - 1];
     let newStart = "17:00";
@@ -178,7 +181,7 @@ export function ResourceDateOverride({
   };
 
   const handleIntervalChange = (index: number, updated: IntervalDraft) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setIntervalsDraft((prev) => {
       const copy = [...prev];
@@ -188,7 +191,7 @@ export function ResourceDateOverride({
   };
 
   const handleRemoveInterval = (index: number) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setIntervalsDraft((prev) => prev.filter((_, i) => i !== index));
   };
@@ -196,14 +199,14 @@ export function ResourceDateOverride({
   const handleSave = async () => {
     if (isWritesDisabled || !isDirty || validationError) return;
     setSaveError(null);
-    setSaveSuccess(false);
+    clearSaveSuccess();
 
     try {
       await onSave({
         mode,
         intervals: mode === "custom" ? parsedIntervals : [],
       });
-      setSaveSuccess(true);
+      showSaveSuccess();
     } catch (err: unknown) {
       const message =
         err instanceof Error
@@ -216,38 +219,39 @@ export function ResourceDateOverride({
   if (!resource) return null;
 
   return (
-    <div className="border-t border-border">
-      <div className="py-4">
-        <h3 className="text-sm font-semibold text-foreground">
-          Resource exception: {resource.name}
-        </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
+    <div className={styles.override}>
+      <div className={styles.sectionHeader}>
+        <h3 className={styles.title}>Resource exception: {resource.name}</h3>
+        <p className={styles.description}>
           Override {resource.name}'s schedule on {date}.
         </p>
       </div>
 
-      <div className="space-y-4 pb-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor="resource-date-mode" className="sr-only">
+      <div className={styles.sectionContent}>
+        <div className={styles.modeRow}>
+          <label htmlFor="resource-date-mode" className={styles.visuallyHidden}>
             Resource exception mode
           </label>
-          <div className="w-48">
+          <div className={styles.modeWrapper}>
             <Select
               value={mode}
               onValueChange={(val) => handleModeChange(val as AvailabilityMode)}
               disabled={isWritesDisabled}
             >
-              <SelectTrigger id="resource-date-mode" className="h-9 text-xs">
+              <SelectTrigger
+                id="resource-date-mode"
+                className={styles.compactSelect}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="inherit" className="text-xs">
+                <SelectItem value="inherit" className={styles.compactItem}>
                   Use normal schedule
                 </SelectItem>
-                <SelectItem value="closed" className="text-xs">
+                <SelectItem value="closed" className={styles.compactItem}>
                   Closed on this date
                 </SelectItem>
-                <SelectItem value="custom" className="text-xs">
+                <SelectItem value="custom" className={styles.compactItem}>
                   Custom hours
                 </SelectItem>
               </SelectContent>
@@ -255,22 +259,22 @@ export function ResourceDateOverride({
           </div>
 
           {mode === "inherit" && (
-            <span className="text-xs text-muted-foreground">
+            <span className={styles.summary}>
               Normal schedule:{" "}
               {formatIntervalsSummary(effectiveWeeklyIntervals)}
             </span>
           )}
 
           {mode === "closed" && (
-            <span className="text-xs text-muted-foreground">
+            <span className={styles.summary}>
               Unavailable all day on this date.
             </span>
           )}
         </div>
 
         {mode === "custom" && (
-          <div className="space-y-3 pt-2">
-            <div className="space-y-2">
+          <div className={styles.customHours}>
+            <div className={styles.intervals}>
               {intervalsDraft.map((draft, idx) => (
                 <TimeIntervalInput
                   key={draft.id}
@@ -285,7 +289,7 @@ export function ResourceDateOverride({
             </div>
 
             {validationError && (
-              <p role="alert" className="text-sm font-medium text-destructive">
+              <p role="alert" className={styles.error}>
                 {validationError}
               </p>
             )}
@@ -296,28 +300,20 @@ export function ResourceDateOverride({
               size="sm"
               disabled={isWritesDisabled}
               onClick={handleAddInterval}
-              className="h-9 text-xs"
+              className={styles.addButton}
             >
-              <Plus aria-hidden="true" className="size-3" />
+              <Plus aria-hidden="true" className={styles.tinyIcon} />
               Add interval
             </Button>
           </div>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-4">
-        <div className="flex items-center gap-2">
-          {saveSuccess && (
-            <span
-              role="status"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary"
-            >
-              <Check aria-hidden="true" className="size-3.5" />
-              Saved resource exception
-            </span>
-          )}
+      <div className={styles.footer}>
+        <div className={styles.feedback}>
+          {!saveError && <TransientSaveStatus status={saveStatus} />}
           {saveError && (
-            <span role="alert" className="text-sm font-medium text-destructive">
+            <span role="alert" className={styles.error}>
               {saveError}
             </span>
           )}
@@ -327,7 +323,7 @@ export function ResourceDateOverride({
           type="button"
           onClick={handleSave}
           disabled={isWritesDisabled || !isDirty || Boolean(validationError)}
-          className="text-sm"
+          className={styles.saveButton}
           loading={isSaving}
         >
           Save resource exception

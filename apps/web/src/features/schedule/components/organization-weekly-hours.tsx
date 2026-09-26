@@ -1,6 +1,7 @@
-import { Check, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/shared/components/ui/button";
+import { useTransientSaveStatus } from "../hooks/use-transient-save-status";
 import { WEEKDAYS_SUNDAY_FIRST } from "../lib/constants";
 import {
   areIntervalsEqual,
@@ -14,6 +15,8 @@ import type {
   WeeklyHoursResponse,
 } from "../types";
 import { type IntervalDraft, TimeIntervalInput } from "./time-interval-input";
+import { TransientSaveStatus } from "./transient-save-status";
+import styles from "./weekly-hours.module.css";
 
 type OrganizationWeeklyHoursProps = {
   data: WeeklyHoursResponse;
@@ -71,7 +74,8 @@ export function OrganizationWeeklyHours({
   const [draft, setDraft] = useState<Record<number, IntervalDraft[]>>(() =>
     initDraft(data),
   );
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const { saveStatus, clearSaveSuccess, showSaveSuccess } =
+    useTransientSaveStatus();
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Sync draft when data changes
@@ -103,7 +107,7 @@ export function OrganizationWeeklyHours({
   });
 
   const handleDayToggleOpen = (weekday: number) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setDraft((prev) => ({
       ...prev,
@@ -118,7 +122,7 @@ export function OrganizationWeeklyHours({
   };
 
   const handleDayClose = (weekday: number) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setDraft((prev) => ({
       ...prev,
@@ -127,7 +131,7 @@ export function OrganizationWeeklyHours({
   };
 
   const handleAddInterval = (weekday: number) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     const current = draft[weekday] ?? [];
     const last = current[current.length - 1];
@@ -154,7 +158,7 @@ export function OrganizationWeeklyHours({
     index: number,
     updated: IntervalDraft,
   ) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setDraft((prev) => {
       const dayDrafts = [...(prev[weekday] ?? [])];
@@ -164,7 +168,7 @@ export function OrganizationWeeklyHours({
   };
 
   const handleRemoveInterval = (weekday: number, index: number) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setDraft((prev) => {
       const dayDrafts = (prev[weekday] ?? []).filter((_, i) => i !== index);
@@ -175,7 +179,7 @@ export function OrganizationWeeklyHours({
   const handleSave = async () => {
     if (isReadOnly || isSaving || !isDirty || hasAnyError) return;
     setSaveError(null);
-    setSaveSuccess(false);
+    clearSaveSuccess();
 
     const daysPayload: WeekdayHours[] = [];
     for (let weekday = 1; weekday <= 7; weekday++) {
@@ -187,7 +191,7 @@ export function OrganizationWeeklyHours({
 
     try {
       await onSave(daysPayload);
-      setSaveSuccess(true);
+      showSaveSuccess();
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Failed to save weekly hours.";
@@ -197,31 +201,26 @@ export function OrganizationWeeklyHours({
 
   return (
     <div>
-      <div className="py-4">
-        <h2 className="text-base font-semibold text-foreground">
-          Organization business hours
-        </h2>
-        <p className="mt-1 text-xs text-muted-foreground">
+      <div className={styles.sectionHeader}>
+        <h2 className={styles.title}>Organization business hours</h2>
+        <p className={styles.description}>
           Set the default operating schedule for your organization. Resources
           can inherit or override these hours.
         </p>
       </div>
 
-      <div className="divide-y divide-border">
+      <div className={styles.days}>
         {WEEKDAYS_SUNDAY_FIRST.map(({ weekday, label }) => {
           const dayDrafts = draft[weekday] ?? [];
           const isOpen = dayDrafts.length > 0;
           const { error } = parsedByWeekday[weekday];
 
           return (
-            <div
-              key={weekday}
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 py-3 min-[800px]:grid-cols-[164px_minmax(0,1fr)_auto]"
-            >
-              <div className="flex min-h-9 items-center gap-2">
+            <div key={weekday} className={styles.dayRow}>
+              <div className={styles.dayHeading}>
                 <input
                   type="checkbox"
-                  className="size-4 shrink-0 accent-primary"
+                  className={styles.dayToggle}
                   aria-label={`${label} open`}
                   checked={isOpen}
                   disabled={isReadOnly || isSaving}
@@ -231,14 +230,12 @@ export function OrganizationWeeklyHours({
                       : handleDayClose(weekday)
                   }
                 />
-                <span className="text-sm font-medium text-foreground">
-                  {label}
-                </span>
+                <span className={styles.dayName}>{label}</span>
               </div>
 
-              <div className="col-span-2 min-w-0 space-y-2 min-[800px]:col-span-1">
+              <div className={styles.dayContent}>
                 {isOpen ? (
-                  <div className="space-y-2">
+                  <div className={styles.intervals}>
                     {dayDrafts.map((intervalDraft, idx) => (
                       <TimeIntervalInput
                         key={intervalDraft.id}
@@ -253,22 +250,19 @@ export function OrganizationWeeklyHours({
                       />
                     ))}
                     {error && (
-                      <p
-                        role="alert"
-                        className="text-sm font-medium text-destructive"
-                      >
+                      <p role="alert" className={styles.error}>
                         {error}
                       </p>
                     )}
                   </div>
                 ) : (
-                  <span className="text-xs text-muted-foreground">
+                  <span className={styles.summary}>
                     No operating hours configured
                   </span>
                 )}
               </div>
 
-              <div className="col-start-2 row-start-1 flex items-center gap-2 min-[800px]:col-start-3">
+              <div className={styles.dayActions}>
                 {isOpen ? (
                   <Button
                     type="button"
@@ -276,16 +270,14 @@ export function OrganizationWeeklyHours({
                     size="sm"
                     disabled={isReadOnly || isSaving}
                     onClick={() => handleAddInterval(weekday)}
-                    className="size-9 px-0"
+                    className={styles.addButton}
                     aria-label={`Add interval for ${label}`}
                     title="Add interval"
                   >
-                    <Plus aria-hidden="true" className="size-4" />
+                    <Plus aria-hidden="true" className={styles.icon} />
                   </Button>
                 ) : (
-                  <span className="py-2 text-xs text-muted-foreground">
-                    Closed
-                  </span>
+                  <span className={styles.closedLabel}>Closed</span>
                 )}
               </div>
             </div>
@@ -293,19 +285,11 @@ export function OrganizationWeeklyHours({
         })}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-4">
-        <div className="flex items-center gap-2">
-          {saveSuccess && (
-            <span
-              role="status"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary"
-            >
-              <Check aria-hidden="true" className="size-3.5" />
-              Saved business hours
-            </span>
-          )}
+      <div className={styles.footer}>
+        <div className={styles.feedback}>
+          {!saveError && <TransientSaveStatus status={saveStatus} />}
           {saveError && (
-            <span role="alert" className="text-sm font-medium text-destructive">
+            <span role="alert" className={styles.error}>
               {saveError}
             </span>
           )}
@@ -315,7 +299,7 @@ export function OrganizationWeeklyHours({
           type="button"
           onClick={handleSave}
           disabled={isReadOnly || isSaving || !isDirty || hasAnyError}
-          className="text-sm"
+          className={styles.saveButton}
           loading={isSaving}
         >
           Save business hours

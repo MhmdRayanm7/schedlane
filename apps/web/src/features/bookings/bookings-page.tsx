@@ -3,6 +3,7 @@ import { useOutletContext, useParams, useSearchParams } from "react-router";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
 import { PageHeader } from "@/shared/components/page-header";
 import { formatLocalDate, schedulingToday } from "@/shared/lib/date-time";
+import styles from "./bookings.module.css";
 import { BookingDetailsSheet } from "./components/booking-details-sheet";
 import { BookingsDayView } from "./components/bookings-day-view";
 import {
@@ -68,7 +69,7 @@ export function BookingsPage() {
   if (!organizationId) return null;
 
   return (
-    <div className="relative">
+    <div className={styles.page}>
       <PageHeader
         title="Bookings"
         description="View and manage your organization's appointments."

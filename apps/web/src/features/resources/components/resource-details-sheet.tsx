@@ -18,12 +18,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/shared/components/ui/sheet";
-import { cn } from "@/shared/lib/cn";
 import {
   useLinkResource,
   useResourceLinkCandidates,
   useUnlinkResource,
 } from "../hooks/use-resources";
+import styles from "../resources.module.css";
 import type { Resource } from "../types";
 
 type ResourceDetailsSheetProps = {
@@ -39,11 +39,7 @@ type ResourceDetailsSheetProps = {
 
 function roleBadge(role: string) {
   const label = role.charAt(0).toUpperCase() + role.slice(1);
-  return (
-    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium bg-surface-hover text-foreground">
-      {label}
-    </span>
-  );
+  return <span className={styles.roleBadge}>{label}</span>;
 }
 
 export function ResourceDetailsSheet({
@@ -178,41 +174,28 @@ export function ResourceDetailsSheet({
       <Sheet open={open && !deactivateDialogOpen} onOpenChange={onOpenChange}>
         <SheetContent>
           <SheetHeader>
-            <div className="flex items-center gap-2.5">
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium",
-                  isActive
-                    ? "bg-primary-subtle text-primary"
-                    : "bg-background text-muted-foreground",
-                )}
-              >
-                <span
-                  className={cn(
-                    "size-1.5 rounded-full",
-                    isActive ? "bg-primary" : "bg-subtle-foreground",
-                  )}
-                  aria-hidden="true"
-                />
+            <div className={styles.statusLine}>
+              <span className={styles.statusBadge} data-active={isActive}>
+                <span className={styles.statusBadgeDot} aria-hidden="true" />
                 {isActive ? "Active" : "Inactive"}
               </span>
             </div>
-            <SheetTitle className="text-xl font-semibold text-foreground">
+            <SheetTitle className={styles.sheetTitle}>
               {resource.name}
             </SheetTitle>
-            <SheetDescription className="sr-only">
+            <SheetDescription className={styles.visuallyHidden}>
               Resource details
             </SheetDescription>
           </SheetHeader>
 
           {actionError ? (
-            <InlineAlert variant="error" className="mt-4 p-3">
+            <InlineAlert variant="error" className={styles.sheetAlert}>
               {actionError}
             </InlineAlert>
           ) : null}
 
           {!isReadOnly ? (
-            <div className="mt-5 flex gap-2.5">
+            <div className={styles.sheetActions}>
               {isActive ? (
                 <Button
                   variant="destructiveOutline"
@@ -231,7 +214,7 @@ export function ResourceDetailsSheet({
                   size="sm"
                   onClick={handleReactivate}
                   disabled={isActionPending}
-                  className="text-primary hover:bg-primary-subtle"
+                  className={styles.reactivate}
                 >
                   Reactivate resource
                 </Button>
@@ -241,39 +224,37 @@ export function ResourceDetailsSheet({
 
           <section
             aria-labelledby="member-linking-heading"
-            className="mt-6 border-t border-border pt-5"
+            className={styles.linkingSection}
           >
-            <h3
-              id="member-linking-heading"
-              className="text-sm font-semibold text-foreground"
-            >
+            <h3 id="member-linking-heading" className={styles.sectionTitle}>
               Team member link
             </h3>
-            <p className="mt-1 text-xs text-muted-foreground leading-normal">
+            <p className={styles.sectionDescription}>
               Linking a resource to a team member lets them manage and receive
               appointments.
             </p>
 
-            <div className="mt-4">
+            <div className={styles.linkingContent}>
               {candidatesQuery.isPending ? (
-                <div aria-busy="true" className="space-y-2 py-2" role="status">
-                  <div className="h-4 w-40 rounded bg-border animate-pulse" />
-                  <div className="h-10 w-full rounded bg-border/60 animate-pulse" />
+                <div aria-busy="true" className={styles.loading} role="status">
+                  <div
+                    className={`${styles.skeleton} ${styles.loadingTitle}`}
+                  />
+                  <div
+                    className={`${styles.skeleton} ${styles.loadingControl}`}
+                  />
                 </div>
               ) : candidatesQuery.isError ? (
-                <p className="text-xs text-destructive">
+                <p className={styles.error}>
                   Could not load team linking information.
                 </p>
               ) : linkData ? (
-                <div className="space-y-4">
+                <div className={styles.linkingStates}>
                   {linkData.pendingInvitation ? (
-                    <InlineAlert
-                      variant="warning"
-                      className="flex items-start gap-2.5 rounded-lg p-3 text-xs"
-                    >
-                      <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                    <InlineAlert variant="warning" className={styles.warning}>
+                      <AlertCircle className={styles.warningIcon} />
                       <div>
-                        <span className="font-semibold">
+                        <span className={styles.warningLabel}>
                           Pending invitation conflict:
                         </span>{" "}
                         An active staff invitation for{" "}
@@ -285,21 +266,21 @@ export function ResourceDetailsSheet({
                   ) : null}
 
                   {linkData.currentLink ? (
-                    <div className="border-y border-border py-3">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={styles.currentLink}>
+                      <div className={styles.currentLinkRow}>
+                        <div className={styles.memberSummary}>
                           <UserCheck
                             aria-hidden="true"
-                            className="size-4 text-primary shrink-0"
+                            className={styles.memberIcon}
                           />
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-medium text-sm text-foreground [overflow-wrap:anywhere]">
+                          <div className={styles.memberCopy}>
+                            <div className={styles.memberNameLine}>
+                              <span className={styles.memberName}>
                                 {linkData.currentLink.name}
                               </span>
                               {roleBadge(linkData.currentLink.role)}
                             </div>
-                            <span className="text-xs text-muted-foreground [overflow-wrap:anywhere] block">
+                            <span className={styles.memberEmail}>
                               {linkData.currentLink.email}
                             </span>
                           </div>
@@ -312,14 +293,17 @@ export function ResourceDetailsSheet({
                             onClick={handleUnlink}
                             disabled={unlinkMutation.isPending}
                           >
-                            <Unlink2 aria-hidden="true" className="size-3.5" />
+                            <Unlink2
+                              aria-hidden="true"
+                              className={styles.smallIcon}
+                            />
                             {unlinkMutation.isPending ? "Unlinking…" : "Unlink"}
                           </Button>
                         ) : null}
                       </div>
 
                       {!linkData.currentLink.canManage ? (
-                        <p className="mt-2 text-xs text-subtle-foreground">
+                        <p className={styles.ownerHint}>
                           Only an organization owner can change or unlink this
                           member.
                         </p>
@@ -327,39 +311,31 @@ export function ResourceDetailsSheet({
                     </div>
                   ) : (
                     /* Unlinked state */
-                    <div className="space-y-3">
+                    <div className={styles.unlinkedState}>
                       {!isActive ? (
-                        <p className="text-xs text-muted-foreground rounded-lg border border-border bg-background p-3">
+                        <p className={styles.hintBox}>
                           This resource is deactivated. Reactivate it above
                           before linking a member.
                         </p>
                       ) : linkData.pendingInvitation ? (
-                        <p className="text-xs text-muted-foreground">
+                        <p className={styles.hint}>
                           Clear the pending invitation above to link an existing
                           member.
                         </p>
                       ) : linkData.candidates.length === 0 ? (
-                        <p className="text-xs text-muted-foreground rounded-lg border border-border bg-background p-3">
+                        <p className={styles.hintBox}>
                           No available team members to link. Each member can
                           only be linked to one resource.
                         </p>
                       ) : !isReadOnly ? (
-                        <div className="space-y-3">
+                        <div className={styles.linkForm}>
                           <FormField
                             htmlFor="link-member-select"
                             label="Select member to link"
                           >
                             <select
                               id="link-member-select"
-                              className={cn(
-                                "h-10 min-w-0 w-full px-3",
-                                "rounded-md border border-border-strong bg-surface",
-                                "text-sm text-foreground",
-                                "transition-colors duration-150 outline-none",
-                                "enabled:hover:border-muted-foreground",
-                                "focus-visible:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus",
-                                "[@media(pointer:coarse)]:text-base",
-                              )}
+                              className={styles.nativeSelect}
                               value={selectedMembershipId}
                               onChange={(e) =>
                                 setSelectedMembershipId(e.target.value)
@@ -387,7 +363,10 @@ export function ResourceDetailsSheet({
                               !selectedMembershipId || linkMutation.isPending
                             }
                           >
-                            <Link2 aria-hidden="true" className="size-3.5" />
+                            <Link2
+                              aria-hidden="true"
+                              className={styles.smallIcon}
+                            />
                             {linkMutation.isPending
                               ? "Linking…"
                               : "Link member"}
@@ -417,11 +396,11 @@ export function ResourceDetailsSheet({
             member links are retained.
           </DialogDescription>
           {actionError ? (
-            <InlineAlert as="p" variant="error" className="mt-4 p-3">
+            <InlineAlert as="p" variant="error" className={styles.sheetAlert}>
               {actionError}
             </InlineAlert>
           ) : null}
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <div className={styles.dialogActions}>
             <DialogClose asChild>
               <Button variant="outline" disabled={isActionPending}>
                 Cancel

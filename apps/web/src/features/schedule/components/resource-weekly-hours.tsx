@@ -1,4 +1,4 @@
-import { AlertCircle, Check, Plus } from "lucide-react";
+import { AlertCircle, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { useTransientSaveStatus } from "../hooks/use-transient-save-status";
 import { WEEKDAYS_SUNDAY_FIRST } from "../lib/constants";
 import {
   areIntervalsEqual,
@@ -25,6 +26,8 @@ import type {
   WeeklyHoursResponse,
 } from "../types";
 import { type IntervalDraft, TimeIntervalInput } from "./time-interval-input";
+import { TransientSaveStatus } from "./transient-save-status";
+import styles from "./weekly-hours.module.css";
 
 type ResourceWeeklyHoursProps = {
   resources: ManageableResource[];
@@ -106,7 +109,8 @@ export function ResourceWeeklyHours({
   const [draft, setDraft] = useState<Record<number, DayDraft>>(() =>
     initDraft(resourceHoursData),
   );
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const { saveStatus, clearSaveSuccess, showSaveSuccess } =
+    useTransientSaveStatus();
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Sync draft when server data changes
@@ -170,7 +174,7 @@ export function ResourceWeeklyHours({
   });
 
   const handleModeChange = (weekday: number, newMode: AvailabilityMode) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setDraft((prev) => {
       const currentDay = prev[weekday] ?? { mode: "inherit", intervals: [] };
@@ -209,7 +213,7 @@ export function ResourceWeeklyHours({
   };
 
   const handleAddInterval = (weekday: number) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setDraft((prev) => {
       const day = prev[weekday] ?? { mode: "custom", intervals: [] };
@@ -242,7 +246,7 @@ export function ResourceWeeklyHours({
     index: number,
     updated: IntervalDraft,
   ) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setDraft((prev) => {
       const day = prev[weekday] ?? { mode: "custom", intervals: [] };
@@ -256,7 +260,7 @@ export function ResourceWeeklyHours({
   };
 
   const handleRemoveInterval = (weekday: number, index: number) => {
-    setSaveSuccess(false);
+    clearSaveSuccess();
     setSaveError(null);
     setDraft((prev) => {
       const day = prev[weekday] ?? { mode: "custom", intervals: [] };
@@ -280,7 +284,7 @@ export function ResourceWeeklyHours({
       return;
     }
     setSaveError(null);
-    setSaveSuccess(false);
+    clearSaveSuccess();
 
     const daysPayload: ResourceWeekdayHours[] = [];
     for (let weekday = 1; weekday <= 7; weekday++) {
@@ -295,7 +299,7 @@ export function ResourceWeeklyHours({
 
     try {
       await onSave(daysPayload);
-      setSaveSuccess(true);
+      showSaveSuccess();
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Failed to save resource hours.";
@@ -305,11 +309,11 @@ export function ResourceWeeklyHours({
 
   if (resources.length === 0) {
     return (
-      <div className="border-t border-border p-6 text-center">
-        <h3 className="text-sm font-semibold text-foreground">
+      <div className={styles.emptyState}>
+        <h3 className={styles.emptyTitle}>
           No resources available for scheduling
         </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className={styles.emptyDescription}>
           Create or link a resource before configuring individual availability.
         </p>
       </div>
@@ -317,32 +321,37 @@ export function ResourceWeeklyHours({
   }
 
   return (
-    <div className="border-t border-border">
-      <div className="flex flex-col gap-3 py-4 min-[800px]:flex-row min-[800px]:items-center min-[800px]:justify-between">
+    <div className={styles.section}>
+      <div className={styles.resourceHeader}>
         <div>
-          <h2 className="text-base font-semibold text-foreground">
-            Resource weekly hours
-          </h2>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <h2 className={styles.title}>Resource weekly hours</h2>
+          <p className={styles.description}>
             Set custom hours or inherit the organization schedule.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <label htmlFor="resource-select" className="sr-only">
+        <div className={styles.resourceControls}>
+          <label htmlFor="resource-select" className={styles.visuallyHidden}>
             Select Resource
           </label>
-          <div className="min-w-0 w-full sm:w-64">
+          <div className={styles.selectWrapper}>
             <Select
               value={selectedResourceId ?? ""}
               onValueChange={onSelectResource}
             >
-              <SelectTrigger id="resource-select" className="h-9 text-xs">
+              <SelectTrigger
+                id="resource-select"
+                className={styles.compactSelect}
+              >
                 <SelectValue placeholder="Select resource" />
               </SelectTrigger>
               <SelectContent>
                 {resources.map((r) => (
-                  <SelectItem key={r.id} value={r.id} className="text-xs">
+                  <SelectItem
+                    key={r.id}
+                    value={r.id}
+                    className={styles.compactSelect}
+                  >
                     {r.name} {r.deactivatedAt ? "(Inactive)" : ""}
                   </SelectItem>
                 ))}
@@ -350,11 +359,8 @@ export function ResourceWeeklyHours({
             </Select>
           </div>
           {isResourceInactive && (
-            <span
-              className="inline-flex items-center gap-1 rounded bg-background px-2 py-1 text-xs font-medium text-muted-foreground border border-border"
-              role="status"
-            >
-              <AlertCircle aria-hidden="true" className="size-3 text-warning" />
+            <span className={styles.inactiveNotice} role="status">
+              <AlertCircle aria-hidden="true" className={styles.warningIcon} />
               Inactive
             </span>
           )}
@@ -362,20 +368,16 @@ export function ResourceWeeklyHours({
       </div>
 
       {isLoadingResourceHours ? (
-        <div
-          aria-busy="true"
-          className="divide-y divide-border p-6"
-          role="status"
-        >
+        <div aria-busy="true" className={styles.loading} role="status">
           {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div key={i} className="flex items-center justify-between py-3">
-              <div className="h-4 w-28 rounded bg-border animate-pulse" />
-              <div className="h-8 w-44 rounded bg-border animate-pulse" />
+            <div key={i} className={styles.loadingRow}>
+              <div className={`${styles.skeleton} ${styles.skeletonLabel}`} />
+              <div className={`${styles.skeleton} ${styles.skeletonControl}`} />
             </div>
           ))}
         </div>
       ) : (
-        <div className="divide-y divide-border">
+        <div className={styles.days}>
           {WEEKDAYS_SUNDAY_FIRST.map(({ weekday, label }) => {
             const dayDraft = draft[weekday] ?? {
               mode: "inherit",
@@ -388,18 +390,13 @@ export function ResourceWeeklyHours({
               isReadOnly || isResourceInactive || isSaving;
 
             return (
-              <div
-                key={weekday}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 py-3 min-[800px]:grid-cols-[164px_minmax(0,1fr)_auto]"
-              >
-                <div className="min-h-9 pt-2">
-                  <span className="text-sm font-medium text-foreground">
-                    {label}
-                  </span>
+              <div key={weekday} className={styles.dayRow}>
+                <div className={styles.resourceDayHeading}>
+                  <span className={styles.dayName}>{label}</span>
                 </div>
 
-                <div className="col-span-2 min-w-0 space-y-2 min-[800px]:col-span-1">
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className={styles.dayContent}>
+                  <div className={styles.modeRow}>
                     <Select
                       value={dayDraft.mode}
                       onValueChange={(val) =>
@@ -409,38 +406,43 @@ export function ResourceWeeklyHours({
                     >
                       <SelectTrigger
                         aria-label={`Mode for ${label}`}
-                        className="h-9 w-52 text-xs"
+                        className={styles.modeSelect}
                       >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="inherit" className="text-xs">
+                        <SelectItem
+                          value="inherit"
+                          className={styles.compactSelect}
+                        >
                           Use organization hours
                         </SelectItem>
-                        <SelectItem value="closed" className="text-xs">
+                        <SelectItem
+                          value="closed"
+                          className={styles.compactSelect}
+                        >
                           Unavailable this day
                         </SelectItem>
-                        <SelectItem value="custom" className="text-xs">
+                        <SelectItem
+                          value="custom"
+                          className={styles.compactSelect}
+                        >
                           Custom hours
                         </SelectItem>
                       </SelectContent>
                     </Select>
 
                     {dayDraft.mode === "inherit" && (
-                      <span className="text-xs text-muted-foreground">
-                        {orgSummary}
-                      </span>
+                      <span className={styles.summary}>{orgSummary}</span>
                     )}
 
                     {dayDraft.mode === "closed" && (
-                      <span className="text-xs text-muted-foreground">
-                        Closed
-                      </span>
+                      <span className={styles.summary}>Closed</span>
                     )}
                   </div>
 
                   {dayDraft.mode === "custom" && (
-                    <div className="space-y-2 pt-1">
+                    <div className={styles.customIntervals}>
                       {dayDraft.intervals.map((intervalDraft, idx) => (
                         <TimeIntervalInput
                           key={intervalDraft.id}
@@ -455,10 +457,7 @@ export function ResourceWeeklyHours({
                         />
                       ))}
                       {error && (
-                        <p
-                          role="alert"
-                          className="text-sm font-medium text-destructive"
-                        >
+                        <p role="alert" className={styles.error}>
                           {error}
                         </p>
                       )}
@@ -466,7 +465,7 @@ export function ResourceWeeklyHours({
                   )}
                 </div>
 
-                <div className="col-start-2 row-start-1 min-[800px]:col-start-3">
+                <div className={styles.dayActions}>
                   {dayDraft.mode === "custom" && (
                     <Button
                       type="button"
@@ -474,11 +473,11 @@ export function ResourceWeeklyHours({
                       size="sm"
                       disabled={isWritesDisabled}
                       onClick={() => handleAddInterval(weekday)}
-                      className="size-9 px-0"
+                      className={styles.addButton}
                       aria-label={`Add interval for ${label}`}
                       title="Add interval"
                     >
-                      <Plus aria-hidden="true" className="size-4" />
+                      <Plus aria-hidden="true" className={styles.icon} />
                     </Button>
                   )}
                 </div>
@@ -488,19 +487,11 @@ export function ResourceWeeklyHours({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-4">
-        <div className="flex items-center gap-2">
-          {saveSuccess && (
-            <span
-              role="status"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary"
-            >
-              <Check aria-hidden="true" className="size-3.5" />
-              Saved resource hours
-            </span>
-          )}
+      <div className={styles.footer}>
+        <div className={styles.feedback}>
+          {!saveError && <TransientSaveStatus status={saveStatus} />}
           {saveError && (
-            <span role="alert" className="text-sm font-medium text-destructive">
+            <span role="alert" className={styles.error}>
               {saveError}
             </span>
           )}
@@ -517,7 +508,7 @@ export function ResourceWeeklyHours({
             hasAnyError ||
             !selectedResourceId
           }
-          className="text-sm"
+          className={styles.saveButton}
           loading={isSaving}
         >
           Save resource hours

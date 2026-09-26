@@ -13,6 +13,7 @@ import {
   useReactivateResource,
   useResources,
 } from "./hooks/use-resources";
+import styles from "./resources.module.css";
 import type { CreateResourceInput } from "./types";
 
 function ResourcesSkeleton() {
@@ -20,19 +21,19 @@ function ResourcesSkeleton() {
     <div
       aria-busy="true"
       aria-label="Loading resources"
-      className="divide-y divide-border border-y border-border"
+      className={styles.skeletonList}
       role="status"
     >
       {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="flex items-center justify-between p-4 sm:px-5">
-          <div className="flex items-center gap-3.5">
-            <div className="size-2 rounded-full bg-border-strong animate-pulse" />
-            <div className="space-y-2">
-              <div className="h-4 w-32 rounded bg-border-strong animate-pulse" />
-              <div className="h-3 w-20 rounded bg-border animate-pulse" />
+        <div key={i} className={styles.skeletonRow}>
+          <div className={styles.skeletonSummary}>
+            <div className={`${styles.skeleton} ${styles.skeletonDot}`} />
+            <div className={styles.skeletonCopy}>
+              <div className={`${styles.skeleton} ${styles.skeletonTitle}`} />
+              <div className={`${styles.skeleton} ${styles.skeletonMeta}`} />
             </div>
           </div>
-          <div className="h-4 w-4 rounded bg-border animate-pulse" />
+          <div className={`${styles.skeleton} ${styles.skeletonChevron}`} />
         </div>
       ))}
     </div>
@@ -41,15 +42,18 @@ function ResourcesSkeleton() {
 
 function ResourcesErrorState({ retry }: { retry: () => void }) {
   return (
-    <div className="border-y border-border py-6 text-center">
-      <h2 className="text-base font-semibold text-foreground">
-        Unable to load resources
-      </h2>
-      <p className="mt-1.5 text-sm text-muted-foreground">
+    <div className={styles.state}>
+      <h2 className={styles.stateTitle}>Unable to load resources</h2>
+      <p className={styles.stateDescription}>
         We encountered an error loading your organization's resources.
       </p>
-      <Button variant="outline" size="sm" onClick={retry} className="mt-4">
-        <RefreshCw aria-hidden="true" className="size-3.5" />
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={retry}
+        className={styles.stateAction}
+      >
+        <RefreshCw aria-hidden="true" className={styles.smallIcon} />
         Try again
       </Button>
     </div>
@@ -64,16 +68,18 @@ function ResourcesEmptyState({
   onNewResource: () => void;
 }) {
   return (
-    <div className="border-y border-border py-8 text-center">
-      <h2 className="text-base font-semibold text-foreground">
-        No resources yet.
-      </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
+    <div className={`${styles.state} ${styles.emptyState}`}>
+      <h2 className={styles.stateTitle}>No resources yet.</h2>
+      <p className={styles.stateDescription}>
         Add a person, room, chair, or other bookable resource.
       </p>
       {!isReadOnly ? (
-        <Button onClick={onNewResource} size="sm" className="mt-5">
-          <Plus aria-hidden="true" className="size-4" />
+        <Button
+          onClick={onNewResource}
+          size="sm"
+          className={styles.stateAction}
+        >
+          <Plus aria-hidden="true" className={styles.icon} />
           New resource
         </Button>
       ) : null}
@@ -117,14 +123,14 @@ export function ResourcesPage() {
   }
 
   return (
-    <div className="relative space-y-6">
+    <div className={styles.page}>
       <PageHeader
         title="Resources"
         description="Manage the people and resources that deliver your services."
         action={
           !isReadOnly ? (
             <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
-              <Plus aria-hidden="true" className="size-4" />
+              <Plus aria-hidden="true" className={styles.icon} />
               New resource
             </Button>
           ) : null

@@ -4,6 +4,7 @@ import { authClient } from "@/shared/auth/auth-client";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
+import styles from "../auth.module.css";
 import { AuthLayout } from "../components/auth-layout";
 
 type VerifyEmailLocationState = {
@@ -56,36 +57,41 @@ export function VerifyEmailPage() {
       title="Check your inbox"
     >
       {email ? (
-        <p className="mb-5 text-sm leading-6 text-muted-foreground">
+        <p className={styles.recipient}>
           We sent a verification link to{" "}
-          <span className="font-medium text-foreground">{email}</span>.
+          <span className={styles.recipientEmail}>{email}</span>.
         </p>
       ) : null}
 
       {import.meta.env.DEV ? (
-        <p className="mb-5 rounded-md border border-border bg-background px-3 py-2.5 text-xs leading-5 text-muted-foreground">
+        <p className={styles.developmentHint}>
           Development note: the API may print the verification email to its
           console.
         </p>
       ) : null}
 
       {wasSent ? (
-        <InlineAlert as="p" variant="success" className="mb-5">
+        <InlineAlert as="p" variant="success" className={styles.alert}>
           If an account exists for that email, a new verification link is on its
           way.
         </InlineAlert>
       ) : null}
 
       {error ? (
-        <InlineAlert as="p" variant="error" className="mb-5" id="resend-error">
+        <InlineAlert
+          as="p"
+          variant="error"
+          className={styles.alert}
+          id="resend-error"
+        >
           {error}
         </InlineAlert>
       ) : null}
 
-      <form className="space-y-4" onSubmit={handleResend}>
+      <form className={styles.compactForm} onSubmit={handleResend}>
         {!state?.email ? (
-          <div>
-            <label className="mb-1.5 block text-sm font-medium" htmlFor="email">
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="email">
               Email
             </label>
             <Input
@@ -99,16 +105,17 @@ export function VerifyEmailPage() {
             />
           </div>
         ) : null}
-        <Button className="w-full" disabled={isSending || !email} type="submit">
+        <Button
+          className={styles.submit}
+          disabled={isSending || !email}
+          type="submit"
+        >
           {isSending ? "Sending…" : "Resend verification email"}
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm">
-        <Link
-          className="font-medium text-primary underline-offset-4 hover:underline"
-          to="/login"
-        >
+      <p className={styles.footer}>
+        <Link className={styles.link} to="/login">
           Back to sign in
         </Link>
       </p>

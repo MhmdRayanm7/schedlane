@@ -4,6 +4,7 @@ import { authClient } from "@/shared/auth/auth-client";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
+import styles from "../auth.module.css";
 import { AuthLayout } from "../components/auth-layout";
 
 type SignUpFields = {
@@ -83,14 +84,19 @@ export function SignUpPage() {
       title="Create your account"
     >
       {error ? (
-        <InlineAlert as="p" variant="error" className="mb-5" id="sign-up-error">
+        <InlineAlert
+          as="p"
+          variant="error"
+          className={styles.alert}
+          id="sign-up-error"
+        >
           {error}
         </InlineAlert>
       ) : null}
 
-      <form className="space-y-5" onSubmit={handleSubmit}>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium" htmlFor="name">
+      <form className={styles.form} onSubmit={handleSubmit}>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="name">
             Name
           </label>
           <Input
@@ -101,8 +107,8 @@ export function SignUpPage() {
             value={fields.name}
           />
         </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium" htmlFor="email">
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="email">
             Email
           </label>
           <Input
@@ -114,11 +120,8 @@ export function SignUpPage() {
             value={fields.email}
           />
         </div>
-        <div>
-          <label
-            className="mb-1.5 block text-sm font-medium"
-            htmlFor="password"
-          >
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="password">
             Password
           </label>
           <Input
@@ -132,11 +135,8 @@ export function SignUpPage() {
             value={fields.password}
           />
         </div>
-        <div>
-          <label
-            className="mb-1.5 block text-sm font-medium"
-            htmlFor="confirm-password"
-          >
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="confirm-password">
             Confirm password
           </label>
           <Input
@@ -152,7 +152,7 @@ export function SignUpPage() {
           />
         </div>
         <Button
-          className="w-full"
+          className={styles.submit}
           loading={isSubmitting}
           disabled={isSubmitting}
           type="submit"
@@ -161,12 +161,9 @@ export function SignUpPage() {
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <p className={styles.footer}>
         Already have an account?{" "}
-        <Link
-          className="font-medium text-primary underline-offset-4 hover:underline"
-          to="/login"
-        >
+        <Link className={styles.link} to="/login">
           Sign in
         </Link>
       </p>

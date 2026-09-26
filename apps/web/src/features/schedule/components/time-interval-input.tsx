@@ -1,6 +1,7 @@
 import { Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { TimeInput } from "./time-input";
+import styles from "./time-input.module.css";
 
 export type IntervalDraft = {
   id: string;
@@ -26,8 +27,8 @@ export function TimeIntervalInput({
   index,
 }: TimeIntervalInputProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="flex items-center gap-2">
+    <div className={styles.interval}>
+      <div className={styles.intervalInputs}>
         <TimeInput
           label={`${dayLabel} interval ${index + 1} start`}
           boundary="start"
@@ -35,7 +36,7 @@ export function TimeIntervalInput({
           disabled={disabled}
           onChange={(value) => onChange({ ...draft, startStr: value })}
         />
-        <span aria-hidden="true" className="text-muted-foreground text-xs">
+        <span aria-hidden="true" className={styles.rangeSeparator}>
           –
         </span>
         <TimeInput
@@ -54,9 +55,9 @@ export function TimeIntervalInput({
         onClick={onRemove}
         aria-label={`Remove interval ${index + 1} for ${dayLabel}`}
         title="Remove interval"
-        className="size-9 text-muted-foreground hover:text-destructive"
+        className={styles.remove}
       >
-        <Trash2 aria-hidden="true" className="size-3.5" />
+        <Trash2 aria-hidden="true" className={styles.smallIcon} />
       </Button>
     </div>
   );

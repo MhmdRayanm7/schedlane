@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { Input } from "@/shared/components/ui/input";
+import styles from "./time-input.module.css";
 
 type TimeInputProps = {
   label: string;
@@ -38,14 +39,14 @@ export function TimeInput({
   }
 
   return (
-    <fieldset aria-labelledby={id} className="flex shrink-0 items-center gap-1">
-      <span id={id} className="sr-only">
+    <fieldset aria-labelledby={id} className={styles.timeInput}>
+      <span id={id} className={styles.visuallyHidden}>
         {label}
       </span>
       <Input
         aria-label={`${label} hour`}
         autoComplete="off"
-        className="h-9 w-11 px-1 text-center tabular-nums"
+        className={styles.part}
         disabled={disabled}
         inputMode="numeric"
         maxLength={2}
@@ -55,14 +56,14 @@ export function TimeInput({
         placeholder="HH"
         value={hour}
       />
-      <span aria-hidden="true" className="text-muted-foreground">
+      <span aria-hidden="true" className={styles.separator}>
         :
       </span>
       <Input
         aria-label={`${label} minute`}
         aria-invalid={boundary === "end" && hour === "00" && minute === "00"}
         autoComplete="off"
-        className="h-9 w-11 px-1 text-center tabular-nums"
+        className={styles.part}
         disabled={disabled || isEndOfDay}
         inputMode="numeric"
         maxLength={2}

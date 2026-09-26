@@ -19,6 +19,7 @@ import {
 } from "@/shared/components/ui/select";
 import { cn } from "@/shared/lib/cn";
 import { formatLocalDate, schedulingToday } from "@/shared/lib/date-time";
+import styles from "../bookings.module.css";
 import {
   useRescheduleBooking,
   useRescheduleOptions,
@@ -139,19 +140,20 @@ export function BookingRescheduleDialog({
         if (!open && !mutation.isPending) onBack();
       }}
     >
-      <DialogContent className="max-w-[560px]" aria-busy={mutation.isPending}>
+      <DialogContent
+        className={styles.rescheduleDialog}
+        aria-busy={mutation.isPending}
+      >
         <header>
           <DialogTitle>Reschedule booking</DialogTitle>
           <DialogDescription>{booking.guestName}</DialogDescription>
         </header>
 
-        <div className="space-y-4 py-5">
-          <section className="border-y border-border py-3">
-            <p className="text-xs font-medium text-subtle-foreground">
-              Service
-            </p>
-            <p className="mt-1 text-sm font-medium">{booking.serviceName}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+        <div className={styles.rescheduleContent}>
+          <section className={styles.serviceSummary}>
+            <p className={styles.summaryLabel}>Service</p>
+            <p className={styles.summaryName}>{booking.serviceName}</p>
+            <p className={styles.summaryMetadata}>
               {booking.durationMinutes} min
               {booking.bufferAfterMinutes > 0
                 ? ` | ${booking.bufferAfterMinutes} min buffer`
@@ -161,11 +163,11 @@ export function BookingRescheduleDialog({
           </section>
 
           <div>
-            <label className="text-sm font-medium" htmlFor="reschedule-date">
+            <label className={styles.fieldLabel} htmlFor="reschedule-date">
               Date
             </label>
             <Input
-              className="mt-1.5"
+              className={styles.dialogControl}
               disabled={mutation.isPending}
               id="reschedule-date"
               min={formatLocalDate(schedulingToday())}
@@ -181,11 +183,11 @@ export function BookingRescheduleDialog({
           </div>
 
           <div>
-            <p className="text-sm font-medium" id="resource-label">
+            <p className={styles.fieldLabel} id="resource-label">
               Resource
             </p>
             {optionsQuery.data && optionsQuery.data.resources.length === 1 ? (
-              <p className="mt-2 rounded-md border border-border bg-background px-3 py-2.5 text-sm">
+              <p className={styles.resourceValue}>
                 {optionsQuery.data.resources[0].name}
               </p>
             ) : (
@@ -204,7 +206,7 @@ export function BookingRescheduleDialog({
               >
                 <SelectTrigger
                   aria-labelledby="resource-label"
-                  className="mt-2"
+                  className={styles.dialogControl}
                 >
                   <SelectValue placeholder="Select a resource" />
                 </SelectTrigger>
@@ -219,55 +221,44 @@ export function BookingRescheduleDialog({
             )}
           </div>
 
-          <fieldset disabled={mutation.isPending} className="min-w-0">
-            <legend className="text-sm font-medium">Available times</legend>
+          <fieldset disabled={mutation.isPending} className={styles.times}>
+            <legend className={styles.timesLegend}>Available times</legend>
             {optionsQuery.isPending ? (
               <p
                 aria-live="polite"
-                className="mt-3 text-sm text-muted-foreground"
+                className={styles.queryMessage}
                 role="status"
               >
                 Loading available times...
               </p>
             ) : null}
             {optionsError ? (
-              <div
-                className="mt-3 rounded-md border border-destructive/25 bg-destructive-subtle p-3"
-                role="alert"
-              >
-                <p className="text-sm text-destructive">{optionsError}</p>
+              <div className={styles.optionsError} role="alert">
+                <p className={styles.optionsErrorText}>{optionsError}</p>
                 <Button
-                  className="mt-2"
+                  className={styles.retry}
                   onClick={() => void optionsQuery.refetch()}
                   size="sm"
                   variant="outline"
                 >
-                  <RefreshCw aria-hidden="true" className="size-3.5" />
+                  <RefreshCw aria-hidden="true" className={styles.smallIcon} />
                   Retry
                 </Button>
               </div>
             ) : null}
             {optionsQuery.isSuccess && optionsQuery.data.starts.length === 0 ? (
-              <p className="mt-3 text-sm text-muted-foreground">
+              <p className={styles.queryMessage}>
                 No available times for this date.
               </p>
             ) : null}
             {optionsQuery.isSuccess && optionsQuery.data.starts.length > 0 ? (
-              <div className="mt-3 grid max-h-60 grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-2 overflow-y-auto overscroll-contain p-1">
+              <div className={styles.timeSlots}>
                 {optionsQuery.data.starts.map((start) => {
                   const selected = validSelectedStart === start;
                   return (
                     <button
                       aria-pressed={selected}
-                      className={cn(
-                        "inline-flex h-10 items-center justify-center gap-1 rounded-md border px-2",
-                        "text-sm font-medium tabular-nums",
-                        "outline-none transition-colors duration-150",
-                        "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-                        selected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border-strong bg-surface text-foreground hover:border-muted-foreground hover:bg-surface-hover",
-                      )}
+                      className={styles.timeSlot}
                       key={start}
                       onClick={() => {
                         setChosenStart(start);
@@ -278,13 +269,13 @@ export function BookingRescheduleDialog({
                       <Check
                         aria-hidden="true"
                         className={cn(
-                          "size-3.5 shrink-0",
-                          !selected && "invisible",
+                          styles.smallIcon,
+                          !selected && styles.checkHidden,
                         )}
                       />
                       {formatMinuteOfDay(start)}
                       {selected ? (
-                        <span className="sr-only"> selected</span>
+                        <span className={styles.visuallyHidden}> selected</span>
                       ) : null}
                     </button>
                   );
@@ -300,9 +291,13 @@ export function BookingRescheduleDialog({
           ) : null}
         </div>
 
-        <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
+        <footer className={styles.dialogFooter}>
           {mutation.isPending ? (
-            <span aria-live="polite" className="sr-only" role="status">
+            <span
+              aria-live="polite"
+              className={styles.visuallyHidden}
+              role="status"
+            >
               Saving reschedule changes
             </span>
           ) : null}
@@ -321,7 +316,7 @@ export function BookingRescheduleDialog({
             Save changes
           </Button>
           {unchanged ? (
-            <p className="w-full text-right text-xs text-muted-foreground">
+            <p className={styles.unchanged}>
               Choose a different resource, date, or time to save.
             </p>
           ) : null}

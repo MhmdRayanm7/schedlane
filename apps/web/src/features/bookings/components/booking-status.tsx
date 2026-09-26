@@ -1,21 +1,15 @@
-import { cn } from "@/shared/lib/cn";
+import styles from "../bookings.module.css";
 import type { BookingStatus as BookingStatusValue } from "../types";
 
 const statuses = {
   confirmed: {
     label: "Confirmed",
-    className: "bg-primary-subtle text-primary",
-    dotClassName: "bg-primary",
   },
   cancelled: {
     label: "Cancelled",
-    className: "bg-destructive-subtle text-destructive",
-    dotClassName: "bg-destructive",
   },
   no_show: {
     label: "No-show",
-    className: "bg-warning-subtle text-warning",
-    dotClassName: "bg-warning",
   },
 } as const;
 
@@ -23,17 +17,8 @@ export function BookingStatus({ status }: { status: BookingStatusValue }) {
   const presentation = statuses[status];
 
   return (
-    <span
-      className={cn(
-        "inline-flex w-fit shrink-0 items-center gap-1.5 rounded-md px-2 py-1",
-        "whitespace-nowrap text-xs font-medium",
-        presentation.className,
-      )}
-    >
-      <span
-        aria-hidden="true"
-        className={cn("size-1.5 rounded-full", presentation.dotClassName)}
-      />
+    <span className={styles.status} data-status={status}>
+      <span aria-hidden="true" className={styles.statusDot} />
       {presentation.label}
     </span>
   );

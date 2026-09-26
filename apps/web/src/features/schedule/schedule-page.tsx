@@ -4,7 +4,6 @@ import { useOutletContext, useParams } from "react-router";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
-import { cn } from "@/shared/lib/cn";
 import { BookingRulesTab } from "./components/booking-rules-tab";
 import { OrganizationWeeklyHours } from "./components/organization-weekly-hours";
 import { ResourceWeeklyHours } from "./components/resource-weekly-hours";
@@ -17,6 +16,7 @@ import {
   useUpdateOrganizationWeeklyHours,
   useUpdateResourceWeeklyHours,
 } from "./hooks/use-weekly-hours";
+import styles from "./schedule.module.css";
 
 type ScheduleTab = "hours" | "exceptions" | "rules";
 
@@ -25,17 +25,17 @@ function HoursSkeleton() {
     <div
       aria-busy="true"
       aria-label="Loading schedule"
-      className="space-y-6"
+      className={styles.loading}
       role="status"
     >
-      <div className="border-t border-border p-6">
-        <div className="h-5 w-48 rounded bg-border animate-pulse" />
-        <div className="mt-2 h-4 w-60 max-w-full rounded bg-border/60 animate-pulse" />
-        <div className="mt-6 divide-y divide-border">
+      <div className={styles.loadingPanel}>
+        <div className={`${styles.skeleton} ${styles.loadingTitle}`} />
+        <div className={`${styles.skeleton} ${styles.loadingDescription}`} />
+        <div className={styles.loadingRows}>
           {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div key={i} className="flex items-center justify-between py-3">
-              <div className="h-4 w-24 rounded bg-border animate-pulse" />
-              <div className="h-8 w-48 rounded bg-border animate-pulse" />
+            <div key={i} className={styles.loadingRow}>
+              <div className={`${styles.skeleton} ${styles.loadingLabel}`} />
+              <div className={`${styles.skeleton} ${styles.loadingControl}`} />
             </div>
           ))}
         </div>
@@ -85,7 +85,7 @@ export function SchedulePage() {
   );
 
   return (
-    <div className="max-w-[1040px] space-y-5">
+    <div className={styles.page}>
       <PageHeader
         title="Schedule"
         description="Configure working hours, availability, and time away."
@@ -94,7 +94,7 @@ export function SchedulePage() {
       <div
         role="tablist"
         aria-label="Schedule sections"
-        className="flex border-b border-border"
+        className={styles.tabs}
       >
         {(
           [
@@ -124,13 +124,7 @@ export function SchedulePage() {
               setActiveTab(tabs[next][0]);
               document.getElementById(`tab-${tabs[next][0]}`)?.focus();
             }}
-            className={cn(
-              "min-h-10 border-b-2 px-3 py-2 text-sm",
-              "transition-colors duration-150 hover:bg-surface-hover focus-visible:outline-offset-[-2px] sm:px-4",
-              activeTab === tab
-                ? "border-primary font-semibold text-foreground"
-                : "border-transparent font-medium text-muted-foreground",
-            )}
+            className={styles.tab}
           >
             {label}
           </button>
@@ -142,16 +136,16 @@ export function SchedulePage() {
           id="panel-hours"
           role="tabpanel"
           aria-labelledby="tab-hours"
-          className="space-y-6"
+          className={styles.tabPanel}
         >
           {orgHoursQuery.isLoading ? (
             <HoursSkeleton />
           ) : orgHoursQuery.isError ? (
-            <div className="border-t border-border p-8 text-center">
-              <h2 className="text-base font-semibold text-foreground">
+            <div className={styles.errorState}>
+              <h2 className={styles.errorTitle}>
                 Unable to load business hours
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className={styles.errorDescription}>
                 We encountered an error loading your organization's business
                 hours.
               </p>
@@ -159,9 +153,9 @@ export function SchedulePage() {
                 variant="outline"
                 size="sm"
                 onClick={() => orgHoursQuery.refetch()}
-                className="mt-4"
+                className={styles.retry}
               >
-                <RefreshCw aria-hidden="true" className="size-3.5" />
+                <RefreshCw aria-hidden="true" className={styles.smallIcon} />
                 Try again
               </Button>
             </div>
