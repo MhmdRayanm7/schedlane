@@ -2,8 +2,10 @@ import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useOutletContext, useParams } from "react-router";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
+import { useOrganizationSettings } from "@/features/settings/hooks/use-organization-settings";
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
+import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { ServiceDetailsSheet } from "./components/service-details-sheet";
 import { ServiceFormDialog } from "./components/service-form-dialog";
 import { ServiceList } from "./components/service-list";
@@ -62,9 +64,11 @@ function ServicesErrorState({ retry }: { retry: () => void }) {
 }
 
 function ServicesEmptyState({
+  canCreate,
   isReadOnly,
   onNewService,
 }: {
+  canCreate: boolean;
   isReadOnly: boolean;
   onNewService: () => void;
 }) {
@@ -75,7 +79,12 @@ function ServicesEmptyState({
         Add the first service your organization offers.
       </p>
       {!isReadOnly ? (
-        <Button onClick={onNewService} size="sm" className={styles.stateAction}>
+        <Button
+          disabled={!canCreate}
+          onClick={onNewService}
+          size="sm"
+          className={styles.stateAction}
+        >
           <Plus aria-hidden="true" className={styles.icon} />
           New service
         </Button>
@@ -93,6 +102,7 @@ export function ServicesPage() {
   );
 
   const servicesQuery = useServices(organizationId);
+  const settingsQuery = useOrganizationSettings(organizationId);
   const createServiceMutation = useCreateService(organizationId);
   const updateServiceMutation = useUpdateService(organizationId);
   const deactivateServiceMutation = useDeactivateService(organizationId);
@@ -109,8 +119,8 @@ export function ServicesPage() {
   const selectedService =
     services.find((s) => s.id === selectedServiceId) ?? null;
 
-  // Infer if pricing is enabled based on any service having non-null price
-  const pricingEnabled = services.some((s) => s.priceAgorot !== null);
+  const pricingEnabled = settingsQuery.data?.pricingEnabled;
+  const pricingPolicyReady = pricingEnabled !== undefined;
 
   async function handleCreateService(
     data: CreateServiceInput | UpdateServiceInput,
@@ -144,6 +154,7 @@ export function ServicesPage() {
         action={
           !isReadOnly ? (
             <Button
+              disabled={!pricingPolicyReady}
               size="sm"
               onClick={() => {
                 setEditingService(null);
@@ -157,6 +168,23 @@ export function ServicesPage() {
         }
       />
 
+      {settingsQuery.isError ? (
+        <InlineAlert className={styles.policyAlert} variant="warning">
+          <span>
+            Pricing policy is unavailable. Service details can be viewed, but
+            creating or editing is paused.
+          </span>
+          <Button
+            onClick={() => void settingsQuery.refetch()}
+            size="sm"
+            variant="outline"
+          >
+            <RefreshCw aria-hidden="true" className={styles.smallIcon} />
+            Retry
+          </Button>
+        </InlineAlert>
+      ) : null}
+
       <section aria-label="Services list">
         {servicesQuery.isPending ? <ServicesSkeleton /> : null}
 
@@ -166,6 +194,7 @@ export function ServicesPage() {
 
         {servicesQuery.data && services.length === 0 ? (
           <ServicesEmptyState
+            canCreate={pricingPolicyReady}
             isReadOnly={isReadOnly}
             onNewService={() => {
               setEditingService(null);
@@ -199,6 +228,7 @@ export function ServicesPage() {
         onDeactivate={handleDeactivate}
         onReactivate={handleReactivate}
         isReadOnly={isReadOnly}
+        canEditDetails={pricingPolicyReady}
         isActionPending={
           deactivateServiceMutation.isPending ||
           reactivateServiceMutation.isPending

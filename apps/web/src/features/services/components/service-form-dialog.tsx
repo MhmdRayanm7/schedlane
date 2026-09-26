@@ -48,20 +48,28 @@ export function ServiceFormDialog({
   const parsedBuffer = Number.parseInt(bufferAfterMinutes, 10);
   const parsedPrice = ilsToAgorot(priceIls);
   const numericPrice = Number(priceIls);
+  const effectivePrice = pricingEnabled ? parsedPrice : null;
   const isDirty = Boolean(
     service &&
       (name.trim() !== service.name ||
         parsedDuration !== service.durationMinutes ||
-        parsedPrice !== service.priceAgorot ||
+        effectivePrice !== service.priceAgorot ||
         parsedBuffer !== service.bufferAfterMinutes),
   );
+  const isPriceValid =
+    pricingEnabled === false ||
+    (pricingEnabled === true &&
+      Boolean(priceIls.trim()) &&
+      Number.isFinite(numericPrice) &&
+      numericPrice >= 0);
   const isValid =
+    pricingEnabled !== undefined &&
     Boolean(name.trim()) &&
     !Number.isNaN(parsedDuration) &&
     parsedDuration >= 1 &&
     !Number.isNaN(parsedBuffer) &&
     parsedBuffer >= 0 &&
-    (!priceIls.trim() || (Number.isFinite(numericPrice) && numericPrice >= 0));
+    isPriceValid;
   const draftId = `service-edit:${service?.id ?? "create"}`;
   const { requestChange } = useUnsavedChanges({
     id: draftId,
@@ -119,7 +127,7 @@ export function ServiceFormDialog({
       return;
     }
 
-    const priceAgorot = parsedPrice;
+    const priceAgorot = effectivePrice;
 
     setErrorMessage(null);
 
@@ -252,25 +260,28 @@ export function ServiceFormDialog({
             </FormField>
           </div>
 
-          <FormField
-            htmlFor="service-price"
-            label="Price (ILS ₪)"
-            helperText="Entered in Shekels (₪). Leave empty if pricing is disabled."
-          >
-            <Input
-              id="service-price"
-              type="number"
-              min="0"
-              step="0.01"
-              disabled={isReadOnly || isPending}
-              value={priceIls}
-              onChange={(e) => {
-                setErrorMessage(null);
-                setPriceIls(e.target.value);
-              }}
-              placeholder={pricingEnabled ? "e.g. 70" : "Optional (e.g. 70)"}
-            />
-          </FormField>
+          {pricingEnabled ? (
+            <FormField
+              htmlFor="service-price"
+              label="Price (ILS ₪)"
+              helperText="Pricing is required for this organization."
+            >
+              <Input
+                id="service-price"
+                type="number"
+                min="0"
+                step="0.01"
+                disabled={isReadOnly || isPending}
+                value={priceIls}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setPriceIls(e.target.value);
+                }}
+                required
+                placeholder="e.g. 70"
+              />
+            </FormField>
+          ) : null}
 
           <div className={styles.formActions}>
             {isEditing ? (

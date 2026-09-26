@@ -30,6 +30,7 @@ type ServiceDetailsSheetProps = {
   onDeactivate: (serviceId: string) => Promise<void>;
   onReactivate: (serviceId: string) => Promise<void>;
   isReadOnly: boolean;
+  canEditDetails?: boolean;
   isActionPending?: boolean;
 };
 
@@ -42,6 +43,7 @@ export function ServiceDetailsSheet({
   onDeactivate,
   onReactivate,
   isReadOnly,
+  canEditDetails = true,
   isActionPending = false,
 }: ServiceDetailsSheetProps) {
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
@@ -142,7 +144,7 @@ export function ServiceDetailsSheet({
                 onClick={() => {
                   onEdit(service);
                 }}
-                disabled={isActionPending}
+                disabled={isActionPending || !canEditDetails}
               >
                 Edit details
               </Button>

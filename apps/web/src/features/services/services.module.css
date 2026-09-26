@@ -210,12 +210,22 @@
 .alert {
   padding: var(--space-3);
 }
+.policyAlert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
 @media (max-width: 39.99rem) {
   .formActions {
     align-items: stretch;
   }
   .formSaveStatus {
     width: 100%;
+  }
+  .policyAlert {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 .statusLine {

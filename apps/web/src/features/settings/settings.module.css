@@ -1,0 +1,340 @@
+.page {
+  display: grid;
+  gap: var(--space-8);
+  max-width: 68rem;
+}
+
+.sections {
+  border-top: 1px solid var(--color-border);
+}
+
+.section {
+  display: grid;
+  gap: var(--space-6);
+  padding-block: var(--space-8);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sectionIntro {
+  min-width: 0;
+}
+
+.sectionTitle,
+.actionTitle {
+  margin: 0;
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.sectionDescription,
+.actionDescription,
+.errorDescription {
+  margin: var(--space-1) 0 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.35rem;
+}
+
+.sectionContent {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-5);
+}
+
+.readOnlyField {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.fieldLabel {
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.fieldHint,
+.ownerHint {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+.slug {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.375rem 0.625rem;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  color: var(--color-muted-foreground);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+}
+
+.saveRow {
+  display: flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.policyFieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.policyFieldset > legend {
+  margin-bottom: var(--space-3);
+}
+
+.policyOptions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.policyOption {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-normal),
+    background-color var(--duration-normal);
+}
+
+.policyOption:hover {
+  background: var(--color-surface-hover);
+}
+
+.policyOption[data-selected="true"] {
+  border-color: color-mix(
+    in srgb,
+    var(--color-primary) 55%,
+    var(--color-border)
+  );
+  background: var(--color-primary-subtle);
+}
+
+.policyFieldset:disabled .policyOption {
+  cursor: default;
+}
+
+.policyFieldset:disabled .policyOption:not([data-selected="true"]) {
+  opacity: 0.6;
+}
+
+.radio {
+  width: 1rem;
+  height: 1rem;
+  margin: 0.125rem 0 0;
+  flex: 0 0 auto;
+  accent-color: var(--color-primary);
+}
+
+.radio:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.policyCopy,
+.statusValue {
+  display: grid;
+  min-width: 0;
+  gap: 0.125rem;
+}
+
+.policyTitle {
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.policyDescription,
+.statusDescription {
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+.statusRows {
+  display: grid;
+  border-block: 1px solid var(--color-border);
+}
+
+.statusRow {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.statusRow:first-child {
+  border-top: 0;
+}
+
+.statusLabel {
+  color: var(--color-muted-foreground);
+  font-size: 0.8125rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.statusBadge[data-tone="active"] {
+  color: var(--color-primary);
+}
+
+.statusBadge[data-tone="warning"] {
+  color: var(--color-warning);
+}
+
+.statusDot {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.publicationValue {
+  color: var(--color-foreground);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.dangerSection {
+  border-bottom: 0;
+}
+
+.dangerAction,
+.sectionError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.dangerAction {
+  padding: var(--space-4);
+  border: 1px solid
+    color-mix(in srgb, var(--color-destructive) 22%, var(--color-border));
+  border-radius: var(--radius-md);
+}
+
+.actionTitle,
+.errorTitle {
+  font-size: 0.875rem;
+}
+
+.errorTitle {
+  margin: 0;
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+
+.icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.dialogAlert {
+  margin-top: var(--space-4);
+}
+
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: var(--color-border);
+  animation: var(--animation-pulse) 2s ease-in-out infinite;
+}
+
+.skeletonHeading {
+  width: 7rem;
+  height: 1.25rem;
+}
+
+.skeletonDescription {
+  width: min(15rem, 85%);
+  height: 0.875rem;
+  margin-top: var(--space-2);
+}
+
+.skeletonLabel {
+  width: 8rem;
+  height: 1rem;
+}
+
+.skeletonOption {
+  width: 100%;
+  height: 4rem;
+}
+
+@media (min-width: 48rem) {
+  .section {
+    grid-template-columns: minmax(10rem, 0.72fr) minmax(22rem, 1.28fr);
+    gap: var(--space-10);
+  }
+
+  .statusRow {
+    grid-template-columns: 8rem minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .page {
+    gap: var(--space-6);
+  }
+
+  .section {
+    padding-block: var(--space-6);
+  }
+
+  .dangerAction,
+  .sectionError {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dangerAction > button,
+  .sectionError > button {
+    width: 100%;
+  }
+
+  .dialogActions {
+    flex-direction: column-reverse;
+  }
+
+  .dialogActions > button {
+    width: 100%;
+  }
+}
