@@ -41,6 +41,8 @@ export type CreateOrganizationInvitationResult =
         expiresAt: string;
       };
       token: string;
+      organizationName: string;
+      invitedByName: string;
     }
   | {
       ok: false;
@@ -72,10 +74,20 @@ export async function createOrganizationInvitation(
     // Lock the inviter's membership while its role is used for authorization.
     const inviterMembership = await trx
       .selectFrom("membership")
-      .select("role")
-      .where("user_id", "=", input.invitedByUserId)
-      .where("organization_id", "=", input.organizationId)
-      .forUpdate()
+      .innerJoin(
+        "organization",
+        "organization.id",
+        "membership.organization_id",
+      )
+      .innerJoin("user", "user.id", "membership.user_id")
+      .select([
+        "membership.role",
+        "organization.name as organization_name",
+        "user.name as invited_by_name",
+      ])
+      .where("membership.user_id", "=", input.invitedByUserId)
+      .where("membership.organization_id", "=", input.organizationId)
+      .forUpdate("membership")
       .executeTakeFirst();
 
     if (!inviterMembership) {
@@ -274,6 +286,8 @@ export async function createOrganizationInvitation(
         expiresAt: invitation.expires_at.toISOString(),
       },
       token,
+      organizationName: inviterMembership.organization_name,
+      invitedByName: inviterMembership.invited_by_name,
     };
   });
 }

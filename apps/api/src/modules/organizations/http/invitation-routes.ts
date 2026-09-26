@@ -7,6 +7,7 @@ import { acceptOrganizationInvitation } from "../application/accept-invitation.j
 import { createOrganizationInvitation } from "../application/create-invitation.js";
 import { revokeInvitationAfterDeliveryFailure } from "../application/invitation-delivery.js";
 import { listOrganizationInvitations } from "../application/invitation-queries.js";
+import { previewOrganizationInvitation } from "../application/preview-invitation.js";
 import { revokeOrganizationInvitation } from "../application/revoke-invitation.js";
 import { sendOrganizationWriteStateError } from "./errors.js";
 import {
@@ -189,14 +190,21 @@ export const invitationRoutes: FastifyPluginAsyncTypebox = async (app) => {
       // Raw invitation tokens are used only for delivery.
       invitationUrl.searchParams.set("token", result.token);
 
+      const roleLabel =
+        result.invitation.role === "owner"
+          ? "Owner"
+          : result.invitation.role === "manager"
+            ? "Manager"
+            : "Staff";
+
       try {
         await emailService.send({
           to: result.invitation.email,
-          subject: "You've been invited to Schedlane",
+          subject: `You're invited to join ${result.organizationName} on Schedlane`,
           text: [
-            `You have been invited to join an organization as ${result.invitation.role}.`,
+            `${result.invitedByName} invited you to join ${result.organizationName} as ${roleLabel} on Schedlane.`,
             "",
-            `Accept the invitation: ${invitationUrl.toString()}`,
+            `Accept invitation: ${invitationUrl.toString()}`,
             "",
             `This invitation expires at ${result.invitation.expiresAt}.`,
           ].join("\n"),
@@ -398,6 +406,109 @@ export const invitationRoutes: FastifyPluginAsyncTypebox = async (app) => {
         resourceId: result.resourceId,
         acceptedAt: result.acceptedAt,
       });
+    },
+  );
+
+  app.post(
+    "/api/organization-invitations/preview",
+    {
+      schema: {
+        body: acceptOrganizationInvitationBody,
+      },
+    },
+    async (request, reply) => {
+      const user = request.verifiedUser;
+
+      const result = await previewOrganizationInvitation({
+        userId: user.id,
+        userEmail: user.email,
+        token: request.body.token,
+      });
+
+      if (!result.ok) {
+        switch (result.reason) {
+          case "invitation_not_found":
+            return reply.code(404).send({
+              code: "ORGANIZATION_INVITATION_NOT_FOUND",
+              message: "Organization invitation not found",
+              requestId: request.id,
+            });
+
+          case "invitation_revoked":
+            return reply.code(409).send({
+              code: "ORGANIZATION_INVITATION_REVOKED",
+              message: "The invitation has been revoked",
+              requestId: request.id,
+            });
+
+          case "invitation_expired":
+            return reply.code(409).send({
+              code: "ORGANIZATION_INVITATION_EXPIRED",
+              message: "The invitation has expired",
+              requestId: request.id,
+            });
+
+          case "invitation_already_accepted":
+            return reply.code(409).send({
+              code: "ORGANIZATION_INVITATION_ALREADY_ACCEPTED",
+              message: "The invitation has already been accepted",
+              requestId: request.id,
+            });
+
+          case "email_mismatch":
+            return reply.code(403).send({
+              code: "ORGANIZATION_INVITATION_EMAIL_MISMATCH",
+              message: "This invitation belongs to another account",
+              requestId: request.id,
+            });
+
+          case "already_member":
+            return reply.code(409).send({
+              code: "ORGANIZATION_MEMBER_ALREADY_EXISTS",
+              message: "You are already a member of this organization",
+              requestId: request.id,
+            });
+
+          case "resource_not_found":
+            return reply.code(409).send({
+              code: "INVITATION_RESOURCE_UNAVAILABLE",
+              message: "The invitation no longer has an available Resource",
+              requestId: request.id,
+            });
+
+          case "resource_deactivated":
+            return reply.code(409).send({
+              code: "RESOURCE_DEACTIVATED",
+              message: "The Resource is deactivated",
+              requestId: request.id,
+            });
+
+          case "resource_already_linked":
+            return reply.code(409).send({
+              code: "RESOURCE_ALREADY_LINKED",
+              message: "The Resource is already linked to another user",
+              requestId: request.id,
+            });
+
+          case "user_resource_already_linked":
+            return reply.code(409).send({
+              code: "USER_RESOURCE_ALREADY_LINKED",
+              message:
+                "You are already linked to a Resource in this organization",
+              requestId: request.id,
+            });
+
+          case "organization_archived":
+          case "organization_suspended":
+            return sendOrganizationWriteStateError(
+              reply,
+              request.id,
+              result.reason,
+            );
+        }
+      }
+
+      return reply.code(200).send(result.invitation);
     },
   );
 };
