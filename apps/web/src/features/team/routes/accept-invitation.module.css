@@ -1,0 +1,118 @@
+.layout {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  padding: var(--space-8) var(--space-5);
+  background: var(--color-background);
+}
+
+.brand {
+  margin-inline: auto;
+}
+
+.layoutContent {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding-block: var(--space-10);
+}
+
+.card {
+  width: 100%;
+  max-width: 25rem;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+}
+
+.header {
+  margin-bottom: var(--space-5);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.orgName {
+  margin: var(--space-1) 0 0;
+  color: var(--color-foreground);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.75rem;
+}
+
+.details {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+}
+
+.roleGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1875rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  border: 1px solid var(--color-border);
+  color: var(--color-foreground);
+  background: var(--color-surface);
+}
+
+.resourceDetail {
+  font-size: 0.875rem;
+  color: var(--color-muted-foreground);
+}
+
+.resourceName {
+  color: var(--color-foreground);
+  font-weight: 500;
+}
+
+.metaGroup {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+.actions {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.submitButton {
+  width: 100%;
+}
+
+.alert {
+  margin-bottom: var(--space-5);
+}
+
+.footerActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.footerButton {
+  width: 100%;
+}

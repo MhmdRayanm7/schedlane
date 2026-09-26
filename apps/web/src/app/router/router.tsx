@@ -17,6 +17,7 @@ import { ResourcesPage } from "@/features/resources/resources-page";
 import { SchedulePage } from "@/features/schedule/schedule-page";
 import { ServicesPage } from "@/features/services/services-page";
 import { SettingsPage } from "@/features/settings/settings-page";
+import { AcceptInvitationPage } from "@/features/team/routes/accept-invitation-page";
 import { TeamPage } from "@/features/team/team-page";
 import { UnsavedChangesProvider } from "@/shared/unsaved-changes/unsaved-changes";
 
@@ -34,28 +35,33 @@ export const router = createBrowserRouter([
   },
   { path: "/verify-email", element: <VerifyEmailPage /> },
   {
-    path: "/app",
     element: <RequireSession />,
     children: [
-      { index: true, element: <OrganizationResolver /> },
+      { path: "/invitations/accept", element: <AcceptInvitationPage /> },
       {
-        path: ":organizationId",
-        element: <OrganizationAccessGate />,
+        path: "/app",
         children: [
+          { index: true, element: <OrganizationResolver /> },
           {
-            element: (
-              <UnsavedChangesProvider>
-                <AdminShell />
-              </UnsavedChangesProvider>
-            ),
+            path: ":organizationId",
+            element: <OrganizationAccessGate />,
             children: [
-              { index: true, element: <Navigate replace to="bookings" /> },
-              { path: "bookings", element: <BookingsPage /> },
-              { path: "services", element: <ServicesPage /> },
-              { path: "resources", element: <ResourcesPage /> },
-              { path: "schedule", element: <SchedulePage /> },
-              { path: "team", element: <TeamPage /> },
-              { path: "settings", element: <SettingsPage /> },
+              {
+                element: (
+                  <UnsavedChangesProvider>
+                    <AdminShell />
+                  </UnsavedChangesProvider>
+                ),
+                children: [
+                  { index: true, element: <Navigate replace to="bookings" /> },
+                  { path: "bookings", element: <BookingsPage /> },
+                  { path: "services", element: <ServicesPage /> },
+                  { path: "resources", element: <ResourcesPage /> },
+                  { path: "schedule", element: <SchedulePage /> },
+                  { path: "team", element: <TeamPage /> },
+                  { path: "settings", element: <SettingsPage /> },
+                ],
+              },
             ],
           },
         ],

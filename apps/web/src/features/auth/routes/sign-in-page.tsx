@@ -25,6 +25,8 @@ export function SignInPage() {
   const verificationError = searchParams.get("error");
   const wasVerified =
     searchParams.get("verified") === "1" && !verificationError;
+  const rawReturnTo = searchParams.get("returnTo");
+  const returnTo = rawReturnTo ? safeReturnTo(rawReturnTo) : null;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -91,7 +93,11 @@ export function SignInPage() {
           <Link
             className={`${styles.link} ${styles.alertLink}`}
             state={{ email }}
-            to="/verify-email"
+            to={
+              returnTo
+                ? `/verify-email?returnTo=${encodeURIComponent(returnTo)}`
+                : "/verify-email"
+            }
           >
             Resend verification email
           </Link>
@@ -138,7 +144,14 @@ export function SignInPage() {
 
       <p className={styles.footer}>
         New to Schedlane?{" "}
-        <Link className={styles.link} to="/sign-up">
+        <Link
+          className={styles.link}
+          to={
+            returnTo
+              ? `/sign-up?returnTo=${encodeURIComponent(returnTo)}`
+              : "/sign-up"
+          }
+        >
           Create an account
         </Link>
       </p>

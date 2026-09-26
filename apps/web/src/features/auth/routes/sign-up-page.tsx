@@ -1,11 +1,12 @@
 import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { authClient } from "@/shared/auth/auth-client";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
 import styles from "../auth.module.css";
 import { AuthLayout } from "../components/auth-layout";
+import { safeReturnTo } from "../routing/return-to";
 
 type SignUpFields = {
   confirmPassword: string;
@@ -34,6 +35,10 @@ function validate(fields: SignUpFields): string | null {
 
 export function SignUpPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawReturnTo = searchParams.get("returnTo");
+  const returnTo = rawReturnTo ? safeReturnTo(rawReturnTo) : null;
+
   const [fields, setFields] = useState(initialFields);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,11 +56,13 @@ export function SignUpPage() {
     setIsSubmitting(true);
     try {
       const email = fields.email.trim().toLowerCase();
+      const callbackUrl = new URL("/login?verified=1", window.location.origin);
+      if (returnTo) {
+        callbackUrl.searchParams.set("returnTo", returnTo);
+      }
+
       const result = await authClient.signUp.email({
-        callbackURL: new URL(
-          "/login?verified=1",
-          window.location.origin,
-        ).toString(),
+        callbackURL: callbackUrl.toString(),
         email,
         name: fields.name.trim(),
         password: fields.password,
@@ -68,7 +75,12 @@ export function SignUpPage() {
         return;
       }
 
-      navigate("/verify-email", { replace: true, state: { email } });
+      navigate(
+        returnTo
+          ? `/verify-email?returnTo=${encodeURIComponent(returnTo)}`
+          : "/verify-email",
+        { replace: true, state: { email } },
+      );
     } catch {
       setError(
         "We couldn't create your account. Check your connection and try again.",
@@ -163,7 +175,14 @@ export function SignUpPage() {
 
       <p className={styles.footer}>
         Already have an account?{" "}
-        <Link className={styles.link} to="/login">
+        <Link
+          className={styles.link}
+          to={
+            returnTo
+              ? `/login?returnTo=${encodeURIComponent(returnTo)}`
+              : "/login"
+          }
+        >
           Sign in
         </Link>
       </p>

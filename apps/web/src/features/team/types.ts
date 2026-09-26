@@ -38,3 +38,22 @@ export type UpdateMemberRoleInput = {
   membershipId: string;
   role: MembershipRole;
 };
+
+export type InvitationPreview = {
+  organizationId: string;
+  organizationName: string;
+  role: MembershipRole;
+  resource: {
+    id: string;
+    name: string;
+  } | null;
+  invitedByName: string;
+  expiresAt: string;
+};
+
+export type AcceptInvitationResult = {
+  organizationId: string;
+  role: MembershipRole;
+  resourceId: string | null;
+  acceptedAt: string;
+};

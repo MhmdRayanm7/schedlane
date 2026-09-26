@@ -2,10 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { organizationsQueryKey } from "@/features/organizations/hooks/use-organizations";
 import { resourcesQueryKey } from "@/features/resources/hooks/use-resources";
 import {
+  acceptInvitation,
   createInvitation,
   getTeamInvitations,
   getTeamMembers,
   leaveOrganization,
+  previewInvitation,
   removeMember,
   revokeInvitation,
   updateMemberRole,
@@ -117,6 +119,34 @@ export function useLeaveOrganization(organizationId: string) {
       });
       void queryClient.invalidateQueries({
         queryKey: resourcesQueryKey(organizationId),
+      });
+    },
+  });
+}
+
+export function useInvitationPreview(token: string | null) {
+  return useQuery({
+    queryKey: ["invitation-preview", token] as const,
+    queryFn: ({ signal }) => previewInvitation(token as string, signal),
+    enabled: Boolean(token),
+    retry: false,
+  });
+}
+
+export function useAcceptInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (token: string) => acceptInvitation(token),
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({
+        queryKey: organizationsQueryKey,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: teamKeys.organization(data.organizationId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: resourcesQueryKey(data.organizationId),
       });
     },
   });

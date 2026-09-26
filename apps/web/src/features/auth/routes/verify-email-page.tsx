@@ -1,11 +1,12 @@
 import { type FormEvent, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 import { authClient } from "@/shared/auth/auth-client";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
 import styles from "../auth.module.css";
 import { AuthLayout } from "../components/auth-layout";
+import { safeReturnTo } from "../routing/return-to";
 
 type VerifyEmailLocationState = {
   email?: string;
@@ -13,6 +14,10 @@ type VerifyEmailLocationState = {
 
 export function VerifyEmailPage() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const rawReturnTo = searchParams.get("returnTo");
+  const returnTo = rawReturnTo ? safeReturnTo(rawReturnTo) : null;
+
   const state = location.state as VerifyEmailLocationState | null;
   const [email, setEmail] = useState(state?.email ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -26,11 +31,13 @@ export function VerifyEmailPage() {
     setIsSending(true);
 
     try {
+      const callbackUrl = new URL("/login?verified=1", window.location.origin);
+      if (returnTo) {
+        callbackUrl.searchParams.set("returnTo", returnTo);
+      }
+
       const result = await authClient.sendVerificationEmail({
-        callbackURL: new URL(
-          "/login?verified=1",
-          window.location.origin,
-        ).toString(),
+        callbackURL: callbackUrl.toString(),
         email: email.trim().toLowerCase(),
       });
 
@@ -115,7 +122,14 @@ export function VerifyEmailPage() {
       </form>
 
       <p className={styles.footer}>
-        <Link className={styles.link} to="/login">
+        <Link
+          className={styles.link}
+          to={
+            returnTo
+              ? `/login?returnTo=${encodeURIComponent(returnTo)}`
+              : "/login"
+          }
+        >
           Back to sign in
         </Link>
       </p>

@@ -1,6 +1,8 @@
 import { apiClient } from "@/shared/api/client";
 import type {
+  AcceptInvitationResult,
   CreateInvitationInput,
+  InvitationPreview,
   TeamInvitation,
   TeamInvitationsResponse,
   TeamMembersResponse,
@@ -81,4 +83,27 @@ export function leaveOrganization(organizationId: string): Promise<void> {
   return apiClient<void>(`/api/organizations/${organizationId}/leave`, {
     method: "POST",
   });
+}
+
+export function previewInvitation(
+  token: string,
+  signal?: AbortSignal,
+): Promise<InvitationPreview> {
+  return apiClient<InvitationPreview>("/api/organization-invitations/preview", {
+    method: "POST",
+    body: { token },
+    signal,
+  });
+}
+
+export function acceptInvitation(
+  token: string,
+): Promise<AcceptInvitationResult> {
+  return apiClient<AcceptInvitationResult>(
+    "/api/organization-invitations/accept",
+    {
+      method: "POST",
+      body: { token },
+    },
+  );
 }
