@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FormSaveStatus } from "@/shared/components/form-save-status";
 import { Button } from "@/shared/components/ui/button";
 import {
   Select,
@@ -8,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
-import { useTransientSaveStatus } from "../hooks/use-transient-save-status";
+import { useTransientSaveState } from "@/shared/hooks/use-transient-save-state";
 import {
   areIntervalsEqual,
   formatIntervalsSummary,
@@ -24,7 +25,6 @@ import type {
 } from "../types";
 import styles from "./schedule-exceptions.module.css";
 import { type IntervalDraft, TimeIntervalInput } from "./time-interval-input";
-import { TransientSaveStatus } from "./transient-save-status";
 
 type OrganizationDateOverrideProps = {
   date: string;
@@ -37,6 +37,7 @@ type OrganizationDateOverrideProps = {
     intervals: MinuteInterval[];
   }) => Promise<unknown>;
   isSaving: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export function OrganizationDateOverride({
@@ -47,12 +48,18 @@ export function OrganizationDateOverride({
   isReadOnly = false,
   onSave,
   isSaving,
+  onDirtyChange,
 }: OrganizationDateOverrideProps) {
   const currentMode = override?.mode ?? "inherit";
   const [mode, setMode] = useState<AvailabilityMode>(currentMode);
   const [intervalsDraft, setIntervalsDraft] = useState<IntervalDraft[]>([]);
-  const { saveStatus, clearSaveSuccess, showSaveSuccess } =
-    useTransientSaveStatus();
+  const [persistedOverride, setPersistedOverride] = useState(() => ({
+    mode: override?.mode ?? "inherit",
+    intervals: override?.intervals ?? [],
+  }));
+  const isDirtyRef = useRef(false);
+  const { successState, clearSaveSuccess, showSaveSuccess } =
+    useTransientSaveState({ saving: isSaving });
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Normal weekly intervals for this weekday
@@ -62,19 +69,25 @@ export function OrganizationDateOverride({
   // Reset local state when override or date changes
   useEffect(() => {
     const nextMode = override?.mode ?? "inherit";
-    setMode(nextMode);
-    if (nextMode === "custom" && override?.intervals) {
-      setIntervalsDraft(
-        override.intervals.map((iv) => ({
-          id: crypto.randomUUID(),
-          startStr: minuteToTime(iv.startMinute),
-          endStr: minuteToTime(iv.endMinute),
-        })),
-      );
-    } else {
-      setIntervalsDraft([]);
+    if (!isDirtyRef.current) {
+      setMode(nextMode);
+      if (nextMode === "custom" && override?.intervals) {
+        setIntervalsDraft(
+          override.intervals.map((iv) => ({
+            id: crypto.randomUUID(),
+            startStr: minuteToTime(iv.startMinute),
+            endStr: minuteToTime(iv.endMinute),
+          })),
+        );
+      } else {
+        setIntervalsDraft([]);
+      }
     }
     setSaveError(null);
+    setPersistedOverride({
+      mode: nextMode,
+      intervals: override?.intervals ?? [],
+    });
   }, [override]);
 
   // Parse custom intervals and validate
@@ -105,11 +118,16 @@ export function OrganizationDateOverride({
   }
 
   // Dirty check
-  const serverMode = override?.mode ?? "inherit";
-  const serverIntervals = override?.intervals ?? [];
+  const serverMode = persistedOverride.mode;
+  const serverIntervals = persistedOverride.intervals;
   const isDirty =
     mode !== serverMode ||
     (mode === "custom" && !areIntervalsEqual(serverIntervals, parsedIntervals));
+  isDirtyRef.current = isDirty;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const handleModeChange = (newMode: AvailabilityMode) => {
     clearSaveSuccess();
@@ -182,6 +200,10 @@ export function OrganizationDateOverride({
 
     try {
       await onSave({
+        mode,
+        intervals: mode === "custom" ? parsedIntervals : [],
+      });
+      setPersistedOverride({
         mode,
         intervals: mode === "custom" ? parsedIntervals : [],
       });
@@ -285,7 +307,13 @@ export function OrganizationDateOverride({
 
       <div className={styles.footer}>
         <div className={styles.feedback}>
-          {!saveError && <TransientSaveStatus status={saveStatus} />}
+          {!saveError && (
+            <FormSaveStatus
+              dirty={isDirty}
+              saving={isSaving}
+              successState={successState}
+            />
+          )}
           {saveError && (
             <span role="alert" className={styles.error}>
               {saveError}
@@ -301,6 +329,7 @@ export function OrganizationDateOverride({
           }
           className={styles.saveButton}
           loading={isSaving}
+          loadingLabel="Saving..."
         >
           Save organization exception
         </Button>

@@ -605,12 +605,14 @@
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
-.unchanged {
-  width: 100%;
-  margin: 0;
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-  text-align: right;
+.dialogSaveStatus {
+  min-height: 1.25rem;
+  margin-right: auto;
+}
+@media (max-width: 39.99rem) {
+  .dialogSaveStatus {
+    width: 100%;
+  }
 }
 .visuallyHidden {
   position: absolute;

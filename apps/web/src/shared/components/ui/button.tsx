@@ -5,6 +5,7 @@ import styles from "./button.module.css";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   loading?: boolean;
+  loadingLabel?: string;
   size?: "default" | "sm" | "icon";
   variant?:
     | "default"
@@ -21,6 +22,7 @@ function Button({
   type = "button",
   children,
   loading,
+  loadingLabel,
   ...props
 }: ButtonProps) {
   return (
@@ -37,6 +39,16 @@ function Button({
     >
       {loading === undefined ? (
         children
+      ) : loading && loadingLabel ? (
+        <span className={styles.loadingLayout}>
+          <span className={cn(styles.loadingContent, styles.hidden)}>
+            {children}
+          </span>
+          <span className={styles.loadingLabel}>
+            <LoaderCircle aria-hidden="true" className={styles.inlineSpinner} />
+            {loadingLabel}
+          </span>
+        </span>
       ) : (
         <span className={styles.loadingLayout}>
           <span className={cn(styles.loadingContent, loading && styles.hidden)}>

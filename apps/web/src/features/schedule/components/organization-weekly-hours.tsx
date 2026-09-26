@@ -1,7 +1,8 @@
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FormSaveStatus } from "@/shared/components/form-save-status";
 import { Button } from "@/shared/components/ui/button";
-import { useTransientSaveStatus } from "../hooks/use-transient-save-status";
+import { useTransientSaveState } from "@/shared/hooks/use-transient-save-state";
 import { WEEKDAYS_SUNDAY_FIRST } from "../lib/constants";
 import {
   areIntervalsEqual,
@@ -15,7 +16,6 @@ import type {
   WeeklyHoursResponse,
 } from "../types";
 import { type IntervalDraft, TimeIntervalInput } from "./time-interval-input";
-import { TransientSaveStatus } from "./transient-save-status";
 import styles from "./weekly-hours.module.css";
 
 type OrganizationWeeklyHoursProps = {
@@ -23,6 +23,7 @@ type OrganizationWeeklyHoursProps = {
   isReadOnly?: boolean;
   onSave: (days: WeekdayHours[]) => Promise<unknown>;
   isSaving: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 function initDraft(data: WeeklyHoursResponse): Record<number, IntervalDraft[]> {
@@ -70,17 +71,21 @@ export function OrganizationWeeklyHours({
   isReadOnly = false,
   onSave,
   isSaving,
+  onDirtyChange,
 }: OrganizationWeeklyHoursProps) {
   const [draft, setDraft] = useState<Record<number, IntervalDraft[]>>(() =>
     initDraft(data),
   );
-  const { saveStatus, clearSaveSuccess, showSaveSuccess } =
-    useTransientSaveStatus();
+  const [persistedDays, setPersistedDays] = useState(data.days);
+  const isDirtyRef = useRef(false);
+  const { successState, clearSaveSuccess, showSaveSuccess } =
+    useTransientSaveState({ saving: isSaving });
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Sync draft when data changes
   useEffect(() => {
-    setDraft(initDraft(data));
+    if (!isDirtyRef.current) setDraft(initDraft(data));
+    setPersistedDays(data.days);
   }, [data]);
 
   // Evaluate parsed intervals and errors for all days
@@ -100,11 +105,16 @@ export function OrganizationWeeklyHours({
 
   // Check if draft is dirty
   const isDirty = WEEKDAYS_SUNDAY_FIRST.some(({ weekday }) => {
-    const serverDay = data.days.find((d) => d.weekday === weekday);
+    const serverDay = persistedDays.find((d) => d.weekday === weekday);
     const serverIntervals = serverDay?.intervals ?? [];
     const clientIntervals = parsedByWeekday[weekday].intervals;
     return !areIntervalsEqual(serverIntervals, clientIntervals);
   });
+  isDirtyRef.current = isDirty;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const handleDayToggleOpen = (weekday: number) => {
     clearSaveSuccess();
@@ -191,6 +201,7 @@ export function OrganizationWeeklyHours({
 
     try {
       await onSave(daysPayload);
+      setPersistedDays(daysPayload);
       showSaveSuccess();
     } catch (err: unknown) {
       const message =
@@ -287,7 +298,13 @@ export function OrganizationWeeklyHours({
 
       <div className={styles.footer}>
         <div className={styles.feedback}>
-          {!saveError && <TransientSaveStatus status={saveStatus} />}
+          {!saveError && (
+            <FormSaveStatus
+              dirty={isDirty}
+              saving={isSaving}
+              successState={successState}
+            />
+          )}
           {saveError && (
             <span role="alert" className={styles.error}>
               {saveError}
@@ -301,6 +318,7 @@ export function OrganizationWeeklyHours({
           disabled={isReadOnly || isSaving || !isDirty || hasAnyError}
           className={styles.saveButton}
           loading={isSaving}
+          loadingLabel="Saving..."
         >
           Save business hours
         </Button>

@@ -90,6 +90,14 @@
 .loadingLayout {
   position: relative;
 }
+.loadingLabel {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
 .hidden {
   opacity: 0;
 }
@@ -98,6 +106,17 @@
   width: 1rem;
   height: 1rem;
   animation: var(--animation-spin) 1s linear infinite;
+}
+.inlineSpinner {
+  width: 1rem;
+  height: 1rem;
+  animation: var(--animation-spin) 1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .inlineSpinner {
+    animation-duration: 2s;
+  }
 }
 @media (pointer: coarse) {
   .button {

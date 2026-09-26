@@ -156,16 +156,28 @@
 }
 .feedback {
   display: flex;
+  min-width: 0;
+  min-height: 1.25rem;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
 }
 .saveButton {
+  min-width: 10rem;
   font-size: 0.875rem;
 }
 @media (min-width: 40rem) {
   .rule {
     grid-template-columns: minmax(12.5rem, 1fr) minmax(0, 1fr);
     align-items: start;
+  }
+}
+@media (max-width: 39.99rem) {
+  .footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .saveButton {
+    width: 100%;
   }
 }

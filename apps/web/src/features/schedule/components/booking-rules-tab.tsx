@@ -1,24 +1,26 @@
 import { RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FormSaveStatus } from "@/shared/components/form-save-status";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { useTransientSaveState } from "@/shared/hooks/use-transient-save-state";
 import {
   useAvailabilitySettings,
   useUpdateAvailabilitySettings,
 } from "../hooks/use-availability-settings";
-import { useTransientSaveStatus } from "../hooks/use-transient-save-status";
 import type { AvailabilitySettings } from "../types";
 import styles from "./booking-rules.module.css";
-import { TransientSaveStatus } from "./transient-save-status";
 
 type BookingRulesTabProps = {
   organizationId: string;
   isReadOnly?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export function BookingRulesTab({
   organizationId,
   isReadOnly = false,
+  onDirtyChange,
 }: BookingRulesTabProps) {
   const settingsQuery = useAvailabilitySettings(organizationId);
   const updateSettingsMutation = useUpdateAvailabilitySettings(organizationId);
@@ -28,23 +30,61 @@ export function BookingRulesTab({
   const [horizonDays, setHorizonDays] = useState<string>("60");
   const [cancellationCutoff, setCancellationCutoff] = useState<string>("0");
   const [publicPaused, setPublicPaused] = useState<boolean>(false);
+  const [persistedSettings, setPersistedSettings] =
+    useState<AvailabilitySettings | null>(null);
+  const isDirtyRef = useRef(false);
 
-  const { saveStatus, clearSaveSuccess, showSaveSuccess } =
-    useTransientSaveStatus();
+  const { successState, clearSaveSuccess, showSaveSuccess } =
+    useTransientSaveState({ saving: updateSettingsMutation.isPending });
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Sync state when server data is loaded or changes
   useEffect(() => {
     if (settingsQuery.data) {
-      setSlotInterval(String(settingsQuery.data.slotIntervalMinutes));
-      setMinNotice(String(settingsQuery.data.minBookingNoticeMinutes));
-      setHorizonDays(String(settingsQuery.data.maxBookingHorizonDays));
-      setCancellationCutoff(
-        String(settingsQuery.data.cancellationCutoffMinutes),
-      );
-      setPublicPaused(settingsQuery.data.publicBookingPaused);
+      if (!isDirtyRef.current) {
+        setSlotInterval(String(settingsQuery.data.slotIntervalMinutes));
+        setMinNotice(String(settingsQuery.data.minBookingNoticeMinutes));
+        setHorizonDays(String(settingsQuery.data.maxBookingHorizonDays));
+        setCancellationCutoff(
+          String(settingsQuery.data.cancellationCutoffMinutes),
+        );
+        setPublicPaused(settingsQuery.data.publicBookingPaused);
+      }
+      setPersistedSettings(settingsQuery.data);
     }
   }, [settingsQuery.data]);
+
+  const server = persistedSettings;
+
+  const parsedSlot = Number.parseInt(slotInterval, 10);
+  const parsedNotice = Number.parseInt(minNotice, 10);
+  const parsedHorizon = Number.parseInt(horizonDays, 10);
+  const parsedCutoff = Number.parseInt(cancellationCutoff, 10);
+
+  let validationError: string | null = null;
+  if (Number.isNaN(parsedSlot) || parsedSlot < 1 || parsedSlot > 1440) {
+    validationError =
+      "Time slot interval must be an integer between 1 and 1440 minutes.";
+  } else if (Number.isNaN(parsedNotice) || parsedNotice < 0) {
+    validationError = "Minimum booking notice must be a non-negative integer.";
+  } else if (Number.isNaN(parsedHorizon) || parsedHorizon < 0) {
+    validationError = "Booking horizon must be a non-negative integer.";
+  } else if (Number.isNaN(parsedCutoff) || parsedCutoff < 0) {
+    validationError = "Cancellation cutoff must be a non-negative integer.";
+  }
+
+  const isDirty =
+    server !== null &&
+    (parsedSlot !== server.slotIntervalMinutes ||
+      parsedNotice !== server.minBookingNoticeMinutes ||
+      parsedHorizon !== server.maxBookingHorizonDays ||
+      parsedCutoff !== server.cancellationCutoffMinutes ||
+      publicPaused !== server.publicBookingPaused);
+  isDirtyRef.current = isDirty;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   if (settingsQuery.isLoading) {
     return (
@@ -89,33 +129,6 @@ export function BookingRulesTab({
     );
   }
 
-  const server = settingsQuery.data as AvailabilitySettings;
-
-  const parsedSlot = Number.parseInt(slotInterval, 10);
-  const parsedNotice = Number.parseInt(minNotice, 10);
-  const parsedHorizon = Number.parseInt(horizonDays, 10);
-  const parsedCutoff = Number.parseInt(cancellationCutoff, 10);
-
-  let validationError: string | null = null;
-  if (Number.isNaN(parsedSlot) || parsedSlot < 1 || parsedSlot > 1440) {
-    validationError =
-      "Time slot interval must be an integer between 1 and 1440 minutes.";
-  } else if (Number.isNaN(parsedNotice) || parsedNotice < 0) {
-    validationError = "Minimum booking notice must be a non-negative integer.";
-  } else if (Number.isNaN(parsedHorizon) || parsedHorizon < 0) {
-    validationError = "Booking horizon must be a non-negative integer.";
-  } else if (Number.isNaN(parsedCutoff) || parsedCutoff < 0) {
-    validationError = "Cancellation cutoff must be a non-negative integer.";
-  }
-
-  const isDirty =
-    Boolean(server) &&
-    (parsedSlot !== server.slotIntervalMinutes ||
-      parsedNotice !== server.minBookingNoticeMinutes ||
-      parsedHorizon !== server.maxBookingHorizonDays ||
-      parsedCutoff !== server.cancellationCutoffMinutes ||
-      publicPaused !== server.publicBookingPaused);
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
@@ -131,13 +144,15 @@ export function BookingRulesTab({
     clearSaveSuccess();
 
     try {
-      await updateSettingsMutation.mutateAsync({
+      const savedSettings = {
         slotIntervalMinutes: parsedSlot,
         minBookingNoticeMinutes: parsedNotice,
         maxBookingHorizonDays: parsedHorizon,
         cancellationCutoffMinutes: parsedCutoff,
         publicBookingPaused: publicPaused,
-      });
+      };
+      await updateSettingsMutation.mutateAsync(savedSettings);
+      setPersistedSettings(savedSettings);
       showSaveSuccess();
     } catch (err: unknown) {
       const message =
@@ -180,6 +195,7 @@ export function BookingRulesTab({
                 disabled={isWritesDisabled}
                 onChange={(e) => {
                   clearSaveSuccess();
+                  setSaveError(null);
                   setSlotInterval(e.target.value);
                 }}
                 className={styles.numberInput}
@@ -209,6 +225,7 @@ export function BookingRulesTab({
                 disabled={isWritesDisabled}
                 onChange={(e) => {
                   clearSaveSuccess();
+                  setSaveError(null);
                   setMinNotice(e.target.value);
                 }}
                 className={styles.numberInput}
@@ -239,6 +256,7 @@ export function BookingRulesTab({
                 disabled={isWritesDisabled}
                 onChange={(e) => {
                   clearSaveSuccess();
+                  setSaveError(null);
                   setHorizonDays(e.target.value);
                 }}
                 className={styles.numberInput}
@@ -269,6 +287,7 @@ export function BookingRulesTab({
                 disabled={isWritesDisabled}
                 onChange={(e) => {
                   clearSaveSuccess();
+                  setSaveError(null);
                   setCancellationCutoff(e.target.value);
                 }}
                 className={styles.numberInput}
@@ -296,6 +315,7 @@ export function BookingRulesTab({
                 aria-describedby="pause-public-booking-desc"
                 onChange={(e) => {
                   clearSaveSuccess();
+                  setSaveError(null);
                   setPublicPaused(e.target.checked);
                 }}
                 className={styles.checkbox}
@@ -329,7 +349,13 @@ export function BookingRulesTab({
 
       <div className={styles.footer}>
         <div className={styles.feedback}>
-          {!saveError && <TransientSaveStatus status={saveStatus} />}
+          {!saveError && (
+            <FormSaveStatus
+              dirty={isDirty}
+              saving={updateSettingsMutation.isPending}
+              successState={successState}
+            />
+          )}
           {saveError && (
             <span role="alert" className={styles.error}>
               {saveError}
@@ -342,6 +368,7 @@ export function BookingRulesTab({
           disabled={isWritesDisabled || !isDirty || Boolean(validationError)}
           className={styles.saveButton}
           loading={updateSettingsMutation.isPending}
+          loadingLabel="Saving..."
         >
           Save booking rules
         </Button>

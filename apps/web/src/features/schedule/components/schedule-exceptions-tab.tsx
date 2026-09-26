@@ -1,5 +1,6 @@
 import { AlertCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { DiscardChangesDialog } from "@/shared/components/discard-changes-dialog";
 import { Input } from "@/shared/components/ui/input";
 import {
   Select,
@@ -37,6 +38,7 @@ type ScheduleExceptionsTabProps = {
   onSelectResource: (resourceId: string) => void;
   orgWeeklyHours: WeeklyHoursResponse | undefined;
   isReadOnly?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export function ScheduleExceptionsTab({
@@ -46,11 +48,51 @@ export function ScheduleExceptionsTab({
   onSelectResource,
   orgWeeklyHours,
   isReadOnly = false,
+  onDirtyChange,
 }: ScheduleExceptionsTabProps) {
   const [selectedDate, setSelectedDate] = useState(() =>
     getJerusalemTodayDate(),
   );
   const [deletingBlockId, setDeletingBlockId] = useState<string | null>(null);
+  const [orgOverrideDirty, setOrgOverrideDirty] = useState(false);
+  const [resourceOverrideDirty, setResourceOverrideDirty] = useState(false);
+  const [pendingTransition, setPendingTransition] = useState<
+    { type: "date"; value: string } | { type: "resource"; value: string } | null
+  >(null);
+
+  useEffect(() => {
+    onDirtyChange?.(orgOverrideDirty || resourceOverrideDirty);
+  }, [onDirtyChange, orgOverrideDirty, resourceOverrideDirty]);
+
+  const handleDateChange = (nextDate: string) => {
+    if (orgOverrideDirty || resourceOverrideDirty) {
+      setPendingTransition({ type: "date", value: nextDate });
+      return;
+    }
+    setSelectedDate(nextDate);
+  };
+
+  const handleResourceChange = (resourceId: string) => {
+    if (resourceOverrideDirty) {
+      setPendingTransition({ type: "resource", value: resourceId });
+    } else {
+      onSelectResource(resourceId);
+    }
+  };
+
+  const discardAndContinue = () => {
+    const transition = pendingTransition;
+    setPendingTransition(null);
+    if (!transition) return;
+    if (transition.type === "date") {
+      setOrgOverrideDirty(false);
+      setResourceOverrideDirty(false);
+      setSelectedDate(transition.value);
+    } else {
+      setResourceOverrideDirty(false);
+      onSelectResource(transition.value);
+    }
+  };
 
   const selectedWeekday = getIsoWeekdayForDate(selectedDate);
   const selectedResource = resources.find((r) => r.id === selectedResourceId);
@@ -128,7 +170,7 @@ export function ScheduleExceptionsTab({
               value={selectedDate}
               onChange={(e) => {
                 if (e.target.value) {
-                  setSelectedDate(e.target.value);
+                  handleDateChange(e.target.value);
                 }
               }}
               className={styles.dateInput}
@@ -155,6 +197,7 @@ export function ScheduleExceptionsTab({
             await updateOrgOverrideMutation.mutateAsync(data);
           }}
           isSaving={updateOrgOverrideMutation.isPending}
+          onDirtyChange={setOrgOverrideDirty}
         />
       ) : orgOverrideQuery.isPending ? (
         <p role="status" className={styles.loadingMessage}>
@@ -192,7 +235,7 @@ export function ScheduleExceptionsTab({
               <div className={styles.selectWrapper}>
                 <Select
                   value={selectedResourceId ?? ""}
-                  onValueChange={onSelectResource}
+                  onValueChange={handleResourceChange}
                 >
                   <SelectTrigger
                     id="exceptions-resource-select"
@@ -247,6 +290,7 @@ export function ScheduleExceptionsTab({
                     await updateResourceOverrideMutation.mutateAsync(data);
                   }}
                   isSaving={updateResourceOverrideMutation.isPending}
+                  onDirtyChange={setResourceOverrideDirty}
                 />
               ) : resourceOverrideQuery.isPending ? (
                 <p role="status" className={styles.loadingMessage}>
@@ -284,6 +328,12 @@ export function ScheduleExceptionsTab({
           )}
         </div>
       )}
+
+      <DiscardChangesDialog
+        open={pendingTransition !== null}
+        onCancel={() => setPendingTransition(null)}
+        onDiscard={discardAndContinue}
+      />
     </div>
   );
 }

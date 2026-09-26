@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/shared/api/api-error";
+import { FormSaveStatus } from "@/shared/components/form-save-status";
 import { Button } from "@/shared/components/ui/button";
 import {
   Dialog,
@@ -42,6 +43,25 @@ export function ServiceFormDialog({
   const [bufferAfterMinutes, setBufferAfterMinutes] = useState("0");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const parsedDuration = Number.parseInt(durationMinutes, 10);
+  const parsedBuffer = Number.parseInt(bufferAfterMinutes, 10);
+  const parsedPrice = ilsToAgorot(priceIls);
+  const numericPrice = Number(priceIls);
+  const isDirty = Boolean(
+    service &&
+      (name.trim() !== service.name ||
+        parsedDuration !== service.durationMinutes ||
+        parsedPrice !== service.priceAgorot ||
+        parsedBuffer !== service.bufferAfterMinutes),
+  );
+  const isValid =
+    Boolean(name.trim()) &&
+    !Number.isNaN(parsedDuration) &&
+    parsedDuration >= 1 &&
+    !Number.isNaN(parsedBuffer) &&
+    parsedBuffer >= 0 &&
+    (!priceIls.trim() || (Number.isFinite(numericPrice) && numericPrice >= 0));
+
   useEffect(() => {
     if (open) {
       if (service) {
@@ -69,19 +89,19 @@ export function ServiceFormDialog({
       return;
     }
 
-    const duration = Number.parseInt(durationMinutes, 10);
+    const duration = parsedDuration;
     if (Number.isNaN(duration) || duration < 1) {
       setErrorMessage("Duration must be at least 1 minute.");
       return;
     }
 
-    const buffer = Number.parseInt(bufferAfterMinutes, 10);
+    const buffer = parsedBuffer;
     if (Number.isNaN(buffer) || buffer < 0) {
       setErrorMessage("Buffer after must be 0 or more minutes.");
       return;
     }
 
-    const priceAgorot = ilsToAgorot(priceIls);
+    const priceAgorot = parsedPrice;
 
     setErrorMessage(null);
 
@@ -170,7 +190,10 @@ export function ServiceFormDialog({
               required
               disabled={isReadOnly || isPending}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setErrorMessage(null);
+                setName(e.target.value);
+              }}
               placeholder="e.g. Standard Haircut"
               maxLength={120}
             />
@@ -186,7 +209,10 @@ export function ServiceFormDialog({
                 required
                 disabled={isReadOnly || isPending}
                 value={durationMinutes}
-                onChange={(e) => setDurationMinutes(e.target.value)}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setDurationMinutes(e.target.value);
+                }}
               />
             </FormField>
 
@@ -198,7 +224,10 @@ export function ServiceFormDialog({
                 step="1"
                 disabled={isReadOnly || isPending}
                 value={bufferAfterMinutes}
-                onChange={(e) => setBufferAfterMinutes(e.target.value)}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setBufferAfterMinutes(e.target.value);
+                }}
               />
             </FormField>
           </div>
@@ -215,12 +244,24 @@ export function ServiceFormDialog({
               step="0.01"
               disabled={isReadOnly || isPending}
               value={priceIls}
-              onChange={(e) => setPriceIls(e.target.value)}
+              onChange={(e) => {
+                setErrorMessage(null);
+                setPriceIls(e.target.value);
+              }}
               placeholder={pricingEnabled ? "e.g. 70" : "Optional (e.g. 70)"}
             />
           </FormField>
 
           <div className={styles.formActions}>
+            {isEditing ? (
+              <div className={styles.formSaveStatus}>
+                <FormSaveStatus
+                  dirty={isDirty}
+                  saving={isPending}
+                  successState="hidden"
+                />
+              </div>
+            ) : null}
             <Button
               type="button"
               variant="outline"
@@ -231,8 +272,11 @@ export function ServiceFormDialog({
             </Button>
             <Button
               loading={isPending}
+              loadingLabel={isEditing ? "Saving..." : "Creating..."}
               type="submit"
-              disabled={isReadOnly || isPending}
+              disabled={
+                isReadOnly || isPending || !isValid || (isEditing && !isDirty)
+              }
             >
               {isEditing ? "Save changes" : "Create service"}
             </Button>

@@ -2,6 +2,7 @@ import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useOutletContext, useParams } from "react-router";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
+import { DiscardChangesDialog } from "@/shared/components/discard-changes-dialog";
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
 import { BookingRulesTab } from "./components/booking-rules-tab";
@@ -56,6 +57,48 @@ export function SchedulePage() {
   const [selectedResourceId, setSelectedResourceId] = useState<string | null>(
     null,
   );
+  const [organizationHoursDirty, setOrganizationHoursDirty] = useState(false);
+  const [resourceHoursDirty, setResourceHoursDirty] = useState(false);
+  const [exceptionsDirty, setExceptionsDirty] = useState(false);
+  const [bookingRulesDirty, setBookingRulesDirty] = useState(false);
+  const [pendingTransition, setPendingTransition] = useState<{
+    run: () => void;
+  } | null>(null);
+
+  const activeTabIsDirty =
+    (activeTab === "hours" && (organizationHoursDirty || resourceHoursDirty)) ||
+    (activeTab === "exceptions" && exceptionsDirty) ||
+    (activeTab === "rules" && bookingRulesDirty);
+
+  const runOrConfirm = (dirty: boolean, run: () => void) => {
+    if (dirty) setPendingTransition({ run });
+    else run();
+  };
+
+  const selectTab = (nextTab: ScheduleTab) => {
+    if (nextTab === activeTab) return;
+    runOrConfirm(activeTabIsDirty, () => {
+      if (activeTab === "hours") {
+        setOrganizationHoursDirty(false);
+        setResourceHoursDirty(false);
+      } else if (activeTab === "exceptions") {
+        setExceptionsDirty(false);
+      } else {
+        setBookingRulesDirty(false);
+      }
+      setActiveTab(nextTab);
+      requestAnimationFrame(() =>
+        document.getElementById(`tab-${nextTab}`)?.focus(),
+      );
+    });
+  };
+
+  const selectResource = (resourceId: string) => {
+    runOrConfirm(activeTab === "hours" && resourceHoursDirty, () => {
+      setResourceHoursDirty(false);
+      setSelectedResourceId(resourceId);
+    });
+  };
 
   // Queries & mutations for hours
   const orgHoursQuery = useOrganizationWeeklyHours(organizationId);
@@ -111,7 +154,7 @@ export function SchedulePage() {
             aria-controls={`panel-${tab}`}
             aria-selected={activeTab === tab}
             tabIndex={activeTab === tab ? 0 : -1}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => selectTab(tab)}
             onKeyDown={(event) => {
               let next = index;
               if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
@@ -121,8 +164,8 @@ export function SchedulePage() {
               else if (event.key === "End") next = tabs.length - 1;
               else return;
               event.preventDefault();
-              setActiveTab(tabs[next][0]);
-              document.getElementById(`tab-${tabs[next][0]}`)?.focus();
+              const nextTab = tabs[next][0];
+              selectTab(nextTab);
             }}
             className={styles.tab}
           >
@@ -168,6 +211,7 @@ export function SchedulePage() {
                   await updateOrgHoursMutation.mutateAsync(days);
                 }}
                 isSaving={updateOrgHoursMutation.isPending}
+                onDirtyChange={setOrganizationHoursDirty}
               />
 
               {manageableResourcesQuery.isError ? (
@@ -183,9 +227,10 @@ export function SchedulePage() {
                 />
               ) : null}
               <ResourceWeeklyHours
+                key={selectedResourceId}
                 resources={resources}
                 selectedResourceId={selectedResourceId}
-                onSelectResource={setSelectedResourceId}
+                onSelectResource={selectResource}
                 resourceHoursData={resourceHoursQuery.data}
                 orgHoursData={orgHoursQuery.data}
                 isLoadingResourceHours={
@@ -196,6 +241,7 @@ export function SchedulePage() {
                   await updateResourceHoursMutation.mutateAsync(days);
                 }}
                 isSaving={updateResourceHoursMutation.isPending}
+                onDirtyChange={setResourceHoursDirty}
               />
             </>
           ) : null}
@@ -212,9 +258,10 @@ export function SchedulePage() {
             organizationId={organizationId}
             resources={resources}
             selectedResourceId={selectedResourceId}
-            onSelectResource={setSelectedResourceId}
+            onSelectResource={selectResource}
             orgWeeklyHours={orgHoursQuery.data}
             isReadOnly={isReadOnly}
+            onDirtyChange={setExceptionsDirty}
           />
         </div>
       )}
@@ -224,9 +271,20 @@ export function SchedulePage() {
           <BookingRulesTab
             organizationId={organizationId}
             isReadOnly={isReadOnly}
+            onDirtyChange={setBookingRulesDirty}
           />
         </div>
       )}
+
+      <DiscardChangesDialog
+        open={pendingTransition !== null}
+        onCancel={() => setPendingTransition(null)}
+        onDiscard={() => {
+          const transition = pendingTransition;
+          setPendingTransition(null);
+          transition?.run();
+        }}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Check, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ApiError } from "@/shared/api/api-error";
+import { FormSaveStatus } from "@/shared/components/form-save-status";
 import { Button } from "@/shared/components/ui/button";
 import {
   Dialog,
@@ -105,6 +106,11 @@ export function BookingRescheduleDialog({
     selectedResourceId === booking.resourceId &&
     date === currentDate &&
     validSelectedStart === currentStartMinute;
+  const isDirty =
+    date !== currentDate ||
+    (selectedResourceId !== null &&
+      selectedResourceId !== booking.resourceId) ||
+    (validSelectedStart !== null && validSelectedStart !== currentStartMinute);
   const canSubmit =
     selectedResourceId !== null &&
     validSelectedStart !== null &&
@@ -292,15 +298,13 @@ export function BookingRescheduleDialog({
         </div>
 
         <footer className={styles.dialogFooter}>
-          {mutation.isPending ? (
-            <span
-              aria-live="polite"
-              className={styles.visuallyHidden}
-              role="status"
-            >
-              Saving reschedule changes
-            </span>
-          ) : null}
+          <div className={styles.dialogSaveStatus}>
+            <FormSaveStatus
+              dirty={isDirty}
+              saving={mutation.isPending}
+              successState="hidden"
+            />
+          </div>
           <Button
             variant="outline"
             disabled={mutation.isPending}
@@ -310,16 +314,12 @@ export function BookingRescheduleDialog({
           </Button>
           <Button
             loading={mutation.isPending}
+            loadingLabel="Saving..."
             disabled={!canSubmit}
             onClick={() => void save()}
           >
             Save changes
           </Button>
-          {unchanged ? (
-            <p className={styles.unchanged}>
-              Choose a different resource, date, or time to save.
-            </p>
-          ) : null}
         </footer>
       </DialogContent>
     </Dialog>

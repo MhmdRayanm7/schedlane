@@ -196,14 +196,27 @@
 }
 .formActions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-3);
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
+.formSaveStatus {
+  min-height: 1.25rem;
+  margin-right: auto;
+}
 .alert {
   padding: var(--space-3);
+}
+@media (max-width: 39.99rem) {
+  .formActions {
+    align-items: stretch;
+  }
+  .formSaveStatus {
+    width: 100%;
+  }
 }
 .statusLine {
   display: flex;
