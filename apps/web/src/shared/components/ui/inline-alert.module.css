@@ -1,0 +1,21 @@
+.alert {
+  padding: 0.625rem var(--space-3);
+  border: 1px solid;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+}
+.error {
+  border-color: color-mix(in srgb, var(--color-destructive) 25%, transparent);
+  background: var(--color-destructive-subtle);
+  color: var(--color-destructive);
+}
+.warning {
+  border-color: color-mix(in srgb, var(--color-warning) 25%, transparent);
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+}
+.success {
+  border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}

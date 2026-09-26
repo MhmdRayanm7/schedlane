@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/shared/lib/cn";
+import styles from "./brand-lockup.module.css";
 import { BrandMark } from "./brand-mark";
 
 type BrandLockupProps = HTMLAttributes<HTMLDivElement> & {
@@ -14,18 +15,9 @@ export function BrandLockup({
   ...props
 }: BrandLockupProps) {
   return (
-    <div className={cn("inline-flex items-center gap-2", className)} {...props}>
-      <BrandMark
-        className={cn("size-6 shrink-0 text-primary", markClassName)}
-      />
-      <span
-        className={cn(
-          "text-[17px] font-semibold tracking text-foreground",
-          wordmarkClassName,
-        )}
-      >
-        Schedlane
-      </span>
+    <div className={cn(styles.lockup, className)} {...props}>
+      <BrandMark className={cn(styles.mark, markClassName)} />
+      <span className={cn(styles.wordmark, wordmarkClassName)}>Schedlane</span>
     </div>
   );
 }

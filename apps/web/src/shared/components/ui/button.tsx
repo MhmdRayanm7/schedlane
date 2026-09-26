@@ -1,45 +1,18 @@
-import { cva, type VariantProps } from "class-variance-authority";
 import { LoaderCircle } from "lucide-react";
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/shared/lib/cn";
+import styles from "./button.module.css";
 
-const buttonVariants = cva(
-  cn(
-    "inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2",
-    "rounded-md px-3.5 whitespace-nowrap text-sm font-medium",
-    "transition-colors duration-150 ease-out",
-    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-    "disabled:pointer-events-none disabled:opacity-65",
-  ),
-  {
-    variants: {
-      variant: {
-        default:
-          "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-hover",
-        outline:
-          "border border-border-strong bg-surface text-foreground hover:bg-surface-hover",
-        ghost:
-          "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
-        destructive:
-          "bg-destructive text-surface hover:bg-destructive/90 active:bg-destructive/90",
-        destructiveOutline:
-          "border border-destructive/25 bg-surface text-destructive hover:bg-destructive-subtle",
-      },
-      size: {
-        default: "h-9 px-3.5",
-        sm: "h-8 px-3 text-xs",
-        icon: "size-9 px-0",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  },
-);
-
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants> & { loading?: boolean };
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  loading?: boolean;
+  size?: "default" | "sm" | "icon";
+  variant?:
+    | "default"
+    | "outline"
+    | "ghost"
+    | "destructive"
+    | "destructiveOutline";
+};
 
 function Button({
   className,
@@ -52,7 +25,12 @@ function Button({
 }: ButtonProps) {
   return (
     <button
-      className={cn(buttonVariants({ variant, size }), className)}
+      className={cn(
+        styles.button,
+        styles[variant ?? "default"],
+        styles[`size-${size ?? "default"}`],
+        className,
+      )}
       type={type}
       aria-busy={loading || undefined}
       {...props}
@@ -60,20 +38,12 @@ function Button({
       {loading === undefined ? (
         children
       ) : (
-        <span className="relative inline-flex items-center justify-center gap-2">
-          <span
-            className={cn(
-              "inline-flex items-center gap-2",
-              loading && "opacity-0",
-            )}
-          >
+        <span className={styles.loadingLayout}>
+          <span className={cn(styles.loadingContent, loading && styles.hidden)}>
             {children}
           </span>
           {loading ? (
-            <LoaderCircle
-              aria-hidden="true"
-              className="absolute size-4 animate-spin"
-            />
+            <LoaderCircle aria-hidden="true" className={styles.spinner} />
           ) : null}
         </span>
       )}
@@ -81,4 +51,4 @@ function Button({
   );
 }
 
-export { Button, buttonVariants };
+export { Button };

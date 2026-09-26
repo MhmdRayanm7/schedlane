@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { Link, Navigate, Outlet, useLocation, useParams } from "react-router";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
 import { Button } from "@/shared/components/ui/button";
-import { cn } from "@/shared/lib/cn";
 import { useOrganizations } from "../hooks/use-organizations";
 import type { Organization } from "../types";
+import styles from "./organization-route-states.module.css";
 
 const staffSections = new Set(["bookings", "team"]);
 
@@ -16,11 +16,9 @@ export type OrganizationAccessContext = {
 
 function ApplicationFrame({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-dvh bg-background px-5 py-8 sm:px-8">
+    <main className={styles.frame}>
       <BrandLockup />
-      <div className="mx-auto flex min-h-[calc(100dvh-96px)] max-w-xl items-center justify-center py-10">
-        {children}
-      </div>
+      <div className={styles.content}>{children}</div>
     </main>
   );
 }
@@ -28,11 +26,9 @@ function ApplicationFrame({ children }: { children: ReactNode }) {
 function LoadingOrganizations() {
   return (
     <ApplicationFrame>
-      <div aria-busy="true" className="text-center" role="status">
-        <span className="mx-auto block size-5 animate-spin rounded-full border-2 border-border-strong border-t-primary" />
-        <p className="mt-4 text-sm text-muted-foreground">
-          Loading your organizations…
-        </p>
+      <div aria-busy="true" className={styles.loading} role="status">
+        <span className={styles.spinner} />
+        <p className={styles.loadingText}>Loading your organizations…</p>
       </div>
     </ApplicationFrame>
   );
@@ -41,15 +37,19 @@ function LoadingOrganizations() {
 function OrganizationsError({ retry }: { retry: () => void }) {
   return (
     <ApplicationFrame>
-      <section className="w-full rounded-xl border border-border bg-surface p-7 text-center">
-        <h1 className="text-xl font-semibold">
+      <section className={styles.messageCard}>
+        <h1 className={styles.messageTitle}>
           We couldn't load your organizations
         </h1>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        <p className={styles.messageDescription}>
           Check your connection and try again.
         </p>
-        <Button className="mt-5" onClick={retry} variant="outline">
-          <RefreshCw aria-hidden="true" className="size-4" />
+        <Button
+          className={styles.messageAction}
+          onClick={retry}
+          variant="outline"
+        >
+          <RefreshCw aria-hidden="true" className={styles.icon} />
           Try again
         </Button>
       </section>
@@ -76,19 +76,17 @@ export function OrganizationResolver() {
   if (organizations.length === 0) {
     return (
       <ApplicationFrame>
-        <section className="w-full rounded-xl border border-border bg-surface p-7 text-center">
-          <span className="mx-auto flex size-11 items-center justify-center rounded-full bg-primary-subtle text-primary">
-            <Building2 aria-hidden="true" className="size-5" />
+        <section className={styles.messageCard}>
+          <span className={styles.messageIcon}>
+            <Building2 aria-hidden="true" className={styles.largeIcon} />
           </span>
-          <h1 className="mt-5 text-xl font-semibold">
-            No organization access yet
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          <h1 className={styles.emptyTitle}>No organization access yet</h1>
+          <p className={styles.messageDescription}>
             Ask an organization owner to invite you, or create an organization
             when onboarding becomes available.
           </p>
           {import.meta.env.DEV ? (
-            <p className="mt-5 rounded-md border border-border bg-background px-3 py-2 text-xs leading-5 text-muted-foreground">
+            <p className={styles.developmentHint}>
               Development: link this verified account with{" "}
               <code>pnpm db:seed:demo-owner -- your@email.com</code>.
             </p>
@@ -104,27 +102,22 @@ export function OrganizationResolver() {
 
   return (
     <ApplicationFrame>
-      <section className="w-full">
-        <h1 className="text-2xl font-semibold">Choose an organization</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+      <section className={styles.organizationPicker}>
+        <h1 className={styles.pickerTitle}>Choose an organization</h1>
+        <p className={styles.pickerDescription}>
           Select the workspace you want to manage.
         </p>
-        <div className="mt-6 space-y-2">
+        <div className={styles.organizationList}>
           {organizations.map((organization) => (
             <Link
-              className={cn(
-                "flex items-center justify-between",
-                "rounded-lg border border-border bg-surface px-4 py-3.5",
-                "transition-colors duration-150",
-                "hover:border-border-strong hover:bg-primary-subtle",
-              )}
+              className={styles.organizationLink}
               key={organization.id}
               to={`/app/${organization.id}/bookings`}
             >
-              <span className="font-medium text-foreground">
+              <span className={styles.organizationName}>
                 {organization.name}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className={styles.organizationRole}>
                 {roleLabel(organization.role)}
               </span>
             </Link>

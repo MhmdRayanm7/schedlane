@@ -1,0 +1,106 @@
+.button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 2.25rem;
+  padding-inline: 0.875rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out),
+    color var(--duration-normal) var(--ease-out);
+}
+.button:focus-visible {
+  outline-color: var(--color-focus);
+}
+.button:disabled {
+  pointer-events: none;
+  opacity: 0.65;
+}
+.default {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+.default:hover,
+.default:active {
+  background: var(--color-primary-hover);
+}
+.outline {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-foreground);
+}
+.outline:hover {
+  background: var(--color-surface-hover);
+}
+.ghost {
+  background: transparent;
+  color: var(--color-muted-foreground);
+}
+.ghost:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-foreground);
+}
+.destructive {
+  background: var(--color-destructive);
+  color: var(--color-surface);
+}
+.destructive:hover,
+.destructive:active {
+  background: color-mix(in srgb, var(--color-destructive) 90%, black);
+}
+.destructiveOutline {
+  border: 1px solid
+    color-mix(in srgb, var(--color-destructive) 25%, transparent);
+  background: var(--color-surface);
+  color: var(--color-destructive);
+}
+.destructiveOutline:hover {
+  background: var(--color-destructive-subtle);
+}
+.size-default {
+  height: 2.25rem;
+  padding-inline: 0.875rem;
+}
+.size-sm {
+  height: 2rem;
+  padding-inline: var(--space-3);
+  font-size: 0.75rem;
+}
+.size-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+}
+.loadingLayout,
+.loadingContent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+.loadingLayout {
+  position: relative;
+}
+.hidden {
+  opacity: 0;
+}
+.spinner {
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  animation: spin 1s linear infinite;
+}
+@media (pointer: coarse) {
+  .button {
+    min-height: 2.5rem;
+  }
+}

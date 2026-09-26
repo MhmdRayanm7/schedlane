@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { cn } from "@/shared/lib/cn";
+import styles from "./admin-shell.module.css";
 
 type NavigationItem = {
   icon: LucideIcon;
@@ -121,21 +122,14 @@ function NavigationLink({
   return (
     <NavLink
       className={({ isActive }) =>
-        cn(
-          "flex h-9 items-center gap-3 rounded-md px-3",
-          "text-sm font-medium text-muted-foreground",
-          "transition-colors duration-150 ease-out",
-          "hover:bg-surface-hover hover:text-foreground",
-          isActive &&
-            "border-l-2 border-primary bg-primary-subtle font-semibold text-primary",
-        )
+        cn(styles.navigationLink, isActive && styles.navigationLinkActive)
       }
       onClick={onNavigate}
       to={`/app/${organizationId}/${item.path}`}
     >
       <Icon
         aria-hidden="true"
-        className="size-[18px] shrink-0"
+        className={styles.navigationIcon}
         strokeWidth={1.8}
       />
       <span>{item.label}</span>
@@ -203,68 +197,59 @@ function Sidebar({
   }
 
   return (
-    <aside
-      className="flex h-full w-[232px] shrink-0 flex-col border-r border-border bg-surface"
-      id={id}
-    >
-      <div className="flex h-16 items-center justify-between px-5">
+    <aside className={styles.sidebar} id={id}>
+      <div className={styles.brandArea}>
         <BrandLockup />
         {onClose ? (
           <Button
             aria-label="Close navigation"
-            className="-mr-2"
+            className={styles.closeNavigation}
             onClick={onClose}
             size="icon"
             variant="ghost"
           >
-            <X aria-hidden="true" className="size-5" />
+            <X aria-hidden="true" className={styles.largeIcon} />
           </Button>
         ) : null}
       </div>
 
-      <div className="px-3 pb-5 pt-2">
+      <div className={styles.organizationSelector}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               aria-label={`Select organization. Current organization: ${currentOrganization.name}`}
-              className="h-auto w-full justify-between border-border bg-surface px-3 py-2.5 text-left"
+              className={styles.organizationButton}
               variant="outline"
             >
-              <span className="min-w-0">
-                <span className="block truncate text-[13px] font-medium text-foreground">
+              <span className={styles.organizationCopy}>
+                <span className={styles.truncatedName}>
                   {currentOrganization.name}
                 </span>
-                <span className="mt-0.5 block text-xs font-normal text-subtle-foreground">
+                <span className={styles.role}>
                   {roleLabel(currentOrganization.role)}
                 </span>
               </span>
-              <ChevronDown
-                aria-hidden="true"
-                className="size-4 shrink-0 text-subtle-foreground"
-              />
+              <ChevronDown aria-hidden="true" className={styles.mutedIcon} />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[208px]">
+          <DropdownMenuContent align="start" className={styles.menuWidth}>
             <DropdownMenuLabel>Organizations</DropdownMenuLabel>
             {organizations.map((organization) => (
               <DropdownMenuItem
-                className="justify-between"
+                className={styles.organizationOption}
                 key={organization.id}
                 onSelect={() => selectOrganization(organization)}
               >
-                <span className="min-w-0">
-                  <span className="block [overflow-wrap:anywhere]">
+                <span className={styles.organizationCopy}>
+                  <span className={styles.wrappedName}>
                     {organization.name}
                   </span>
-                  <span className="block text-xs text-muted-foreground">
+                  <span className={styles.optionRole}>
                     {roleLabel(organization.role)}
                   </span>
                 </span>
                 {organization.id === currentOrganization.id ? (
-                  <Check
-                    aria-hidden="true"
-                    className="size-4 shrink-0 text-primary"
-                  />
+                  <Check aria-hidden="true" className={styles.selectedIcon} />
                 ) : null}
               </DropdownMenuItem>
             ))}
@@ -272,11 +257,8 @@ function Sidebar({
         </DropdownMenu>
       </div>
 
-      <nav
-        aria-label="Primary"
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3"
-      >
-        <div className="space-y-1">
+      <nav aria-label="Primary" className={styles.navigation}>
+        <div className={styles.navigationGroup}>
           {visiblePrimaryNavigation.map((item) => (
             <NavigationLink
               item={item}
@@ -287,7 +269,7 @@ function Sidebar({
           ))}
         </div>
         {visibleSettingsNavigation.length > 0 ? (
-          <div className="mt-auto border-t border-border py-3">
+          <div className={styles.settingsNavigation}>
             {visibleSettingsNavigation.map((item) => (
               <NavigationLink
                 item={item}
@@ -300,51 +282,44 @@ function Sidebar({
         ) : null}
       </nav>
 
-      <div className="border-t border-border p-3">
+      <div className={styles.accountArea}>
         {session ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
-                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors duration-150 hover:bg-surface-hover"
-                type="button"
-              >
-                <span
-                  aria-hidden="true"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-border text-xs font-semibold text-foreground"
-                >
+              <button className={styles.accountButton} type="button">
+                <span aria-hidden="true" className={styles.avatar}>
                   {userInitials(session.user.name, session.user.email)}
                 </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-[13px] font-medium text-foreground">
+                <span className={styles.accountCopy}>
+                  <span className={styles.truncatedName}>
                     {session.user.name}
                   </span>
-                  <span className="block truncate text-xs text-subtle-foreground">
-                    {session.user.email}
-                  </span>
+                  <span className={styles.email}>{session.user.email}</span>
                 </span>
                 <ChevronDown
                   aria-hidden="true"
-                  className="ml-auto size-4 shrink-0 text-subtle-foreground"
+                  className={styles.accountChevron}
                 />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[208px]" side="top">
-              <DropdownMenuLabel className="[overflow-wrap:anywhere]">
+            <DropdownMenuContent
+              align="start"
+              className={styles.menuWidth}
+              side="top"
+            >
+              <DropdownMenuLabel className={styles.wrappedName}>
                 {session.user.email}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => void signOut()}>
-                <LogOut aria-hidden="true" className="size-4" />
+                <LogOut aria-hidden="true" className={styles.icon} />
                 Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
         {signOutError ? (
-          <p
-            className="mt-2 px-3 text-xs leading-5 text-destructive"
-            role="alert"
-          >
+          <p className={styles.signOutError} role="alert">
             Sign out failed. Try again.
           </p>
         ) : null}
@@ -380,26 +355,18 @@ export function AdminShell() {
       open={mobileNavigationOpen}
       onOpenChange={setMobileNavigationOpen}
     >
-      <div className="flex min-h-dvh bg-background">
-        <div className="fixed inset-y-0 left-0 hidden lg:block">
+      <div className={styles.shell}>
+        <div className={styles.desktopSidebar}>
           <Sidebar id="desktop-navigation" {...organizationAccess} />
         </div>
 
         <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay
-            className={cn(
-              "fixed inset-0 z-40 bg-foreground/25",
-              "data-[state=closed]:animate-[sheet-overlay-out_150ms_ease-in] data-[state=open]:animate-[sheet-overlay-in_180ms_ease-out]",
-            )}
-          />
+          <DialogPrimitive.Overlay className={styles.mobileOverlay} />
           <DialogPrimitive.Content
             aria-describedby={undefined}
-            className={cn(
-              "fixed inset-y-0 left-0 z-50 w-[232px] outline-none",
-              "data-[state=closed]:animate-[sidebar-out_150ms_ease-in] data-[state=open]:animate-[sidebar-in_190ms_ease-out]",
-            )}
+            className={styles.mobileSidebar}
           >
-            <DialogPrimitive.Title className="sr-only">
+            <DialogPrimitive.Title className={styles.visuallyHidden}>
               Navigation
             </DialogPrimitive.Title>
             <Sidebar
@@ -411,38 +378,35 @@ export function AdminShell() {
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
 
-        <div className="flex min-h-dvh min-w-0 flex-1 flex-col lg:pl-[232px]">
-          <header className="flex h-14 items-center border-b border-border bg-surface px-4 lg:hidden">
+        <div className={styles.contentColumn}>
+          <header className={styles.mobileHeader}>
             <DialogPrimitive.Trigger asChild>
               <Button
                 aria-controls="mobile-navigation"
                 aria-expanded={mobileNavigationOpen}
                 aria-label="Open navigation"
-                className="-ml-2"
+                className={styles.openNavigation}
                 onClick={() => setMobileNavigationOpen(true)}
                 size="icon"
                 variant="ghost"
               >
-                <Menu aria-hidden="true" className="size-5" />
+                <Menu aria-hidden="true" className={styles.largeIcon} />
               </Button>
             </DialogPrimitive.Trigger>
             <BrandLockup
-              className="ml-2 gap-1.5"
-              markClassName="size-[21px]"
-              wordmarkClassName="text-[15px]"
+              className={styles.mobileBrand}
+              markClassName={styles.mobileBrandMark}
+              wordmarkClassName={styles.mobileWordmark}
             />
           </header>
 
           {lifecycleMessage ? (
-            <div
-              className="border-b border-warning/25 bg-warning-subtle px-5 py-2.5 text-sm text-warning sm:px-6 lg:px-8"
-              role="status"
-            >
+            <div className={styles.lifecycleBanner} role="status">
               {lifecycleMessage}
             </div>
           ) : null}
 
-          <main className="mx-auto w-full max-w-[1440px] min-w-0 [overflow-wrap:anywhere] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <main className={styles.main}>
             <Outlet context={organizationAccess} />
           </main>
         </div>

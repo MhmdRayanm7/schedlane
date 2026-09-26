@@ -2,6 +2,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cn } from "@/shared/lib/cn";
+import styles from "./dialog.module.css";
 import { useOverlayFocus } from "./use-overlay-focus";
 
 const Dialog = DialogPrimitive.Root;
@@ -17,41 +18,21 @@ function DialogContent({
   const focus = useOverlayFocus();
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay
-        className={cn(
-          "fixed inset-0 z-[60] bg-foreground/30",
-          "data-[state=closed]:animate-[sheet-overlay-out_150ms_ease-in] data-[state=open]:animate-[sheet-overlay-in_180ms_ease-out]",
-        )}
-      />
+      <DialogPrimitive.Overlay className={styles.overlay} />
       <DialogPrimitive.Content
         aria-busy={busy}
-        className={cn(
-          "fixed left-1/2 top-1/2 z-[60] flex -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden",
-          "max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[480px]",
-          "rounded-lg border border-border bg-surface",
-          "shadow-xl outline-none",
-          "data-[state=open]:animate-[dialog-in_180ms_ease-out] data-[state=closed]:animate-[dialog-out_140ms_ease-in]",
-          className,
-        )}
+        className={cn(styles.content, className)}
         {...focus}
         {...props}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 pt-2 [overflow-wrap:anywhere] sm:p-6 sm:pt-2">
-          {children}
-        </div>
-        <div className="order-first flex h-12 shrink-0 items-center justify-end px-2">
+        <div className={styles.scrollArea}>{children}</div>
+        <div className={styles.closeArea}>
           <DialogPrimitive.Close
             disabled={busy === true || busy === "true"}
-            className={cn(
-              "flex size-10 items-center justify-center rounded-md text-muted-foreground",
-              "transition-colors duration-150",
-              "hover:bg-surface-hover hover:text-foreground",
-              "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-              "disabled:pointer-events-none disabled:opacity-65",
-            )}
+            className={styles.closeButton}
           >
-            <X aria-hidden="true" className="size-5" />
-            <span className="sr-only">Close dialog</span>
+            <X aria-hidden="true" className={styles.closeIcon} />
+            <span className={styles.visuallyHidden}>Close dialog</span>
           </DialogPrimitive.Close>
         </div>
       </DialogPrimitive.Content>
@@ -64,13 +45,7 @@ function DialogTitle({
   ...props
 }: ComponentProps<typeof DialogPrimitive.Title>) {
   return (
-    <DialogPrimitive.Title
-      className={cn(
-        "text-lg font-semibold leading-7 [overflow-wrap:anywhere]",
-        className,
-      )}
-      {...props}
-    />
+    <DialogPrimitive.Title className={cn(styles.title, className)} {...props} />
   );
 }
 
@@ -80,7 +55,7 @@ function DialogDescription({
 }: ComponentProps<typeof DialogPrimitive.Description>) {
   return (
     <DialogPrimitive.Description
-      className={cn("mt-2 text-sm leading-6 text-muted-foreground", className)}
+      className={cn(styles.description, className)}
       {...props}
     />
   );

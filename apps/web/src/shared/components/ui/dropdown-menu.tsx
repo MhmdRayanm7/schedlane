@@ -2,6 +2,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cn } from "@/shared/lib/cn";
+import styles from "./dropdown-menu.module.css";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -15,14 +16,7 @@ function DropdownMenuContent({
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
-        className={cn(
-          "z-50 overflow-y-auto overscroll-contain",
-          "min-w-48 max-w-[calc(100vw-2rem)] max-h-[var(--radix-dropdown-menu-content-available-height)]",
-          "rounded-lg border border-border bg-surface p-1 text-foreground",
-          "shadow-[0_8px_24px_rgba(24,27,27,0.10)]",
-          "data-[state=closed]:animate-[menu-out_120ms_ease-in] data-[state=open]:animate-[menu-in_160ms_ease-out]",
-          className,
-        )}
+        className={cn(styles.content, className)}
         sideOffset={sideOffset}
         {...props}
       />
@@ -37,15 +31,7 @@ function DropdownMenuItem({
 }: ComponentProps<typeof DropdownMenuPrimitive.Item> & { inset?: boolean }) {
   return (
     <DropdownMenuPrimitive.Item
-      className={cn(
-        "relative flex cursor-default select-none items-center gap-2",
-        "rounded-md px-2.5 py-2 text-sm",
-        "outline-none transition-colors duration-150",
-        "focus:bg-surface-hover focus:text-foreground",
-        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-        inset && "pl-8",
-        className,
-      )}
+      className={cn(styles.item, inset && styles.inset, className)}
       {...props}
     />
   );
@@ -58,11 +44,7 @@ function DropdownMenuLabel({
 }: ComponentProps<typeof DropdownMenuPrimitive.Label> & { inset?: boolean }) {
   return (
     <DropdownMenuPrimitive.Label
-      className={cn(
-        "px-2.5 py-1.5 text-xs font-medium text-muted-foreground",
-        inset && "pl-8",
-        className,
-      )}
+      className={cn(styles.label, inset && styles.inset, className)}
       {...props}
     />
   );
@@ -74,7 +56,7 @@ function DropdownMenuSeparator({
 }: ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
   return (
     <DropdownMenuPrimitive.Separator
-      className={cn("-mx-1 my-1 h-px bg-border", className)}
+      className={cn(styles.separator, className)}
       {...props}
     />
   );
@@ -87,19 +69,12 @@ function DropdownMenuCheckboxItem({
 }: ComponentProps<typeof DropdownMenuPrimitive.CheckboxItem>) {
   return (
     <DropdownMenuPrimitive.CheckboxItem
-      className={cn(
-        "relative flex cursor-default select-none items-center",
-        "rounded-md py-2 pl-8 pr-2.5 text-sm",
-        "outline-none transition-colors duration-150",
-        "focus:bg-surface-hover",
-        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-        className,
-      )}
+      className={cn(styles.checkboxItem, className)}
       {...props}
     >
-      <span className="absolute left-2.5 flex size-4 items-center justify-center">
+      <span className={styles.indicator}>
         <DropdownMenuPrimitive.ItemIndicator>
-          <Check aria-hidden="true" className="size-4" />
+          <Check aria-hidden="true" className={styles.icon} />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}
@@ -117,19 +92,11 @@ function DropdownMenuSubTrigger({
 }) {
   return (
     <DropdownMenuPrimitive.SubTrigger
-      className={cn(
-        "flex cursor-default select-none items-center",
-        "rounded-md px-2.5 py-2 text-sm",
-        "outline-none",
-        "data-[state=open]:bg-primary-subtle",
-        "focus:bg-surface-hover",
-        inset && "pl-8",
-        className,
-      )}
+      className={cn(styles.subTrigger, inset && styles.inset, className)}
       {...props}
     >
       {children}
-      <ChevronRight aria-hidden="true" className="ml-auto size-4" />
+      <ChevronRight aria-hidden="true" className={styles.subIcon} />
     </DropdownMenuPrimitive.SubTrigger>
   );
 }

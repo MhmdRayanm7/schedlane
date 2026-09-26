@@ -1,0 +1,32 @@
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.copy {
+  min-width: 0;
+  max-width: 48rem;
+}
+.title {
+  margin: 0;
+  color: var(--color-foreground);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 2rem;
+}
+.description {
+  margin: var(--space-1) 0 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+.action {
+  flex-shrink: 0;
+}
+@media (min-width: 40rem) {
+  .header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}

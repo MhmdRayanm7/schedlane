@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import styles from "./form-field.module.css";
 
 type FormFieldProps = {
   htmlFor: string;
@@ -16,19 +17,14 @@ export function FormField({
   error,
 }: FormFieldProps) {
   return (
-    <div className="space-y-1.5">
-      <label
-        htmlFor={htmlFor}
-        className="block text-sm font-medium text-foreground"
-      >
+    <div className={styles.field}>
+      <label htmlFor={htmlFor} className={styles.label}>
         {label}
       </label>
       {children}
-      {helperText ? (
-        <p className="text-xs text-subtle-foreground">{helperText}</p>
-      ) : null}
+      {helperText ? <p className={styles.helper}>{helperText}</p> : null}
       {error ? (
-        <p role="alert" className="text-sm font-medium text-destructive">
+        <p role="alert" className={styles.error}>
           {error}
         </p>
       ) : null}

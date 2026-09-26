@@ -1,0 +1,21 @@
+.field {
+  display: grid;
+  gap: 0.375rem;
+}
+.label {
+  display: block;
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.helper {
+  margin: 0;
+  color: var(--color-subtle-foreground);
+  font-size: 0.75rem;
+}
+.error {
+  margin: 0;
+  color: var(--color-destructive);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
