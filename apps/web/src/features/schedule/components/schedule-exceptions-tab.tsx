@@ -1,6 +1,5 @@
 import { AlertCircle } from "lucide-react";
-import { useEffect, useState } from "react";
-import { DiscardChangesDialog } from "@/shared/components/discard-changes-dialog";
+import { useState } from "react";
 import { Input } from "@/shared/components/ui/input";
 import {
   Select,
@@ -9,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { useUnsavedChangesGuard } from "@/shared/unsaved-changes/unsaved-changes";
 import {
   useCreateResourceTimeBlock,
   useDeleteResourceTimeBlock,
@@ -38,7 +38,6 @@ type ScheduleExceptionsTabProps = {
   onSelectResource: (resourceId: string) => void;
   orgWeeklyHours: WeeklyHoursResponse | undefined;
   isReadOnly?: boolean;
-  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export function ScheduleExceptionsTab({
@@ -48,50 +47,25 @@ export function ScheduleExceptionsTab({
   onSelectResource,
   orgWeeklyHours,
   isReadOnly = false,
-  onDirtyChange,
 }: ScheduleExceptionsTabProps) {
   const [selectedDate, setSelectedDate] = useState(() =>
     getJerusalemTodayDate(),
   );
   const [deletingBlockId, setDeletingBlockId] = useState<string | null>(null);
-  const [orgOverrideDirty, setOrgOverrideDirty] = useState(false);
-  const [resourceOverrideDirty, setResourceOverrideDirty] = useState(false);
-  const [pendingTransition, setPendingTransition] = useState<
-    { type: "date"; value: string } | { type: "resource"; value: string } | null
-  >(null);
-
-  useEffect(() => {
-    onDirtyChange?.(orgOverrideDirty || resourceOverrideDirty);
-  }, [onDirtyChange, orgOverrideDirty, resourceOverrideDirty]);
+  const { requestChange } = useUnsavedChangesGuard();
 
   const handleDateChange = (nextDate: string) => {
-    if (orgOverrideDirty || resourceOverrideDirty) {
-      setPendingTransition({ type: "date", value: nextDate });
-      return;
-    }
-    setSelectedDate(nextDate);
+    if (nextDate === selectedDate) return;
+    requestChange(() => setSelectedDate(nextDate), {
+      tags: ["schedule:exception-date"],
+    });
   };
 
   const handleResourceChange = (resourceId: string) => {
-    if (resourceOverrideDirty) {
-      setPendingTransition({ type: "resource", value: resourceId });
-    } else {
-      onSelectResource(resourceId);
-    }
-  };
-
-  const discardAndContinue = () => {
-    const transition = pendingTransition;
-    setPendingTransition(null);
-    if (!transition) return;
-    if (transition.type === "date") {
-      setOrgOverrideDirty(false);
-      setResourceOverrideDirty(false);
-      setSelectedDate(transition.value);
-    } else {
-      setResourceOverrideDirty(false);
-      onSelectResource(transition.value);
-    }
+    if (resourceId === selectedResourceId) return;
+    requestChange(() => onSelectResource(resourceId), {
+      tags: ["schedule:exception-resource"],
+    });
   };
 
   const selectedWeekday = getIsoWeekdayForDate(selectedDate);
@@ -197,7 +171,6 @@ export function ScheduleExceptionsTab({
             await updateOrgOverrideMutation.mutateAsync(data);
           }}
           isSaving={updateOrgOverrideMutation.isPending}
-          onDirtyChange={setOrgOverrideDirty}
         />
       ) : orgOverrideQuery.isPending ? (
         <p role="status" className={styles.loadingMessage}>
@@ -290,7 +263,6 @@ export function ScheduleExceptionsTab({
                     await updateResourceOverrideMutation.mutateAsync(data);
                   }}
                   isSaving={updateResourceOverrideMutation.isPending}
-                  onDirtyChange={setResourceOverrideDirty}
                 />
               ) : resourceOverrideQuery.isPending ? (
                 <p role="status" className={styles.loadingMessage}>
@@ -328,12 +300,6 @@ export function ScheduleExceptionsTab({
           )}
         </div>
       )}
-
-      <DiscardChangesDialog
-        open={pendingTransition !== null}
-        onCancel={() => setPendingTransition(null)}
-        onDiscard={discardAndContinue}
-      />
     </div>
   );
 }

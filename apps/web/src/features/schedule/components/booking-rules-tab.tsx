@@ -4,6 +4,7 @@ import { FormSaveStatus } from "@/shared/components/form-save-status";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { useTransientSaveState } from "@/shared/hooks/use-transient-save-state";
+import { useUnsavedChanges } from "@/shared/unsaved-changes/unsaved-changes";
 import {
   useAvailabilitySettings,
   useUpdateAvailabilitySettings,
@@ -14,13 +15,11 @@ import styles from "./booking-rules.module.css";
 type BookingRulesTabProps = {
   organizationId: string;
   isReadOnly?: boolean;
-  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export function BookingRulesTab({
   organizationId,
   isReadOnly = false,
-  onDirtyChange,
 }: BookingRulesTabProps) {
   const settingsQuery = useAvailabilitySettings(organizationId);
   const updateSettingsMutation = useUpdateAvailabilitySettings(organizationId);
@@ -82,9 +81,23 @@ export function BookingRulesTab({
       publicPaused !== server.publicBookingPaused);
   isDirtyRef.current = isDirty;
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
+  useUnsavedChanges({
+    id: "schedule:booking-rules",
+    dirty: isDirty,
+    tags: ["schedule:rules"],
+    discard: () => {
+      if (!persistedSettings) return;
+      setSlotInterval(String(persistedSettings.slotIntervalMinutes));
+      setMinNotice(String(persistedSettings.minBookingNoticeMinutes));
+      setHorizonDays(String(persistedSettings.maxBookingHorizonDays));
+      setCancellationCutoff(
+        String(persistedSettings.cancellationCutoffMinutes),
+      );
+      setPublicPaused(persistedSettings.publicBookingPaused);
+      setSaveError(null);
+      clearSaveSuccess();
+    },
+  });
 
   if (settingsQuery.isLoading) {
     return (

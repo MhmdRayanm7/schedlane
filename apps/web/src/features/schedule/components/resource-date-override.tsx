@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { useTransientSaveState } from "@/shared/hooks/use-transient-save-state";
+import { useUnsavedChanges } from "@/shared/unsaved-changes/unsaved-changes";
 import {
   areIntervalsEqual,
   formatIntervalsSummary,
@@ -41,7 +42,6 @@ type ResourceDateOverrideProps = {
     intervals: MinuteInterval[];
   }) => Promise<unknown>;
   isSaving: boolean;
-  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export function ResourceDateOverride({
@@ -54,7 +54,6 @@ export function ResourceDateOverride({
   isReadOnly = false,
   onSave,
   isSaving,
-  onDirtyChange,
 }: ResourceDateOverrideProps) {
   const isResourceInactive = Boolean(resource?.deactivatedAt);
   const isWritesDisabled = isReadOnly || isResourceInactive || isSaving;
@@ -146,9 +145,29 @@ export function ResourceDateOverride({
     (mode === "custom" && !areIntervalsEqual(serverIntervals, parsedIntervals));
   isDirtyRef.current = isDirty;
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
+  useUnsavedChanges({
+    id: `schedule:resource-exception:${resource?.id ?? "none"}:${date}`,
+    dirty: isDirty,
+    tags: [
+      "schedule:exceptions",
+      "schedule:exception-date",
+      "schedule:exception-resource",
+    ],
+    discard: () => {
+      setMode(persistedOverride.mode);
+      setIntervalsDraft(
+        persistedOverride.mode === "custom"
+          ? persistedOverride.intervals.map((interval) => ({
+              id: crypto.randomUUID(),
+              startStr: minuteToTime(interval.startMinute),
+              endStr: minuteToTime(interval.endMinute),
+            }))
+          : [],
+      );
+      setSaveError(null);
+      clearSaveSuccess();
+    },
+  });
 
   const handleModeChange = (newMode: AvailabilityMode) => {
     clearSaveSuccess();

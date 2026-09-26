@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { FormSaveStatus } from "@/shared/components/form-save-status";
 import { Button } from "@/shared/components/ui/button";
 import { useTransientSaveState } from "@/shared/hooks/use-transient-save-state";
+import { useUnsavedChanges } from "@/shared/unsaved-changes/unsaved-changes";
 import { WEEKDAYS_SUNDAY_FIRST } from "../lib/constants";
 import {
   areIntervalsEqual,
@@ -23,7 +24,6 @@ type OrganizationWeeklyHoursProps = {
   isReadOnly?: boolean;
   onSave: (days: WeekdayHours[]) => Promise<unknown>;
   isSaving: boolean;
-  onDirtyChange?: (dirty: boolean) => void;
 };
 
 function initDraft(data: WeeklyHoursResponse): Record<number, IntervalDraft[]> {
@@ -71,7 +71,6 @@ export function OrganizationWeeklyHours({
   isReadOnly = false,
   onSave,
   isSaving,
-  onDirtyChange,
 }: OrganizationWeeklyHoursProps) {
   const [draft, setDraft] = useState<Record<number, IntervalDraft[]>>(() =>
     initDraft(data),
@@ -112,9 +111,16 @@ export function OrganizationWeeklyHours({
   });
   isDirtyRef.current = isDirty;
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
+  useUnsavedChanges({
+    id: "schedule:organization-hours",
+    dirty: isDirty,
+    tags: ["schedule:hours"],
+    discard: () => {
+      setDraft(initDraft({ ...data, days: persistedDays }));
+      setSaveError(null);
+      clearSaveSuccess();
+    },
+  });
 
   const handleDayToggleOpen = (weekday: number) => {
     clearSaveSuccess();

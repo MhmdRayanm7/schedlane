@@ -1,20 +1,21 @@
 @keyframes dialog-in {
   from {
     opacity: 0;
-    transform: translateY(0.25rem) scale(0.985);
+    transform: translate(-50%, calc(-50% + 6px)) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 @keyframes dialog-out {
   from {
     opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
   to {
     opacity: 0;
-    transform: translateY(0.125rem) scale(0.99);
+    transform: translate(-50%, calc(-50% + 4px)) scale(0.985);
   }
 }
 @keyframes sidebar-in {

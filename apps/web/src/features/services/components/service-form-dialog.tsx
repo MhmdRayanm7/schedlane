@@ -11,6 +11,7 @@ import {
 import { FormField } from "@/shared/components/ui/form-field";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
+import { useUnsavedChanges } from "@/shared/unsaved-changes/unsaved-changes";
 import { agorotToIls, ilsToAgorot } from "../lib/pricing";
 import styles from "../services.module.css";
 import type { CreateServiceInput, Service, UpdateServiceInput } from "../types";
@@ -61,6 +62,23 @@ export function ServiceFormDialog({
     !Number.isNaN(parsedBuffer) &&
     parsedBuffer >= 0 &&
     (!priceIls.trim() || (Number.isFinite(numericPrice) && numericPrice >= 0));
+  const draftId = `service-edit:${service?.id ?? "create"}`;
+  const { requestChange } = useUnsavedChanges({
+    id: draftId,
+    dirty: open && isEditing && isDirty,
+    discard: () => {
+      if (!service) return;
+      setName(service.name);
+      setDurationMinutes(service.durationMinutes.toString());
+      setPriceIls(agorotToIls(service.priceAgorot));
+      setBufferAfterMinutes(service.bufferAfterMinutes.toString());
+      setErrorMessage(null);
+    },
+  });
+
+  const requestClose = () => {
+    requestChange(() => onOpenChange(false), { ids: [draftId] });
+  };
 
   useEffect(() => {
     if (open) {
@@ -161,7 +179,9 @@ export function ServiceFormDialog({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!isPending) onOpenChange(nextOpen);
+        if (isPending) return;
+        if (nextOpen) onOpenChange(true);
+        else requestClose();
       }}
     >
       <DialogContent className={styles.formDialog} aria-busy={isPending}>
@@ -265,7 +285,7 @@ export function ServiceFormDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={requestClose}
               disabled={isPending}
             >
               Cancel

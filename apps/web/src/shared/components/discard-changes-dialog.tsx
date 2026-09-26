@@ -21,15 +21,16 @@ export function DiscardChangesDialog({
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
       <DialogContent className={styles.content}>
-        <DialogTitle>Discard unsaved changes?</DialogTitle>
+        <DialogTitle>Unsaved changes</DialogTitle>
         <DialogDescription>
-          Your unsaved changes will be lost if you continue.
+          You have changes that haven’t been saved. If you leave now, those
+          changes will be lost.
         </DialogDescription>
         <div className={styles.actions}>
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
+          <Button onClick={onCancel}>
+            Keep editing
           </Button>
-          <Button variant="destructive" onClick={onDiscard}>
+          <Button variant="destructiveOutline" onClick={onDiscard}>
             Discard changes
           </Button>
         </div>

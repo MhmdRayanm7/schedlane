@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { useTransientSaveState } from "@/shared/hooks/use-transient-save-state";
+import { useUnsavedChanges } from "@/shared/unsaved-changes/unsaved-changes";
 import { WEEKDAYS_SUNDAY_FIRST } from "../lib/constants";
 import {
   areIntervalsEqual,
@@ -39,7 +40,6 @@ type ResourceWeeklyHoursProps = {
   isReadOnly?: boolean;
   onSave: (days: ResourceWeekdayHours[]) => Promise<unknown>;
   isSaving: boolean;
-  onDirtyChange?: (dirty: boolean) => void;
 };
 
 type DayDraft = {
@@ -103,7 +103,6 @@ export function ResourceWeeklyHours({
   isReadOnly = false,
   onSave,
   isSaving,
-  onDirtyChange,
 }: ResourceWeeklyHoursProps) {
   const selectedResource = resources.find((r) => r.id === selectedResourceId);
   const isResourceInactive = Boolean(selectedResource?.deactivatedAt);
@@ -179,9 +178,28 @@ export function ResourceWeeklyHours({
   });
   isDirtyRef.current = isDirty;
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
+  const { requestChange } = useUnsavedChanges({
+    id: `schedule:resource-hours:${selectedResourceId ?? "none"}`,
+    dirty: isDirty,
+    tags: ["schedule:hours", "schedule:resource-hours"],
+    discard: () => {
+      setDraft(
+        initDraft({
+          timezone: "Asia/Jerusalem",
+          days: persistedDays,
+        }),
+      );
+      setSaveError(null);
+      clearSaveSuccess();
+    },
+  });
+
+  const handleResourceChange = (resourceId: string) => {
+    if (resourceId === selectedResourceId) return;
+    requestChange(() => onSelectResource(resourceId), {
+      tags: ["schedule:resource-hours"],
+    });
+  };
 
   const handleModeChange = (weekday: number, newMode: AvailabilityMode) => {
     clearSaveSuccess();
@@ -348,7 +366,7 @@ export function ResourceWeeklyHours({
           <div className={styles.selectWrapper}>
             <Select
               value={selectedResourceId ?? ""}
-              onValueChange={onSelectResource}
+              onValueChange={handleResourceChange}
             >
               <SelectTrigger
                 id="resource-select"

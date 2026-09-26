@@ -18,6 +18,7 @@ import { SchedulePage } from "@/features/schedule/schedule-page";
 import { ServicesPage } from "@/features/services/services-page";
 import { SettingsPage } from "@/features/settings/settings-page";
 import { TeamPage } from "@/features/team/team-page";
+import { UnsavedChangesProvider } from "@/shared/unsaved-changes/unsaved-changes";
 
 export const router = createBrowserRouter([
   {
@@ -42,7 +43,11 @@ export const router = createBrowserRouter([
         element: <OrganizationAccessGate />,
         children: [
           {
-            element: <AdminShell />,
+            element: (
+              <UnsavedChangesProvider>
+                <AdminShell />
+              </UnsavedChangesProvider>
+            ),
             children: [
               { index: true, element: <Navigate replace to="bookings" /> },
               { path: "bookings", element: <BookingsPage /> },

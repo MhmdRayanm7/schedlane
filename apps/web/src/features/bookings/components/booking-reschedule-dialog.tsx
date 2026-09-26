@@ -20,6 +20,7 @@ import {
 } from "@/shared/components/ui/select";
 import { cn } from "@/shared/lib/cn";
 import { formatLocalDate, schedulingToday } from "@/shared/lib/date-time";
+import { useUnsavedChanges } from "@/shared/unsaved-changes/unsaved-changes";
 import styles from "../bookings.module.css";
 import {
   useRescheduleBooking,
@@ -118,6 +119,21 @@ export function BookingRescheduleDialog({
     !mutation.isPending;
   const mutationError = rescheduleErrorMessage(mutation.error);
   const optionsError = rescheduleErrorMessage(optionsQuery.error);
+  const draftId = `booking-reschedule:${booking.id}`;
+  const { requestChange } = useUnsavedChanges({
+    id: draftId,
+    dirty: open && isDirty,
+    discard: () => {
+      setDate(currentDate);
+      setResourceId(null);
+      setChosenStart(null);
+      mutation.reset();
+    },
+  });
+
+  const requestClose = () => {
+    requestChange(onBack, { ids: [draftId] });
+  };
 
   async function save() {
     if (!canSubmit || !selectedResourceId || validSelectedStart === null)
@@ -143,7 +159,7 @@ export function BookingRescheduleDialog({
     <Dialog
       open={open}
       onOpenChange={(open) => {
-        if (!open && !mutation.isPending) onBack();
+        if (!open && !mutation.isPending) requestClose();
       }}
     >
       <DialogContent
@@ -308,7 +324,7 @@ export function BookingRescheduleDialog({
           <Button
             variant="outline"
             disabled={mutation.isPending}
-            onClick={onBack}
+            onClick={requestClose}
           >
             Cancel
           </Button>

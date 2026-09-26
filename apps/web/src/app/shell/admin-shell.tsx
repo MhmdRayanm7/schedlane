@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { cn } from "@/shared/lib/cn";
+import { useUnsavedChangesGuard } from "@/shared/unsaved-changes/unsaved-changes";
 import styles from "./admin-shell.module.css";
 
 type NavigationItem = {
@@ -111,11 +112,9 @@ function userInitials(name: string, email: string) {
 function NavigationLink({
   item,
   organizationId,
-  onNavigate,
 }: {
   item: NavigationItem;
   organizationId: string;
-  onNavigate?: () => void;
 }) {
   const Icon = item.icon;
 
@@ -124,7 +123,6 @@ function NavigationLink({
       className={({ isActive }) =>
         cn(styles.navigationLink, isActive && styles.navigationLinkActive)
       }
-      onClick={onNavigate}
       to={`/app/${organizationId}/${item.path}`}
     >
       <Icon
@@ -140,14 +138,12 @@ function NavigationLink({
 type SidebarProps = OrganizationAccessContext & {
   id: string;
   onClose?: () => void;
-  onNavigate?: () => void;
 };
 
 function Sidebar({
   currentOrganization,
   id,
   onClose,
-  onNavigate,
   organizations,
 }: SidebarProps) {
   const location = useLocation();
@@ -155,6 +151,7 @@ function Sidebar({
   const queryClient = useQueryClient();
   const { data: session, refetch: refetchSession } = authClient.useSession();
   const [signOutError, setSignOutError] = useState(false);
+  const { requestChange } = useUnsavedChangesGuard();
   const isStaff = currentOrganization.role === "staff";
   const visiblePrimaryNavigation = primaryNavigation.filter(
     (item) => !isStaff || item.staffVisible,
@@ -165,6 +162,10 @@ function Sidebar({
   const currentSection = location.pathname.split("/").filter(Boolean)[2];
 
   function selectOrganization(organization: Organization) {
+    if (organization.id === currentOrganization.id) {
+      return;
+    }
+
     const section =
       currentSection &&
       adminSections.has(currentSection) &&
@@ -175,8 +176,7 @@ function Sidebar({
         ? currentSection
         : "bookings";
 
-    onNavigate?.();
-    navigate(`/app/${organization.id}/${section}`);
+    requestChange(() => navigate(`/app/${organization.id}/${section}`));
   }
 
   async function signOut() {
@@ -263,7 +263,6 @@ function Sidebar({
             <NavigationLink
               item={item}
               key={item.path}
-              onNavigate={onNavigate}
               organizationId={currentOrganization.id}
             />
           ))}
@@ -274,7 +273,6 @@ function Sidebar({
               <NavigationLink
                 item={item}
                 key={item.path}
-                onNavigate={onNavigate}
                 organizationId={currentOrganization.id}
               />
             ))}
@@ -311,7 +309,9 @@ function Sidebar({
                 {session.user.email}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => void signOut()}>
+              <DropdownMenuItem
+                onSelect={() => requestChange(() => void signOut())}
+              >
                 <LogOut aria-hidden="true" className={styles.icon} />
                 Sign out
               </DropdownMenuItem>
@@ -330,7 +330,12 @@ function Sidebar({
 
 export function AdminShell() {
   const organizationAccess = useOutletContext<OrganizationAccessContext>();
+  const location = useLocation();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileNavigationOpen(false);
+  }, [location.hash, location.pathname, location.search]);
 
   useEffect(() => {
     if (!mobileNavigationOpen) return;
@@ -372,7 +377,6 @@ export function AdminShell() {
             <Sidebar
               id="mobile-navigation"
               onClose={() => setMobileNavigationOpen(false)}
-              onNavigate={() => setMobileNavigationOpen(false)}
               {...organizationAccess}
             />
           </DialogPrimitive.Content>
