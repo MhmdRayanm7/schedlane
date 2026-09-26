@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useResources } from "@/features/resources/hooks/use-resources";
 import { ApiError } from "@/shared/api/api-error";
 import { Button } from "@/shared/components/ui/button";
+import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { cn } from "@/shared/lib/cn";
 import {
   useAssignResourceToService,
@@ -128,12 +129,9 @@ export function ServiceResourceAssignments({
       </div>
 
       {actionError ? (
-        <div
-          className="rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-xs text-destructive"
-          role="alert"
-        >
+        <InlineAlert variant="error" className="p-3 text-xs">
           {actionError}
-        </div>
+        </InlineAlert>
       ) : null}
 
       {assignedQuery.isPending ? (
@@ -229,7 +227,15 @@ export function ServiceResourceAssignments({
                     </label>
                     <select
                       id="assign-resource-select"
-                      className="h-9 min-w-0 w-full rounded-md border border-border-strong bg-surface [@media(pointer:coarse)]:text-base px-2.5 text-xs text-foreground transition-colors duration-150 outline-none enabled:hover:border-muted-foreground focus-visible:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-focus"
+                      className={cn(
+                        "h-9 min-w-0 w-full px-2.5",
+                        "rounded-md border border-border-strong bg-surface",
+                        "text-xs text-foreground",
+                        "transition-colors duration-150 outline-none",
+                        "enabled:hover:border-muted-foreground",
+                        "focus-visible:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-focus",
+                        "[@media(pointer:coarse)]:text-base",
+                      )}
                       value={selectedResourceId}
                       onChange={(e) => setSelectedResourceId(e.target.value)}
                       disabled={assignMutation.isPending}

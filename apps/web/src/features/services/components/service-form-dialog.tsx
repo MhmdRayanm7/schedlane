@@ -7,6 +7,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { FormField } from "@/shared/components/ui/form-field";
+import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
 import { agorotToIls, ilsToAgorot } from "../lib/pricing";
 import type { CreateServiceInput, Service, UpdateServiceInput } from "../types";
@@ -155,21 +157,12 @@ export function ServiceFormDialog({
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {errorMessage ? (
-            <div
-              className="rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
-              role="alert"
-            >
+            <InlineAlert variant="error" className="p-3">
               {errorMessage}
-            </div>
+            </InlineAlert>
           ) : null}
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor="service-name"
-              className="block text-sm font-medium text-foreground"
-            >
-              Name
-            </label>
+          <FormField htmlFor="service-name" label="Name">
             <Input
               id="service-name"
               type="text"
@@ -180,16 +173,10 @@ export function ServiceFormDialog({
               placeholder="e.g. Standard Haircut"
               maxLength={120}
             />
-          </div>
+          </FormField>
 
           <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2">
-            <div className="space-y-1.5">
-              <label
-                htmlFor="service-duration"
-                className="block text-sm font-medium text-foreground"
-              >
-                Duration (min)
-              </label>
+            <FormField htmlFor="service-duration" label="Duration (min)">
               <Input
                 id="service-duration"
                 type="number"
@@ -200,15 +187,9 @@ export function ServiceFormDialog({
                 value={durationMinutes}
                 onChange={(e) => setDurationMinutes(e.target.value)}
               />
-            </div>
+            </FormField>
 
-            <div className="space-y-1.5">
-              <label
-                htmlFor="service-buffer"
-                className="block text-sm font-medium text-foreground"
-              >
-                Buffer after (min)
-              </label>
+            <FormField htmlFor="service-buffer" label="Buffer after (min)">
               <Input
                 id="service-buffer"
                 type="number"
@@ -218,16 +199,14 @@ export function ServiceFormDialog({
                 value={bufferAfterMinutes}
                 onChange={(e) => setBufferAfterMinutes(e.target.value)}
               />
-            </div>
+            </FormField>
           </div>
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor="service-price"
-              className="block text-sm font-medium text-foreground"
-            >
-              Price (ILS ₪)
-            </label>
+          <FormField
+            htmlFor="service-price"
+            label="Price (ILS ₪)"
+            helperText="Entered in Shekels (₪). Leave empty if pricing is disabled."
+          >
             <Input
               id="service-price"
               type="number"
@@ -238,10 +217,7 @@ export function ServiceFormDialog({
               onChange={(e) => setPriceIls(e.target.value)}
               placeholder={pricingEnabled ? "e.g. 70" : "Optional (e.g. 70)"}
             />
-            <p className="text-xs text-subtle-foreground">
-              Entered in Shekels (₪). Leave empty if pricing is disabled.
-            </p>
-          </div>
+          </FormField>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
             <Button

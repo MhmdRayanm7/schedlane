@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { authClient } from "@/shared/auth/auth-client";
 import { Button } from "@/shared/components/ui/button";
+import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
 import { AuthLayout } from "../components/auth-layout";
 
@@ -69,23 +70,16 @@ export function VerifyEmailPage() {
       ) : null}
 
       {wasSent ? (
-        <p
-          className="mb-5 rounded-md border border-primary/25 bg-primary-subtle px-3 py-2.5 text-sm text-primary"
-          role="status"
-        >
+        <InlineAlert as="p" variant="success" className="mb-5">
           If an account exists for that email, a new verification link is on its
           way.
-        </p>
+        </InlineAlert>
       ) : null}
 
       {error ? (
-        <p
-          className="mb-5 rounded-md border border-destructive/25 bg-destructive-subtle px-3 py-2.5 text-sm text-destructive"
-          id="resend-error"
-          role="alert"
-        >
+        <InlineAlert as="p" variant="error" className="mb-5" id="resend-error">
           {error}
-        </p>
+        </InlineAlert>
       ) : null}
 
       <form className="space-y-4" onSubmit={handleResend}>

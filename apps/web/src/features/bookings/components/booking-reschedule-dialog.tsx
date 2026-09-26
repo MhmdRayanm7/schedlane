@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
 import {
   Select,
@@ -16,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { cn } from "@/shared/lib/cn";
 import { formatLocalDate, schedulingToday } from "@/shared/lib/date-time";
 import {
   useRescheduleBooking,
@@ -257,11 +259,15 @@ export function BookingRescheduleDialog({
                   return (
                     <button
                       aria-pressed={selected}
-                      className={`inline-flex h-10 items-center justify-center gap-1 rounded-md border px-2 text-sm font-medium tabular-nums outline-none transition-colors duration-150 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                      className={cn(
+                        "inline-flex h-10 items-center justify-center gap-1 rounded-md border px-2",
+                        "text-sm font-medium tabular-nums",
+                        "outline-none transition-colors duration-150",
+                        "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
                         selected
                           ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border-strong bg-surface text-foreground hover:border-muted-foreground hover:bg-surface-hover"
-                      }`}
+                          : "border-border-strong bg-surface text-foreground hover:border-muted-foreground hover:bg-surface-hover",
+                      )}
                       key={start}
                       onClick={() => {
                         setChosenStart(start);
@@ -271,7 +277,10 @@ export function BookingRescheduleDialog({
                     >
                       <Check
                         aria-hidden="true"
-                        className={`size-3.5 shrink-0 ${selected ? "" : "invisible"}`}
+                        className={cn(
+                          "size-3.5 shrink-0",
+                          !selected && "invisible",
+                        )}
                       />
                       {formatMinuteOfDay(start)}
                       {selected ? (
@@ -285,12 +294,9 @@ export function BookingRescheduleDialog({
           </fieldset>
 
           {mutationError ? (
-            <p
-              className="rounded-md border border-destructive/25 bg-destructive-subtle px-3 py-2.5 text-sm text-destructive"
-              role="alert"
-            >
+            <InlineAlert as="p" variant="error">
               {mutationError}
-            </p>
+            </InlineAlert>
           ) : null}
         </div>
 

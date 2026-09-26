@@ -4,7 +4,13 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/shared/lib/cn";
 
 const buttonVariants = cva(
-  "inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md px-3.5 text-sm font-medium transition-colors duration-150 ease-out disabled:pointer-events-none disabled:opacity-65 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+  cn(
+    "inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2",
+    "rounded-md px-3.5 whitespace-nowrap text-sm font-medium",
+    "transition-colors duration-150 ease-out",
+    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+    "disabled:pointer-events-none disabled:opacity-65",
+  ),
   {
     variants: {
       variant: {

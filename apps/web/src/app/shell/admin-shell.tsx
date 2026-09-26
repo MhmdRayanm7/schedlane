@@ -122,7 +122,10 @@ function NavigationLink({
     <NavLink
       className={({ isActive }) =>
         cn(
-          "flex h-9 items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors duration-150 ease-out hover:bg-surface-hover hover:text-foreground",
+          "flex h-9 items-center gap-3 rounded-md px-3",
+          "text-sm font-medium text-muted-foreground",
+          "transition-colors duration-150 ease-out",
+          "hover:bg-surface-hover hover:text-foreground",
           isActive &&
             "border-l-2 border-primary bg-primary-subtle font-semibold text-primary",
         )
@@ -383,10 +386,18 @@ export function AdminShell() {
         </div>
 
         <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/25 data-[state=closed]:animate-[sheet-overlay-out_150ms_ease-in] data-[state=open]:animate-[sheet-overlay-in_180ms_ease-out]" />
+          <DialogPrimitive.Overlay
+            className={cn(
+              "fixed inset-0 z-40 bg-foreground/25",
+              "data-[state=closed]:animate-[sheet-overlay-out_150ms_ease-in] data-[state=open]:animate-[sheet-overlay-in_180ms_ease-out]",
+            )}
+          />
           <DialogPrimitive.Content
             aria-describedby={undefined}
-            className="fixed inset-y-0 left-0 z-50 w-[232px] outline-none data-[state=closed]:animate-[sidebar-out_150ms_ease-in] data-[state=open]:animate-[sidebar-in_190ms_ease-out]"
+            className={cn(
+              "fixed inset-y-0 left-0 z-50 w-[232px] outline-none",
+              "data-[state=closed]:animate-[sidebar-out_150ms_ease-in] data-[state=open]:animate-[sidebar-in_190ms_ease-out]",
+            )}
           >
             <DialogPrimitive.Title className="sr-only">
               Navigation

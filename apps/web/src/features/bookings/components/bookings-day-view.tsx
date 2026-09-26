@@ -1,3 +1,4 @@
+import { cn } from "@/shared/lib/cn";
 import {
   formatBookingTime,
   formatBookingTimeRange,
@@ -36,11 +37,17 @@ export function BookingsDayView({
           </div>
           <button
             aria-label={`View ${booking.guestName}'s ${booking.serviceName} booking at ${formatBookingTime(booking.startAt)}`}
-            className={`flex min-w-0 flex-1 flex-col gap-3 rounded-md px-3 py-3.5 text-left transition-colors duration-150 hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3.5 ${
-              selectedBookingId === booking.id
-                ? "border-l-2 border-primary bg-primary-subtle"
-                : ""
-            } ${booking.status === "cancelled" ? "text-muted-foreground" : ""}`}
+            className={cn(
+              "flex min-w-0 flex-1 flex-col gap-3",
+              "rounded-md px-3 py-3.5 text-left",
+              "transition-colors duration-150",
+              "hover:bg-surface-hover",
+              "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
+              "sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3.5",
+              selectedBookingId === booking.id &&
+                "border-l-2 border-primary bg-primary-subtle",
+              booking.status === "cancelled" && "text-muted-foreground",
+            )}
             aria-pressed={selectedBookingId === booking.id}
             onClick={() => onSelectBooking(booking.id)}
             type="button"

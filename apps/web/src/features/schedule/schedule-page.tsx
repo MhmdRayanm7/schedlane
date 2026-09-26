@@ -4,6 +4,7 @@ import { useOutletContext, useParams } from "react-router";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/cn";
 import { BookingRulesTab } from "./components/booking-rules-tab";
 import { OrganizationWeeklyHours } from "./components/organization-weekly-hours";
 import { ResourceWeeklyHours } from "./components/resource-weekly-hours";
@@ -123,7 +124,13 @@ export function SchedulePage() {
               setActiveTab(tabs[next][0]);
               document.getElementById(`tab-${tabs[next][0]}`)?.focus();
             }}
-            className={`min-h-10 border-b-2 px-3 py-2 text-sm transition-colors duration-150 hover:bg-surface-hover focus-visible:outline-offset-[-2px] sm:px-4 ${activeTab === tab ? "border-primary font-semibold text-foreground" : "border-transparent font-medium text-muted-foreground"}`}
+            className={cn(
+              "min-h-10 border-b-2 px-3 py-2 text-sm",
+              "transition-colors duration-150 hover:bg-surface-hover focus-visible:outline-offset-[-2px] sm:px-4",
+              activeTab === tab
+                ? "border-primary font-semibold text-foreground"
+                : "border-transparent font-medium text-muted-foreground",
+            )}
           >
             {label}
           </button>

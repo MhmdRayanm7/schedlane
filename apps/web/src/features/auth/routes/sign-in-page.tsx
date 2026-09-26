@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { queryClient } from "@/app/providers/query-client";
 import { authClient } from "@/shared/auth/auth-client";
 import { Button } from "@/shared/components/ui/button";
+import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
 import { AuthLayout } from "../components/auth-layout";
 import { safeReturnTo } from "../routing/return-to";
@@ -58,39 +59,26 @@ export function SignInPage() {
       title="Welcome back"
     >
       {wasVerified ? (
-        <p
-          className="mb-5 rounded-md border border-primary/25 bg-primary-subtle px-3 py-2.5 text-sm text-primary"
-          role="status"
-        >
+        <InlineAlert as="p" variant="success" className="mb-5">
           Your email is verified. You can sign in now.
-        </p>
+        </InlineAlert>
       ) : null}
 
       {verificationError ? (
-        <p
-          className="mb-5 rounded-md border border-destructive/25 bg-destructive-subtle px-3 py-2.5 text-sm text-destructive"
-          role="alert"
-        >
+        <InlineAlert as="p" variant="error" className="mb-5">
           {verificationErrors[verificationError] ??
             "We couldn't verify that email link. Request a new one below."}
-        </p>
+        </InlineAlert>
       ) : null}
 
       {error ? (
-        <p
-          className="mb-5 rounded-md border border-destructive/25 bg-destructive-subtle px-3 py-2.5 text-sm text-destructive"
-          id="sign-in-error"
-          role="alert"
-        >
+        <InlineAlert as="p" variant="error" className="mb-5" id="sign-in-error">
           {error}
-        </p>
+        </InlineAlert>
       ) : null}
 
       {unverified ? (
-        <div
-          className="mb-5 rounded-md border border-warning/25 bg-warning-subtle px-3 py-2.5 text-sm text-warning"
-          role="alert"
-        >
+        <InlineAlert variant="warning" className="mb-5">
           <p>Verify your email before signing in.</p>
           <Link
             className="mt-1 inline-block font-medium text-primary underline-offset-4 hover:underline"
@@ -99,7 +87,7 @@ export function SignInPage() {
           >
             Resend verification email
           </Link>
-        </div>
+        </InlineAlert>
       ) : null}
 
       <form className="space-y-5" onSubmit={handleSubmit}>

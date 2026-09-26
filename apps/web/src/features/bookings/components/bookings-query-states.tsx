@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/cn";
 
 export function BookingsLoadingState() {
   return (
@@ -20,7 +21,10 @@ export function BookingsLoadingState() {
             <span className="mt-2 block h-3 w-48 max-w-full animate-pulse rounded bg-[#edf0ef]" />
           </div>
           <span
-            className={`hidden h-6 w-20 animate-pulse rounded bg-[#edf0ef] sm:block ${index > 2 ? "opacity-60" : ""}`}
+            className={cn(
+              "hidden h-6 w-20 animate-pulse rounded bg-[#edf0ef] sm:block",
+              index > 2 && "opacity-60",
+            )}
           />
         </div>
       ))}

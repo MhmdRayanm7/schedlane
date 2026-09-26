@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Link, Navigate, Outlet, useLocation, useParams } from "react-router";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
 import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/cn";
 import { useOrganizations } from "../hooks/use-organizations";
 import type { Organization } from "../types";
 
@@ -111,7 +112,12 @@ export function OrganizationResolver() {
         <div className="mt-6 space-y-2">
           {organizations.map((organization) => (
             <Link
-              className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3.5 transition-colors duration-150 hover:border-border-strong hover:bg-primary-subtle"
+              className={cn(
+                "flex items-center justify-between",
+                "rounded-lg border border-border bg-surface px-4 py-3.5",
+                "transition-colors duration-150",
+                "hover:border-border-strong hover:bg-primary-subtle",
+              )}
               key={organization.id}
               to={`/app/${organization.id}/bookings`}
             >

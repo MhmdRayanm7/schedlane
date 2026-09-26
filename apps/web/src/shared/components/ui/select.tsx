@@ -14,7 +14,16 @@ function SelectTrigger({
   return (
     <SelectPrimitive.Trigger
       className={cn(
-        "flex h-10 min-w-0 w-full items-center justify-between gap-2 [&>span:first-child]:truncate [&>span:first-child]:min-w-0 rounded-md border border-border-strong bg-surface [@media(pointer:coarse)]:text-base px-3 text-sm text-foreground outline-none transition-colors duration-150 enabled:hover:border-muted-foreground focus-visible:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus aria-invalid:border-destructive disabled:bg-background disabled:cursor-not-allowed disabled:opacity-65",
+        "flex items-center justify-between gap-2",
+        "[&>span:first-child]:truncate [&>span:first-child]:min-w-0",
+        "h-10 min-w-0 w-full px-3",
+        "rounded-md border border-border-strong bg-surface",
+        "text-sm text-foreground",
+        "outline-none transition-colors duration-150",
+        "enabled:hover:border-muted-foreground",
+        "focus-visible:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus",
+        "aria-invalid:border-destructive disabled:bg-background disabled:cursor-not-allowed disabled:opacity-65",
+        "[@media(pointer:coarse)]:text-base",
         className,
       )}
       {...props}
@@ -39,7 +48,10 @@ function SelectContent({
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
         className={cn(
-          "z-[70] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] max-h-[var(--radix-select-content-available-height)] overflow-hidden rounded-md border border-border bg-surface p-1 shadow-lg data-[state=open]:animate-[menu-in_160ms_ease-out] data-[state=closed]:animate-[menu-out_120ms_ease-in]",
+          "z-[70] overflow-hidden",
+          "min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] max-h-[var(--radix-select-content-available-height)]",
+          "rounded-md border border-border bg-surface p-1 shadow-lg",
+          "data-[state=open]:animate-[menu-in_160ms_ease-out] data-[state=closed]:animate-[menu-out_120ms_ease-in]",
           className,
         )}
         position="popper"
@@ -62,7 +74,10 @@ function SelectItem({
   return (
     <SelectPrimitive.Item
       className={cn(
-        "relative flex min-h-9 cursor-pointer select-none items-center rounded px-8 py-2 text-sm outline-none [overflow-wrap:anywhere] data-[state=checked]:font-semibold data-[disabled]:opacity-65 data-[disabled]:pointer-events-none data-[highlighted]:bg-surface-hover data-[highlighted]:text-foreground",
+        "relative flex min-h-9 cursor-pointer select-none items-center",
+        "rounded px-8 py-2 text-sm outline-none [overflow-wrap:anywhere]",
+        "data-[state=checked]:font-semibold data-[highlighted]:bg-surface-hover data-[highlighted]:text-foreground",
+        "data-[disabled]:opacity-65 data-[disabled]:pointer-events-none",
         className,
       )}
       {...props}

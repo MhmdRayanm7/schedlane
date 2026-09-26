@@ -6,6 +6,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { useBookingActions } from "../hooks/use-booking-actions";
 import { bookingActionErrorMessage } from "../lib/booking-action-errors";
@@ -134,12 +135,9 @@ export function BookingLifecycleDialog({
         ) : null}
 
         {errorMessage ? (
-          <p
-            className="mt-4 rounded-md border border-destructive/25 bg-destructive-subtle px-3 py-2.5 text-sm text-destructive"
-            role="alert"
-          >
+          <InlineAlert as="p" variant="error" className="mt-4">
             {errorMessage}
-          </p>
+          </InlineAlert>
         ) : null}
 
         <div className="mt-5 flex flex-wrap justify-end gap-2">

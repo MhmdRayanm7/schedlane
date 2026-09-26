@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import {
   Sheet,
   SheetContent,
@@ -116,12 +117,9 @@ export function ServiceDetailsSheet({
           </SheetHeader>
 
           {actionError ? (
-            <div
-              className="mt-4 rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
-              role="alert"
-            >
+            <InlineAlert variant="error" className="mt-4 p-3">
               {actionError}
-            </div>
+            </InlineAlert>
           ) : null}
 
           <div className="mt-4 space-y-3 text-sm">
@@ -213,12 +211,9 @@ export function ServiceDetailsSheet({
             preserved.
           </DialogDescription>
           {actionError ? (
-            <p
-              role="alert"
-              className="mt-4 rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
-            >
+            <InlineAlert as="p" variant="error" className="mt-4 p-3">
               {actionError}
-            </p>
+            </InlineAlert>
           ) : null}
           <div className="mt-5 flex flex-wrap justify-end gap-2">
             <DialogClose asChild>

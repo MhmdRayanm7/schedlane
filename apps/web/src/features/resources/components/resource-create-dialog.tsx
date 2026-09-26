@@ -7,6 +7,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { FormField } from "@/shared/components/ui/form-field";
+import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
 import type { CreateResourceInput } from "../types";
 
@@ -92,21 +94,12 @@ export function ResourceCreateDialog({
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {errorMessage ? (
-            <div
-              className="rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
-              role="alert"
-            >
+            <InlineAlert variant="error" className="p-3">
               {errorMessage}
-            </div>
+            </InlineAlert>
           ) : null}
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor="resource-name"
-              className="block text-sm font-medium text-foreground"
-            >
-              Name
-            </label>
+          <FormField htmlFor="resource-name" label="Name">
             <Input
               id="resource-name"
               type="text"
@@ -117,7 +110,7 @@ export function ResourceCreateDialog({
               placeholder="e.g. Chair 1, Room 102, or Barber"
               maxLength={120}
             />
-          </div>
+          </FormField>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
             <Button

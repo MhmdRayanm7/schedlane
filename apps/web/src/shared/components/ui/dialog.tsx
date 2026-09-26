@@ -17,11 +17,20 @@ function DialogContent({
   const focus = useOverlayFocus();
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-foreground/30 data-[state=closed]:animate-[sheet-overlay-out_150ms_ease-in] data-[state=open]:animate-[sheet-overlay-in_180ms_ease-out]" />
+      <DialogPrimitive.Overlay
+        className={cn(
+          "fixed inset-0 z-[60] bg-foreground/30",
+          "data-[state=closed]:animate-[sheet-overlay-out_150ms_ease-in] data-[state=open]:animate-[sheet-overlay-in_180ms_ease-out]",
+        )}
+      />
       <DialogPrimitive.Content
         aria-busy={busy}
         className={cn(
-          "fixed left-1/2 top-1/2 z-[60] flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[480px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-xl outline-none data-[state=open]:animate-[dialog-in_180ms_ease-out] data-[state=closed]:animate-[dialog-out_140ms_ease-in]",
+          "fixed left-1/2 top-1/2 z-[60] flex -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden",
+          "max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[480px]",
+          "rounded-lg border border-border bg-surface",
+          "shadow-xl outline-none",
+          "data-[state=open]:animate-[dialog-in_180ms_ease-out] data-[state=closed]:animate-[dialog-out_140ms_ease-in]",
           className,
         )}
         {...focus}
@@ -33,7 +42,13 @@ function DialogContent({
         <div className="order-first flex h-12 shrink-0 items-center justify-end px-2">
           <DialogPrimitive.Close
             disabled={busy === true || busy === "true"}
-            className="flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-surface-hover hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-65"
+            className={cn(
+              "flex size-10 items-center justify-center rounded-md text-muted-foreground",
+              "transition-colors duration-150",
+              "hover:bg-surface-hover hover:text-foreground",
+              "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+              "disabled:pointer-events-none disabled:opacity-65",
+            )}
           >
             <X aria-hidden="true" className="size-5" />
             <span className="sr-only">Close dialog</span>

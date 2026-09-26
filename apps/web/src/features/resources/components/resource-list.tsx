@@ -24,7 +24,12 @@ export function ResourceList({
             <button
               type="button"
               className={cn(
-                "group flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition-colors duration-150 hover:bg-surface-hover sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
+                "group flex w-full items-center justify-between gap-4",
+                "px-4 py-3.5 text-left",
+                "transition-colors duration-150",
+                "hover:bg-surface-hover",
+                "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
+                "sm:px-5",
                 !isActive && "bg-background text-muted-foreground",
               )}
               onClick={() => onSelectResource(resource)}

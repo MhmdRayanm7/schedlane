@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { authClient } from "@/shared/auth/auth-client";
 import { Button } from "@/shared/components/ui/button";
+import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
 import { AuthLayout } from "../components/auth-layout";
 
@@ -82,13 +83,9 @@ export function SignUpPage() {
       title="Create your account"
     >
       {error ? (
-        <p
-          className="mb-5 rounded-md border border-destructive/25 bg-destructive-subtle px-3 py-2.5 text-sm text-destructive"
-          id="sign-up-error"
-          role="alert"
-        >
+        <InlineAlert as="p" variant="error" className="mb-5" id="sign-up-error">
           {error}
-        </p>
+        </InlineAlert>
       ) : null}
 
       <form className="space-y-5" onSubmit={handleSubmit}>

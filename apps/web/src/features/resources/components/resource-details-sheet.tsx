@@ -9,6 +9,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { FormField } from "@/shared/components/ui/form-field";
+import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import {
   Sheet,
   SheetContent,
@@ -204,12 +206,9 @@ export function ResourceDetailsSheet({
           </SheetHeader>
 
           {actionError ? (
-            <div
-              className="mt-4 rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
-              role="alert"
-            >
+            <InlineAlert variant="error" className="mt-4 p-3">
               {actionError}
-            </div>
+            </InlineAlert>
           ) : null}
 
           {!isReadOnly ? (
@@ -268,9 +267,9 @@ export function ResourceDetailsSheet({
               ) : linkData ? (
                 <div className="space-y-4">
                   {linkData.pendingInvitation ? (
-                    <div
-                      className="flex items-start gap-2.5 rounded-lg border border-warning/25 bg-warning-subtle p-3 text-xs text-warning"
-                      role="alert"
+                    <InlineAlert
+                      variant="warning"
+                      className="flex items-start gap-2.5 rounded-lg p-3 text-xs"
                     >
                       <AlertCircle className="size-4 shrink-0 mt-0.5" />
                       <div>
@@ -282,7 +281,7 @@ export function ResourceDetailsSheet({
                         reserved for this resource. Revoke the invitation in
                         Team before linking an existing member.
                       </div>
-                    </div>
+                    </InlineAlert>
                   ) : null}
 
                   {linkData.currentLink ? (
@@ -346,16 +345,21 @@ export function ResourceDetailsSheet({
                         </p>
                       ) : !isReadOnly ? (
                         <div className="space-y-3">
-                          <div className="space-y-1.5">
-                            <label
-                              htmlFor="link-member-select"
-                              className="block text-sm font-medium text-foreground"
-                            >
-                              Select member to link
-                            </label>
+                          <FormField
+                            htmlFor="link-member-select"
+                            label="Select member to link"
+                          >
                             <select
                               id="link-member-select"
-                              className="h-10 min-w-0 w-full rounded-md border border-border-strong bg-surface [@media(pointer:coarse)]:text-base px-3 text-sm text-foreground transition-colors duration-150 outline-none enabled:hover:border-muted-foreground focus-visible:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus"
+                              className={cn(
+                                "h-10 min-w-0 w-full px-3",
+                                "rounded-md border border-border-strong bg-surface",
+                                "text-sm text-foreground",
+                                "transition-colors duration-150 outline-none",
+                                "enabled:hover:border-muted-foreground",
+                                "focus-visible:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus",
+                                "[@media(pointer:coarse)]:text-base",
+                              )}
                               value={selectedMembershipId}
                               onChange={(e) =>
                                 setSelectedMembershipId(e.target.value)
@@ -374,7 +378,7 @@ export function ResourceDetailsSheet({
                                 </option>
                               ))}
                             </select>
-                          </div>
+                          </FormField>
 
                           <Button
                             size="sm"
@@ -413,12 +417,9 @@ export function ResourceDetailsSheet({
             member links are retained.
           </DialogDescription>
           {actionError ? (
-            <p
-              role="alert"
-              className="mt-4 rounded-md border border-destructive/25 bg-destructive-subtle p-3 text-sm text-destructive"
-            >
+            <InlineAlert as="p" variant="error" className="mt-4 p-3">
               {actionError}
-            </p>
+            </InlineAlert>
           ) : null}
           <div className="mt-5 flex flex-wrap justify-end gap-2">
             <DialogClose asChild>

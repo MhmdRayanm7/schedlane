@@ -30,7 +30,10 @@ function WeekBooking({
     <button
       aria-label={`View ${booking.guestName}'s ${booking.serviceName} booking at ${formatBookingTime(booking.startAt)}`}
       className={cn(
-        "w-full rounded-md border border-border bg-surface px-2.5 py-2.5 text-left transition-colors duration-150 hover:border-border-strong hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+        "w-full rounded-md border border-border bg-surface px-2.5 py-2.5 text-left",
+        "transition-colors duration-150",
+        "hover:border-border-strong hover:bg-surface-hover",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
         selected && "border-primary bg-primary-subtle",
         booking.status === "cancelled" && "text-muted-foreground",
       )}

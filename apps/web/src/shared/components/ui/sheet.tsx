@@ -16,10 +16,19 @@ function SheetContent({
   const focus = useOverlayFocus();
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-foreground/25 data-[state=closed]:animate-[sheet-overlay-out_150ms_ease-in] data-[state=open]:animate-[sheet-overlay-in_180ms_ease-out]" />
+      <DialogPrimitive.Overlay
+        className={cn(
+          "fixed inset-0 z-50 bg-foreground/25",
+          "data-[state=closed]:animate-[sheet-overlay-out_150ms_ease-in] data-[state=open]:animate-[sheet-overlay-in_180ms_ease-out]",
+        )}
+      />
       <DialogPrimitive.Content
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-full max-w-[460px] flex-col overflow-hidden border-l border-border bg-surface shadow-lg outline-none data-[state=closed]:animate-[sheet-out_150ms_ease-in] data-[state=open]:animate-[sheet-in_190ms_ease-out]",
+          "fixed inset-y-0 right-0 z-50 flex flex-col overflow-hidden",
+          "w-full max-w-[460px]",
+          "border-l border-border bg-surface",
+          "shadow-lg outline-none",
+          "data-[state=closed]:animate-[sheet-out_150ms_ease-in] data-[state=open]:animate-[sheet-in_190ms_ease-out]",
           className,
         )}
         onCloseAutoFocus={focus.onCloseAutoFocus}
@@ -38,7 +47,14 @@ function SheetContent({
           {children}
         </div>
         <div className="order-first flex h-12 shrink-0 items-center justify-end px-2">
-          <DialogPrimitive.Close className="flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-surface-hover hover:text-foreground focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+          <DialogPrimitive.Close
+            className={cn(
+              "flex size-10 items-center justify-center rounded-md text-muted-foreground",
+              "transition-colors duration-150",
+              "hover:bg-surface-hover hover:text-foreground",
+              "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+            )}
+          >
             <X aria-hidden="true" className="size-5" />
             <span className="sr-only">Close details</span>
           </DialogPrimitive.Close>

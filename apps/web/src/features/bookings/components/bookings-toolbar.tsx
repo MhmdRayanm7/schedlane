@@ -87,7 +87,10 @@ export function BookingsToolbar({
           <button
             aria-pressed={view === option}
             className={cn(
-              "h-8 rounded border border-transparent px-3 text-sm capitalize text-muted-foreground transition-colors duration-150 hover:bg-surface-hover hover:text-foreground",
+              "h-8 rounded border border-transparent px-3",
+              "text-sm capitalize text-muted-foreground",
+              "transition-colors duration-150",
+              "hover:bg-surface-hover hover:text-foreground",
               view === option &&
                 "border-border-strong bg-surface font-semibold text-foreground shadow-sm",
             )}
