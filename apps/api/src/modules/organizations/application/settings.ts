@@ -11,6 +11,53 @@ type UpdateStaffTeamVisibilityInput = {
   visibility: StaffTeamVisibility;
 };
 
+type GetOrganizationSettingsInput = {
+  userId: string;
+  organizationId: string;
+};
+
+export type OrganizationSettings = {
+  staffTeamVisibility: StaffTeamVisibility;
+  pricingEnabled: boolean;
+};
+
+export type GetOrganizationSettingsResult =
+  | { ok: true; settings: OrganizationSettings }
+  | { ok: false; reason: "organization_not_found" | "insufficient_role" };
+
+export async function getOrganizationSettings(
+  input: GetOrganizationSettingsInput,
+): Promise<GetOrganizationSettingsResult> {
+  const membership = await db
+    .selectFrom("membership")
+    .select("role")
+    .where("user_id", "=", input.userId)
+    .where("organization_id", "=", input.organizationId)
+    .executeTakeFirst();
+
+  if (!membership) {
+    return { ok: false, reason: "organization_not_found" };
+  }
+
+  if (membership.role === "staff") {
+    return { ok: false, reason: "insufficient_role" };
+  }
+
+  const organization = await db
+    .selectFrom("organization")
+    .select(["staff_team_visibility", "pricing_enabled"])
+    .where("id", "=", input.organizationId)
+    .executeTakeFirstOrThrow();
+
+  return {
+    ok: true,
+    settings: {
+      staffTeamVisibility: organization.staff_team_visibility,
+      pricingEnabled: organization.pricing_enabled,
+    },
+  };
+}
+
 type UpdateStaffTeamVisibilityFailure =
   | "organization_not_found"
   | "owner_required"

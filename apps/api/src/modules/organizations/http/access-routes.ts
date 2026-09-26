@@ -8,7 +8,10 @@ import {
   getUserOrganization,
   listUserOrganizations,
 } from "../application/queries.js";
-import { updateStaffTeamVisibility } from "../application/settings.js";
+import {
+  getOrganizationSettings,
+  updateStaffTeamVisibility,
+} from "../application/settings.js";
 import { renameOrganization } from "../application/update.js";
 import { sendOrganizationWriteStateError } from "./errors.js";
 import { organizationParamsSchema } from "./schemas.js";
@@ -65,6 +68,39 @@ export const accessRoutes: FastifyPluginAsyncTypebox = async (app) => {
       }
 
       return reply.code(200).send(organization);
+    },
+  );
+
+  app.get(
+    "/api/organizations/:organizationId/settings",
+    {
+      schema: {
+        params: organizationParamsSchema,
+      },
+    },
+    async (request, reply) => {
+      const result = await getOrganizationSettings({
+        userId: request.verifiedUser.id,
+        organizationId: request.params.organizationId,
+      });
+
+      if (!result.ok) {
+        if (result.reason === "organization_not_found") {
+          return reply.code(404).send({
+            code: "ORGANIZATION_NOT_FOUND",
+            message: "Organization not found",
+            requestId: request.id,
+          });
+        }
+
+        return reply.code(403).send({
+          code: "INSUFFICIENT_ORGANIZATION_ROLE",
+          message: "Your organization role does not allow this action",
+          requestId: request.id,
+        });
+      }
+
+      return reply.code(200).send(result.settings);
     },
   );
 
