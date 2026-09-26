@@ -1,4 +1,5 @@
 import { db } from "../../../db.js";
+import { publicBookingDateWindow } from "../../availability/domain/public-booking-window.js";
 
 export type PublicBookingContext = {
   organization: {
@@ -6,6 +7,7 @@ export type PublicBookingContext = {
     slug: string;
     timezone: "Asia/Jerusalem";
   };
+  bookingWindow: { firstDate: string; lastDate: string };
   services: Array<{
     id: string;
     name: string;
@@ -54,6 +56,7 @@ export function projectPublicServices(
 
 export async function getPublicBookingContext(
   organizationSlug: string,
+  now: Date = new Date(),
 ): Promise<GetPublicBookingContextResult> {
   return db
     .transaction()
@@ -61,7 +64,7 @@ export async function getPublicBookingContext(
     .execute(async (trx) => {
       const organization = await trx
         .selectFrom("organization")
-        .select(["id", "name", "slug"])
+        .select(["id", "name", "slug", "max_booking_horizon_days"])
         .where("slug", "=", organizationSlug)
         .where("published_at", "is not", null)
         .where("archived_at", "is", null)
@@ -119,6 +122,10 @@ export async function getPublicBookingContext(
             slug: organization.slug,
             timezone: "Asia/Jerusalem",
           },
+          bookingWindow: publicBookingDateWindow(
+            now,
+            organization.max_booking_horizon_days,
+          ),
           services: projectPublicServices(rows),
         },
       };

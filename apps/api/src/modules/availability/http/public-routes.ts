@@ -5,6 +5,7 @@ import { uuidSchema } from "../../../http/schemas.js";
 import { typeboxValidatorCompiler } from "../../../http/typebox-validator.js";
 import {
   type ResolvePublicResourceServiceAvailabilityResult,
+  resolveNextPublicResourceServiceAvailability,
   resolvePublicResourceServiceAvailability,
 } from "../resolvers/public-resource-service-availability.js";
 
@@ -22,6 +23,10 @@ const querySchema = Type.Object(
     serviceId: uuidSchema,
     date: Type.String(),
   },
+  { additionalProperties: Type.Never() },
+);
+const nextQuerySchema = Type.Object(
+  { resourceId: uuidSchema, serviceId: uuidSchema, fromDate: Type.String() },
   { additionalProperties: Type.Never() },
 );
 
@@ -78,6 +83,26 @@ export const publicAvailabilityRoutes: FastifyPluginAsyncTypebox<
         serviceId: result.availability.serviceId,
         date: result.availability.date,
         starts: result.availability.starts,
+      });
+    },
+  );
+
+  app.get(
+    "/api/public/organizations/:slug/availability/next",
+    { schema: { params: paramsSchema, querystring: nextQuerySchema } },
+    async (request, reply) => {
+      const result = await resolveNextPublicResourceServiceAvailability(
+        { organizationSlug: request.params.slug, ...request.query },
+        options.now?.() ?? new Date(),
+      );
+      if (!result.ok)
+        return sendPublicAvailabilityError(reply, request.id, result.reason);
+      if (!result.availability)
+        return reply.code(200).send({ availability: null });
+      const { timezone, resourceId, serviceId, date, starts } =
+        result.availability;
+      return reply.code(200).send({
+        availability: { timezone, resourceId, serviceId, date, starts },
       });
     },
   );

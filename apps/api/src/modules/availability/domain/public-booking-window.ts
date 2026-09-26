@@ -13,6 +13,28 @@ export type FilterStartsByPublicBookingWindowInput = {
   now: Date;
 };
 
+export function publicBookingDateWindow(
+  now: Date,
+  maxBookingHorizonDays: number,
+) {
+  const today = DateTime.fromJSDate(now, { zone: SCHEDULING_TIMEZONE }).startOf(
+    "day",
+  );
+  if (
+    !today.isValid ||
+    !Number.isSafeInteger(maxBookingHorizonDays) ||
+    maxBookingHorizonDays < 0
+  )
+    throw new Error(
+      "Persisted public Booking settings violated domain invariants",
+    );
+  const firstDate = today.toISODate();
+  const lastDate = today.plus({ days: maxBookingHorizonDays }).toISODate();
+  if (!firstDate || !lastDate)
+    throw new Error("Public Booking date window could not be calculated");
+  return { firstDate, lastDate };
+}
+
 export type FilterStartsByPublicBookingWindowResult =
   | { ok: true; starts: number[] }
   | {

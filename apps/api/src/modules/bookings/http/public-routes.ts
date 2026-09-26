@@ -175,7 +175,10 @@ export const publicBookingRoutes: FastifyPluginAsyncTypebox<
     "/api/public/organizations/:slug/booking-context",
     { schema: { params: paramsSchema } },
     async (request, reply) => {
-      const result = await getPublicBookingContext(request.params.slug);
+      const result = await getPublicBookingContext(
+        request.params.slug,
+        options.now?.() ?? new Date(),
+      );
       if (!result.ok)
         return reply.code(404).send({
           code: "PUBLIC_BOOKING_CONTEXT_NOT_FOUND",

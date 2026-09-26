@@ -74,6 +74,11 @@ async function fixture({
         url: `/api/public/organizations/${encodeURIComponent(slug)}/availability?${search}`,
       });
     },
+    next: (fromDate: string, slug = organization.slug) =>
+      app.inject({
+        method: "GET",
+        url: `/api/public/organizations/${encodeURIComponent(slug)}/availability/next?${new URLSearchParams({ resourceId: resource.id, serviceId: service.id, fromDate })}`,
+      }),
   };
 }
 
@@ -141,6 +146,62 @@ const expectGenericNotFound = (response: {
 };
 
 describe("public Availability HTTP", () => {
+  it("finds the first available date using the existing slot and notice rules", async () => {
+    const f = await fixture({ minBookingNoticeMinutes: 30 });
+    await configure(f);
+    const first = await f.next("2026-10-05");
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toEqual({
+      availability: {
+        timezone: "Asia/Jerusalem",
+        resourceId: f.resource.id,
+        serviceId: f.service.id,
+        date: "2026-10-05",
+        starts: [525, 540],
+      },
+    });
+    await db
+      .insertInto("resource_time_block")
+      .values({
+        organization_id: f.organization.id,
+        resource_id: f.resource.id,
+        local_date: date,
+        start_minute: 480,
+        end_minute: 570,
+      })
+      .execute();
+    expect((await f.next("2026-10-05")).json()).toMatchObject({
+      availability: { date: "2026-10-12", starts: [480, 495, 510, 525, 540] },
+    });
+  });
+
+  it("bounds next availability to the horizon and returns a successful empty result", async () => {
+    const f = await fixture();
+    await configure(f);
+    await db
+      .updateTable("organization")
+      .set({ max_booking_horizon_days: 0 })
+      .where("id", "=", f.organization.id)
+      .execute();
+    await db
+      .insertInto("resource_time_block")
+      .values({
+        organization_id: f.organization.id,
+        resource_id: f.resource.id,
+        local_date: date,
+        start_minute: 480,
+        end_minute: 570,
+      })
+      .execute();
+    expect((await f.next(date)).json()).toEqual({ availability: null });
+    expect((await f.next("2026-10-06")).json()).toMatchObject({
+      code: "DATE_OUTSIDE_BOOKING_WINDOW",
+    });
+    expect((await f.next("2026-02-30")).json()).toMatchObject({
+      code: "INVALID_DATE",
+    });
+    expectGenericNotFound(await f.next(date, "unknown-organization"));
+  });
   it("returns public starts without a cookie or session and no private data", async () => {
     const f = await fixture();
     await configure(f);

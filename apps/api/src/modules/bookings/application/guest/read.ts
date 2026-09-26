@@ -26,6 +26,7 @@ export type GuestManagedBooking = {
   cancellationReason: string | null;
   cancellationDeadlineAt: string;
   canCancel: boolean;
+  canEditContact: boolean;
 };
 
 export type GetGuestManagedBookingResult =
@@ -79,6 +80,8 @@ function toGuestManagedBooking(
     cancellationReason: row.cancellation_reason,
     cancellationDeadlineAt: policy.cancellationDeadlineAt.toISOString(),
     canCancel: policy.canCancel,
+    canEditContact:
+      row.status === "confirmed" && now.getTime() < row.start_at.getTime(),
   };
 }
 

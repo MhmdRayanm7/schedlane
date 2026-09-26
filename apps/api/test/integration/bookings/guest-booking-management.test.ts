@@ -129,6 +129,19 @@ function expectGuestNotFound(response: {
 }
 
 describe("guest Booking management", () => {
+  it("reports contact eligibility at the confirmed start boundary", async () => {
+    const f = await fixture();
+    expect((await f.request("GET")).json().canEditContact).toBe(true);
+    expect(await getGuestManagedBooking(f.token, startAt)).toMatchObject({
+      ok: true,
+      booking: { canEditContact: false },
+    });
+    expect(
+      await getGuestManagedBooking(f.token, new Date(startAt.getTime() + 1)),
+    ).toMatchObject({ ok: true, booking: { canEditContact: false } });
+    const cancelled = await fixture({ status: "cancelled" });
+    expect((await cancelled.request("GET")).json().canEditContact).toBe(false);
+  });
   it("uses one generic 404 for missing, malformed, and unknown credentials", async () => {
     const f = await fixture();
     expectGuestNotFound(await f.request("GET", null));
@@ -193,6 +206,7 @@ describe("guest Booking management", () => {
         startAt.getTime() - 60 * 60_000,
       ).toISOString(),
       canCancel: true,
+      canEditContact: true,
     });
     expect(response.body).not.toMatch(
       /organizationId|resourceId|serviceId|cancelledBy|token|hash/i,
@@ -254,6 +268,7 @@ describe("guest Booking management", () => {
     expect(read.json()).toMatchObject({
       status: "cancelled",
       canCancel: false,
+      canEditContact: false,
     });
     expect(
       await db

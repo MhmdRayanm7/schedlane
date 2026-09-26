@@ -1,7 +1,12 @@
 import type { Transaction } from "kysely";
+import { DateTime } from "luxon";
 import { db } from "../../../db.js";
 import type { Database } from "../../../db-types.js";
-import { filterStartsByPublicBookingWindow } from "../domain/public-booking-window.js";
+import { isLocalDate } from "../domain/local-date.js";
+import {
+  filterStartsByPublicBookingWindow,
+  publicBookingDateWindow,
+} from "../domain/public-booking-window.js";
 import { resolveResourceServiceFreeSlotContextAfterAccessInTransaction } from "./resource-service-free-slots.js";
 
 export type ResolvePublicResourceServiceAvailabilityInput = {
@@ -55,12 +60,27 @@ export type ResolvePublicResourceServiceAvailabilityInTransactionResult =
     }
   | Extract<ResolvePublicResourceServiceAvailabilityResult, { ok: false }>;
 
-// The caller owns the transaction and its isolation level.
-export async function resolvePublicResourceServiceAvailabilityInTransaction(
+type PublicAccess = {
+  id: string;
+  slug: string;
+  min_booking_notice_minutes: number;
+  max_booking_horizon_days: number;
+  cancellation_cutoff_minutes: number;
+};
+
+async function loadPublicAccess(
   trx: Transaction<Database>,
-  input: ResolvePublicResourceServiceAvailabilityInput,
-  now: Date,
-): Promise<ResolvePublicResourceServiceAvailabilityInTransactionResult> {
+  input: Pick<
+    ResolvePublicResourceServiceAvailabilityInput,
+    "organizationSlug" | "resourceId"
+  >,
+): Promise<
+  | { ok: true; organization: PublicAccess }
+  | {
+      ok: false;
+      reason: "public_availability_not_found" | "resource_not_found";
+    }
+> {
   const organization = await trx
     .selectFrom("organization")
     .select([
@@ -83,7 +103,6 @@ export async function resolvePublicResourceServiceAvailabilityInTransaction(
     organization.public_booking_paused
   )
     return { ok: false, reason: "public_availability_not_found" };
-
   const resource = await trx
     .selectFrom("resource")
     .select("deactivated_at")
@@ -92,7 +111,15 @@ export async function resolvePublicResourceServiceAvailabilityInTransaction(
     .executeTakeFirst();
   if (!resource || resource.deactivated_at)
     return { ok: false, reason: "resource_not_found" };
+  return { ok: true, organization };
+}
 
+async function resolveForDate(
+  trx: Transaction<Database>,
+  input: ResolvePublicResourceServiceAvailabilityInput,
+  organization: PublicAccess,
+  now: Date,
+): Promise<ResolvePublicResourceServiceAvailabilityInTransactionResult> {
   const free =
     await resolveResourceServiceFreeSlotContextAfterAccessInTransaction(trx, {
       organizationId: organization.id,
@@ -103,7 +130,6 @@ export async function resolvePublicResourceServiceAvailabilityInTransaction(
   if (!free.ok) return free;
   if (free.context.serviceDeactivatedAt)
     return { ok: false, reason: "service_not_found" };
-
   const publicWindow = filterStartsByPublicBookingWindow({
     date: input.date,
     starts: free.context.starts,
@@ -112,14 +138,12 @@ export async function resolvePublicResourceServiceAvailabilityInTransaction(
     now,
   });
   if (!publicWindow.ok) {
-    const { reason } = publicWindow;
-    if (reason === "invalid_public_booking_window")
+    if (publicWindow.reason === "invalid_public_booking_window")
       throw new Error(
         "Persisted public Booking settings violated domain invariants",
       );
-    return { ok: false, reason };
+    return { ok: false, reason: publicWindow.reason };
   }
-
   return {
     ok: true,
     context: {
@@ -137,6 +161,72 @@ export async function resolvePublicResourceServiceAvailabilityInTransaction(
       cancellationCutoffMinutes: organization.cancellation_cutoff_minutes,
     },
   };
+}
+
+// The caller owns the transaction and its isolation level.
+export async function resolvePublicResourceServiceAvailabilityInTransaction(
+  trx: Transaction<Database>,
+  input: ResolvePublicResourceServiceAvailabilityInput,
+  now: Date,
+): Promise<ResolvePublicResourceServiceAvailabilityInTransactionResult> {
+  const access = await loadPublicAccess(trx, input);
+  if (!access.ok) return access;
+  return resolveForDate(trx, input, access.organization, now);
+}
+
+export async function resolveNextPublicResourceServiceAvailability(
+  input: Omit<ResolvePublicResourceServiceAvailabilityInput, "date"> & {
+    fromDate: string;
+  },
+  now: Date = new Date(),
+): Promise<
+  | ResolvePublicResourceServiceAvailabilityResult
+  | { ok: true; availability: null }
+> {
+  return db
+    .transaction()
+    .setIsolationLevel("repeatable read")
+    .execute(async (trx) => {
+      const access = await loadPublicAccess(trx, input);
+      if (!access.ok) return access;
+      if (!isLocalDate(input.fromDate))
+        return { ok: false, reason: "invalid_date" };
+      const window = publicBookingDateWindow(
+        now,
+        access.organization.max_booking_horizon_days,
+      );
+      if (input.fromDate < window.firstDate || input.fromDate > window.lastDate)
+        return { ok: false, reason: "date_outside_booking_window" };
+      let date = input.fromDate;
+      while (date <= window.lastDate) {
+        const result = await resolveForDate(
+          trx,
+          { ...input, date },
+          access.organization,
+          now,
+        );
+        if (!result.ok) return result;
+        if (result.context.starts.length > 0)
+          return {
+            ok: true,
+            availability: {
+              timezone: result.context.timezone,
+              organizationId: result.context.organizationId,
+              organizationSlug: result.context.organizationSlug,
+              resourceId: result.context.resourceId,
+              serviceId: result.context.serviceId,
+              date: result.context.date,
+              starts: result.context.starts,
+            },
+          };
+        const nextDate = DateTime.fromISO(date, { zone: "Asia/Jerusalem" })
+          .plus({ days: 1 })
+          .toISODate();
+        if (!nextDate) throw new Error("Public Booking date iteration failed");
+        date = nextDate;
+      }
+      return { ok: true, availability: null };
+    });
 }
 
 export async function resolvePublicResourceServiceAvailability(

@@ -5,7 +5,9 @@ import { publicBookingRoutes } from "../../../src/modules/bookings/http/public-r
 import { createTestOrganization } from "../../helpers/factories.js";
 
 const app = Fastify();
-await app.register(publicBookingRoutes);
+await app.register(publicBookingRoutes, {
+  now: () => new Date("2026-10-04T22:07:30.000Z"),
+});
 afterAll(() => app.close());
 
 const publishedAt = new Date("2026-09-01T00:00:00.000Z");
@@ -163,6 +165,7 @@ describe("public Booking context", () => {
         slug: "acme-barbers",
         timezone: "Asia/Jerusalem",
       },
+      bookingWindow: { firstDate: "2026-10-05", lastDate: "2026-12-04" },
       services: [
         {
           id: firstService.id,
@@ -314,5 +317,18 @@ describe("public Booking context", () => {
 
     for (const organization of unavailable)
       expectPublicNotFound(await request(organization.slug));
+  });
+
+  it("uses the injected Jerusalem date and configured horizon", async () => {
+    const organization = await createTestOrganization({ publishedAt });
+    await db
+      .updateTable("organization")
+      .set({ max_booking_horizon_days: 2 })
+      .where("id", "=", organization.id)
+      .execute();
+    expect((await request(organization.slug)).json().bookingWindow).toEqual({
+      firstDate: "2026-10-05",
+      lastDate: "2026-10-07",
+    });
   });
 });
