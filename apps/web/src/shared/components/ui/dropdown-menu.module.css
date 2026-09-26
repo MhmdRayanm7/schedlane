@@ -13,10 +13,10 @@
   color: var(--color-foreground);
 }
 .content[data-state="open"] {
-  animation: menu-in var(--duration-normal) var(--ease-out);
+  animation: var(--animation-menu-in) var(--duration-normal) var(--ease-out);
 }
 .content[data-state="closed"] {
-  animation: menu-out var(--duration-fast) var(--ease-in);
+  animation: var(--animation-menu-out) var(--duration-fast) var(--ease-in);
 }
 .item,
 .checkboxItem,

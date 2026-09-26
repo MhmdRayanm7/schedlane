@@ -62,10 +62,10 @@
   box-shadow: var(--shadow-menu);
 }
 .content[data-state="open"] {
-  animation: menu-in var(--duration-normal) var(--ease-out);
+  animation: var(--animation-menu-in) var(--duration-normal) var(--ease-out);
 }
 .content[data-state="closed"] {
-  animation: menu-out var(--duration-fast) var(--ease-in);
+  animation: var(--animation-menu-out) var(--duration-fast) var(--ease-in);
 }
 .viewport {
   max-height: min(20rem, var(--radix-select-content-available-height));

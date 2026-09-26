@@ -5,10 +5,10 @@
   background: var(--color-overlay);
 }
 .overlay[data-state="open"] {
-  animation: overlay-in 180ms var(--ease-out);
+  animation: var(--animation-overlay-in) 180ms var(--ease-out);
 }
 .overlay[data-state="closed"] {
-  animation: overlay-out 150ms var(--ease-in);
+  animation: var(--animation-overlay-out) 150ms var(--ease-in);
 }
 .content {
   position: fixed;
@@ -26,10 +26,10 @@
   box-shadow: var(--shadow-menu);
 }
 .content[data-state="open"] {
-  animation: sheet-in var(--duration-slow) var(--ease-out);
+  animation: var(--animation-sheet-in) var(--duration-slow) var(--ease-out);
 }
 .content[data-state="closed"] {
-  animation: sheet-out 150ms var(--ease-in);
+  animation: var(--animation-sheet-out) 150ms var(--ease-in);
 }
 .scrollArea {
   min-height: 0;

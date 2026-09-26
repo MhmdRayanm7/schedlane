@@ -14,7 +14,7 @@
 .skeleton {
   border-radius: var(--radius-sm);
   background: var(--color-border);
-  animation: pulse 2s ease-in-out infinite;
+  animation: var(--animation-pulse) 2s ease-in-out infinite;
 }
 .loadingTitle {
   width: 12rem;

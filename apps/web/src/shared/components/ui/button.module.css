@@ -97,7 +97,7 @@
   position: absolute;
   width: 1rem;
   height: 1rem;
-  animation: spin 1s linear infinite;
+  animation: var(--animation-spin) 1s linear infinite;
 }
 @media (pointer: coarse) {
   .button {

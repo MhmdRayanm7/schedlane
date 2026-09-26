@@ -71,7 +71,7 @@
   opacity: 1;
 }
 .saveStatus[data-status="fading"] {
-  animation: save-status-out 200ms var(--ease-out) forwards;
+  animation: var(--animation-save-status-out) 200ms var(--ease-out) forwards;
 }
 @media (prefers-reduced-motion: reduce) {
   .saveStatus {

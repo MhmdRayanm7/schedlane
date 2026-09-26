@@ -101,3 +101,18 @@
     opacity: 0;
   }
 }
+:root {
+  --animation-dialog-in: dialog-in;
+  --animation-dialog-out: dialog-out;
+  --animation-menu-in: menu-in;
+  --animation-menu-out: menu-out;
+  --animation-overlay-in: overlay-in;
+  --animation-overlay-out: overlay-out;
+  --animation-pulse: pulse;
+  --animation-save-status-out: save-status-out;
+  --animation-sheet-in: sheet-in;
+  --animation-sheet-out: sheet-out;
+  --animation-sidebar-in: sidebar-in;
+  --animation-sidebar-out: sidebar-out;
+  --animation-spin: spin;
+}

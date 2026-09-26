@@ -198,10 +198,10 @@
   background: var(--color-overlay);
 }
 .mobileOverlay[data-state="open"] {
-  animation: overlay-in 180ms var(--ease-out);
+  animation: var(--animation-overlay-in) 180ms var(--ease-out);
 }
 .mobileOverlay[data-state="closed"] {
-  animation: overlay-out 150ms var(--ease-in);
+  animation: var(--animation-overlay-out) 150ms var(--ease-in);
 }
 .mobileSidebar {
   position: fixed;
@@ -212,10 +212,10 @@
   outline: none;
 }
 .mobileSidebar[data-state="open"] {
-  animation: sidebar-in var(--duration-slow) var(--ease-out);
+  animation: var(--animation-sidebar-in) var(--duration-slow) var(--ease-out);
 }
 .mobileSidebar[data-state="closed"] {
-  animation: sidebar-out 150ms var(--ease-in);
+  animation: var(--animation-sidebar-out) 150ms var(--ease-in);
 }
 .contentColumn {
   display: flex;
