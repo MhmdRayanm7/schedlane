@@ -13,6 +13,7 @@ import {
   OrganizationAccessGate,
   OrganizationResolver,
 } from "@/features/organizations/components/organization-route-states";
+import { PublicBookingPage } from "@/features/public-booking/routes/public-booking-page";
 import { ResourcesPage } from "@/features/resources/resources-page";
 import { SchedulePage } from "@/features/schedule/schedule-page";
 import { ServicesPage } from "@/features/services/services-page";
@@ -22,6 +23,7 @@ import { TeamPage } from "@/features/team/team-page";
 import { UnsavedChangesProvider } from "@/shared/unsaved-changes/unsaved-changes";
 
 export const router = createBrowserRouter([
+  { path: "/book/:slug", element: <PublicBookingPage /> },
   {
     path: "/",
     element: <RootRoute />,

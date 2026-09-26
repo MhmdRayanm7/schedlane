@@ -1,0 +1,801 @@
+.page {
+  min-height: 100dvh;
+  background: #f7f8f8;
+  color: #181b1b;
+}
+.topbar {
+  height: 4.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 max(1.25rem, calc((100vw - 75rem) / 2));
+  border-bottom: 1px solid #e5e9e8;
+  background: #fff;
+}
+.wordmark {
+  color: #181b1b;
+  font-weight: 750;
+  font-size: 1.3rem;
+  letter-spacing: -0.06em;
+}
+.brandDot {
+  color: #0f766e;
+}
+.topOrganization {
+  color: #66706e;
+  font-size: 0.84rem;
+  font-weight: 500;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.main {
+  max-width: 75rem;
+  margin: 0 auto;
+  padding: 2.25rem 1.5rem 5rem;
+}
+.eyebrow,
+.stepCounter {
+  color: #0f766e;
+  font-size: 0.67rem;
+  font-weight: 750;
+  letter-spacing: 0.15em;
+}
+.intro h1 {
+  max-width: 52rem;
+  margin: 0.55rem 0 0.5rem;
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  line-height: 1.09;
+  letter-spacing: -0.045em;
+  font-weight: 660;
+  overflow-wrap: anywhere;
+}
+.introName {
+  display: block;
+}
+.intro p {
+  margin: 0;
+  color: #66706e;
+  font-size: 0.95rem;
+}
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  margin: 1.75rem 0 1.35rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.progress::-webkit-scrollbar {
+  display: none;
+}
+.progressStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.35rem 0.7rem 0.35rem 0.35rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: #66706e;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.progressStep > span:first-child {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.45rem;
+  height: 1.45rem;
+  border: 1px solid #d5dcda;
+  border-radius: 50%;
+  font-size: 0.7rem;
+}
+.progressStep:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+.progressStep:not(:disabled):hover {
+  background: #eaf0ee;
+}
+.progressCurrent {
+  color: #0f766e;
+  background: #e5f4f1;
+  font-weight: 700;
+}
+.progressCurrent > span:first-child {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #fff;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  align-items: start;
+  gap: 1.4rem;
+}
+.panel,
+.summary {
+  min-width: 0;
+  border: 1px solid #e5e9e8;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+.panel {
+  padding: 2rem;
+}
+.stepHeader {
+  margin-bottom: 1.65rem;
+}
+.stepHeader h2 {
+  margin: 0.38rem 0 0.4rem;
+  font-size: 1.65rem;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+.stepHeader h2:focus {
+  outline: none;
+}
+.stepHeader p {
+  margin: 0;
+  color: #66706e;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.choices {
+  display: grid;
+  gap: 0.65rem;
+}
+.choice {
+  width: 100%;
+  min-height: 4.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1.05rem;
+  border: 1px solid #dce3e1;
+  border-radius: 0.52rem;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 160ms,
+    background-color 160ms;
+}
+.choice:hover {
+  border-color: #56c7b8;
+  background: #f9fdfc;
+}
+.choiceSelected {
+  border-color: #0f766e;
+  background: #f0fdfa;
+}
+.choiceText {
+  display: grid;
+  gap: 0.28rem;
+  min-width: 0;
+}
+.choiceText strong {
+  font-size: 0.98rem;
+  font-weight: 630;
+  overflow-wrap: anywhere;
+}
+.choiceText > span {
+  color: #66706e;
+  font-size: 0.82rem;
+}
+.choiceIndicator {
+  width: 1.32rem;
+  height: 1.32rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid #b9c6c3;
+  border-radius: 50%;
+  color: white;
+}
+.choiceSelected .choiceIndicator {
+  border-color: #0f766e;
+  background: #0f766e;
+}
+.summary {
+  position: sticky;
+  top: 1.25rem;
+  padding: 1.45rem;
+}
+.summaryTop {
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid #e5e9e8;
+}
+.summary h2 {
+  margin: 0.45rem 0 0;
+  font-size: 1.2rem;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.summaryList {
+  margin: 0;
+}
+.summaryList > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #eef1f0;
+  font-size: 0.84rem;
+}
+.summaryList > div:last-child {
+  border-bottom: 0;
+}
+.summaryList dt {
+  color: #66706e;
+  flex: none;
+}
+.summaryList dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 570;
+  overflow-wrap: anywhere;
+}
+.summaryPrice dd {
+  color: #0f766e;
+  font-weight: 750;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e9e8;
+}
+.actions button {
+  min-height: 2.7rem;
+}
+.dateHeading,
+.timeHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.dateHeading h3,
+.timeHeading h3 {
+  margin: 0;
+  font-size: 0.93rem;
+  font-weight: 650;
+}
+.dateHeading span,
+.timeHeading span {
+  color: #66706e;
+  font-size: 0.78rem;
+  text-align: right;
+}
+.dateStrip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.42rem;
+  margin: 0.9rem 0 1rem;
+}
+.dateButton {
+  min-width: 0;
+  min-height: 4.8rem;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.16rem;
+  padding: 0.38rem 0.15rem;
+  border: 1px solid #dce3e1;
+  border-radius: 0.45rem;
+  background: #fff;
+  cursor: pointer;
+}
+.dateButton span {
+  color: #66706e;
+  font-size: 0.68rem;
+}
+.dateButton strong {
+  font-size: 1.14rem;
+}
+.dateSelected {
+  border-color: #0f766e;
+  background: #e5f4f1;
+  color: #0f766e;
+}
+.dateSelected span {
+  color: #0f766e;
+}
+.dateInputLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  margin-bottom: 0.5rem;
+  color: #0f766e;
+  font-size: 0.83rem;
+  font-weight: 620;
+}
+.dateInput {
+  display: block;
+  max-width: 15rem;
+}
+.timeHeading {
+  margin: 1.9rem 0 0.85rem;
+}
+.slotGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.4rem, 1fr));
+  gap: 0.55rem;
+}
+.slot {
+  min-height: 2.7rem;
+  border: 1px solid #dce3e1;
+  border-radius: 0.4rem;
+  background: #fff;
+  color: #181b1b;
+  font-weight: 600;
+  cursor: pointer;
+}
+.slot:hover {
+  border-color: #56c7b8;
+}
+.slotSelected {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #fff;
+}
+.slotSelected:hover {
+  border-color: #0f766e;
+}
+.slotSkeletons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+.slotSkeletons span,
+.skeletonTitle,
+.skeletonLine {
+  display: block;
+  height: 2.7rem;
+  border-radius: 0.4rem;
+  background: #e9eeec;
+  animation: pulse 1.3s ease-in-out infinite alternate;
+}
+.emptySlots {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 1.25rem;
+  border: 1px dashed #d5dcda;
+  border-radius: 0.5rem;
+  color: #66706e;
+}
+.emptySlots p {
+  margin: 0;
+  font-size: 0.88rem;
+}
+.emptySlots button {
+  color: #181b1b;
+}
+.form {
+  display: grid;
+  gap: 1.1rem;
+  max-width: 31rem;
+}
+.textarea {
+  width: 100%;
+  min-height: 5.6rem;
+  padding: 0.75rem;
+  resize: vertical;
+  border: 1px solid #d5dcda;
+  border-radius: 0.4rem;
+  background: #fff;
+  color: #181b1b;
+}
+.review {
+  display: grid;
+  gap: 1.2rem;
+}
+.review > div {
+  padding: 1.25rem;
+  border: 1px solid #e5e9e8;
+  border-radius: 0.5rem;
+}
+.reviewHeading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.reviewHeading h3 {
+  margin: 0;
+  font-size: 0.96rem;
+}
+.reviewHeading button,
+.textAction {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.review p {
+  margin: 0.8rem 0 0;
+  line-height: 1.7;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+.reviewNote {
+  color: #66706e;
+}
+.textAction {
+  margin-top: 0.8rem;
+}
+.errorMessage {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #f1c9c4;
+  border-radius: 0.4rem;
+  background: #fff4f2;
+  color: #9b251c;
+  font-size: 0.85rem;
+}
+.statePage {
+  max-width: 35rem;
+  margin: 10vh auto 0;
+  padding: 2rem 1.5rem;
+}
+.statePage h1 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
+}
+.statePage p {
+  margin: 0 0 1.5rem;
+  color: #66706e;
+  line-height: 1.6;
+}
+.stateMark {
+  width: 2.8rem;
+  height: 2.8rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.6rem;
+  background: #e5f4f1;
+  color: #0f766e;
+}
+.skeletonTitle {
+  width: 65%;
+  height: 2rem;
+  margin-bottom: 1.4rem;
+}
+.skeletonLine {
+  width: 100%;
+  height: 3.4rem;
+  margin-bottom: 0.7rem;
+}
+.skeletonLine:last-child {
+  width: 86%;
+}
+@keyframes pulse {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 52rem) {
+  .main {
+    padding: 2rem 1rem 4rem;
+  }
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .summary {
+    position: static;
+    order: -1;
+    padding: 1rem 1.15rem;
+  }
+  .summaryTop {
+    padding-bottom: 0.6rem;
+  }
+  .summaryList {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1rem;
+  }
+  .summaryList > div {
+    padding: 0.55rem 0;
+  }
+  .summaryList > div:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+  .introName {
+    display: inline;
+  }
+}
+@media (max-width: 37rem) {
+  .topbar {
+    height: 3.7rem;
+    padding-inline: 1rem;
+  }
+  .main {
+    padding-top: 1.5rem;
+  }
+  .intro h1 {
+    font-size: 2rem;
+  }
+  .progress {
+    margin: 1.45rem -1rem 1rem;
+    padding: 0 1rem;
+  }
+  .progressStep {
+    padding-right: 0.3rem;
+  }
+  .progressStep > span:last-child {
+    display: none;
+  }
+  .progressCurrent > span:last-child {
+    display: inline;
+  }
+  .panel {
+    padding: 1.2rem;
+  }
+  .summary {
+    order: 1;
+  }
+  .summaryTop {
+    display: none;
+  }
+  .summaryList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .summaryList > div {
+    display: block;
+    border: 0;
+    padding: 0.3rem 0;
+  }
+  .summaryList dd {
+    text-align: left;
+    margin-top: 0.2rem;
+  }
+  .summaryList > div:nth-child(n + 3) {
+    display: none;
+  }
+  .dateStrip {
+    grid-template-columns: repeat(7, minmax(2.6rem, 1fr));
+    gap: 0.22rem;
+    overflow-x: auto;
+  }
+  .dateButton {
+    min-height: 4.4rem;
+  }
+  .dateButton span {
+    font-size: 0.62rem;
+  }
+  .dateButton strong {
+    font-size: 0.99rem;
+  }
+  .actions {
+    margin-top: 1.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slotSkeletons span,
+  .skeletonTitle,
+  .skeletonLine {
+    animation: none;
+  }
+}
+
+.manageMain {
+  max-width: 66rem;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 5rem;
+}
+.manageLead {
+  margin-bottom: 2.3rem;
+}
+.statusMark {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin-top: 1rem;
+  border-radius: 50%;
+  background: #e5f4f1;
+  color: #0f766e;
+}
+.manageLead h1 {
+  margin: 0.85rem 0 0.3rem;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  line-height: 1.12;
+  letter-spacing: -0.04em;
+}
+.manageLead p {
+  margin: 0 0 1rem;
+  color: #66706e;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.65rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.35rem;
+  background: #e5f4f1;
+  color: #0f766e;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.statusCancelled {
+  background: #f0f1f0;
+  color: #5e6865;
+}
+.manageGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+.manageCard {
+  min-width: 0;
+  padding: 1.6rem;
+  border: 1px solid #e5e9e8;
+  border-radius: 0.65rem;
+  background: #fff;
+}
+.manageCard h2,
+.linkSection h2,
+.cancelSection h2 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 690;
+}
+.manageCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.appointmentHeadline {
+  display: grid;
+  gap: 0.35rem;
+  margin: 1.6rem 0 0.6rem;
+}
+.appointmentHeadline strong {
+  font-size: 1.4rem;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+.appointmentHeadline span {
+  color: #0f766e;
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+.manageDetails {
+  margin: 1.2rem 0 0;
+}
+.manageDetails > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid #eef1f0;
+  font-size: 0.86rem;
+}
+.manageDetails dt {
+  color: #66706e;
+  flex: none;
+}
+.manageDetails dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 570;
+  overflow-wrap: anywhere;
+}
+.reference {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  user-select: text;
+}
+.note {
+  padding-top: 0.8rem;
+  border-top: 1px solid #eef1f0;
+}
+.note span {
+  color: #66706e;
+  font-size: 0.83rem;
+}
+.note p {
+  margin: 0.35rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.linkSection,
+.cancelSection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  margin-top: 1rem;
+  padding: 1.4rem 1.6rem;
+  border: 1px solid #e5e9e8;
+  border-radius: 0.65rem;
+  background: #fff;
+}
+.linkSection p,
+.cancelSection p {
+  margin: 0.4rem 0 0;
+  color: #66706e;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+.linkSection button,
+.cancelSection button {
+  min-height: 2.6rem;
+}
+.linkSection .copyError {
+  width: 100%;
+  color: #b42318;
+}
+.cancelSection {
+  background: transparent;
+}
+.manageDialog .form {
+  margin-top: 1.4rem;
+  max-width: none;
+}
+.manageDialog .errorMessage {
+  margin-bottom: 0;
+}
+.dialogActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.4rem;
+}
+.dialogActions > span:first-child {
+  margin-right: auto;
+}
+.manageMessage {
+  max-width: 40rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #bfdfd9;
+  border-radius: 0.4rem;
+  background: #f0fdfa;
+  color: #0f766e;
+  font-size: 0.86rem;
+}
+@media (max-width: 45rem) {
+  .manageMain {
+    padding: 2rem 1rem 4rem;
+  }
+  .manageGrid {
+    grid-template-columns: 1fr;
+  }
+  .manageCard {
+    padding: 1.2rem;
+  }
+  .linkSection,
+  .cancelSection {
+    padding: 1.2rem;
+    align-items: flex-start;
+  }
+  .manageCardHeader button {
+    flex: none;
+  }
+}
