@@ -9,8 +9,14 @@ const configSchema = Type.Object({
   OUTBOX_POLL_INTERVAL_MS: Type.Integer({ default: 1000, minimum: 10 }),
   RABBITMQ_RECONNECT_DELAY_MS: Type.Integer({ default: 1000, minimum: 10 }),
   BOOKING_EVENT_PREFETCH: Type.Integer({ default: 5, minimum: 1 }),
-  BOOKING_EVENT_RETRY_DELAY_MS: Type.Integer({ default: 5000, minimum: 100 }),
+  EVENT_RETRY_DELAY_MS: Type.Optional(Type.Integer({ minimum: 100 })),
+  BOOKING_EVENT_RETRY_DELAY_MS: Type.Optional(Type.Integer({ minimum: 100 })),
   BOOKING_EVENT_MAX_ATTEMPTS: Type.Integer({ default: 5, minimum: 1 }),
+  ORGANIZATION_REQUEST_EVENT_PREFETCH: Type.Integer({ default: 5, minimum: 1 }),
+  ORGANIZATION_REQUEST_EVENT_MAX_ATTEMPTS: Type.Integer({
+    default: 5,
+    minimum: 1,
+  }),
   GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY: Type.Optional(
     Type.String({ minLength: 1 }),
   ),
@@ -22,6 +28,9 @@ const configSchema = Type.Object({
   ),
   RESEND_API_KEY: Type.Optional(Type.String({ minLength: 1 })),
   EMAIL_FROM: Type.Optional(Type.String({ minLength: 1 })),
+  PLATFORM_NOTIFICATION_EMAIL: Type.String({ minLength: 1 }),
+  SUPPORT_EMAIL: Type.Optional(Type.String({ minLength: 1 })),
+  APP_BASE_URL: Type.Optional(Type.String({ minLength: 1 })),
 });
 
 export type Config = Type.Static<typeof configSchema>;

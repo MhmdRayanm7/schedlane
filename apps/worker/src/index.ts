@@ -6,10 +6,14 @@ import { createBookingEmailHandler } from "./bookings/email/handler.js";
 import { ResendTransactionalEmailService } from "./bookings/email/resend-email-service.js";
 import { config } from "./config.js";
 import { RabbitMqOutboxPublisher } from "./messaging/rabbitmq-publisher.js";
+import { runOrganizationRequestConsumer } from "./organization-requests/consumer.js";
+import { createOrganizationRequestEmailHandler } from "./organization-requests/email/handler.js";
 import { runOutboxDispatcher } from "./outbox/dispatcher.js";
 
 const pool = new Pool({ connectionString: config.DATABASE_URL });
 const shutdown = new AbortController();
+const eventRetryDelayMs =
+  config.EVENT_RETRY_DELAY_MS ?? config.BOOKING_EVENT_RETRY_DELAY_MS ?? 5000;
 
 function requestShutdown(signal: NodeJS.Signals) {
   if (shutdown.signal.aborted) return;
@@ -42,6 +46,14 @@ const bookingEventHandler = createBookingEmailHandler({
   guestBookingManagementUrl: config.GUEST_BOOKING_MANAGEMENT_URL,
 });
 
+const organizationRequestEventHandler = createOrganizationRequestEmailHandler({
+  pool,
+  emailService,
+  platformNotificationEmail: config.PLATFORM_NOTIFICATION_EMAIL,
+  appBaseUrl: config.APP_BASE_URL,
+  supportEmail: config.SUPPORT_EMAIL,
+});
+
 try {
   await Promise.all([
     runOutboxDispatcher({
@@ -57,8 +69,17 @@ try {
       url: config.RABBITMQ_URL,
       handler: bookingEventHandler,
       prefetch: config.BOOKING_EVENT_PREFETCH,
-      retryDelayMs: config.BOOKING_EVENT_RETRY_DELAY_MS,
+      retryDelayMs: eventRetryDelayMs,
       maxAttempts: config.BOOKING_EVENT_MAX_ATTEMPTS,
+      reconnectDelayMs: config.RABBITMQ_RECONNECT_DELAY_MS,
+      signal: shutdown.signal,
+    }),
+    runOrganizationRequestConsumer({
+      url: config.RABBITMQ_URL,
+      handler: organizationRequestEventHandler,
+      prefetch: config.ORGANIZATION_REQUEST_EVENT_PREFETCH,
+      retryDelayMs: eventRetryDelayMs,
+      maxAttempts: config.ORGANIZATION_REQUEST_EVENT_MAX_ATTEMPTS,
       reconnectDelayMs: config.RABBITMQ_RECONNECT_DELAY_MS,
       signal: shutdown.signal,
     }),

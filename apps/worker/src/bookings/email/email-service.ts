@@ -2,6 +2,7 @@ export interface SendTransactionalEmailInput {
   to: string;
   subject: string;
   text: string;
+  html?: string | undefined;
   idempotencyKey: string;
 }
 

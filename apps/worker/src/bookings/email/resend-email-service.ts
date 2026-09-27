@@ -30,6 +30,7 @@ export class ResendTransactionalEmailService
         to: input.to,
         subject: input.subject,
         text: input.text,
+        ...(input.html ? { html: input.html } : {}),
         headers: {
           "Idempotency-Key": input.idempotencyKey,
         },

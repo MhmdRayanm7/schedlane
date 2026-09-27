@@ -11,7 +11,7 @@ export class ConsoleTransactionalEmailService
     input: SendTransactionalEmailInput,
   ): Promise<SendTransactionalEmailResult> {
     console.log(
-      `[email] Transactional email prepared to: ${input.to} subject: "${input.subject}" idempotencyKey: ${input.idempotencyKey}`,
+      `[email] Transactional email prepared idempotencyKey: ${input.idempotencyKey}`,
     );
     return { id: `console-${Date.now()}` };
   }
