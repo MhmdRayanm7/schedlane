@@ -12,7 +12,9 @@
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed-development.ts",
     "db:seed:demo-owner": "tsx src/seed-development-owner.ts",
-    "db:seed:platform-admin": "tsx src/seed-platform-admin.ts"
+    "db:seed:platform-admin": "tsx src/seed-platform-admin.ts",
+    "db:seed:fixtures": "tsx src/seed-fixtures.ts",
+    "db:fixtures:info": "tsx src/fixture-info.ts"
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",
