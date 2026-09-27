@@ -1,9 +1,10 @@
-import { Building2, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, Navigate, Outlet, useLocation, useParams } from "react-router";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
 import { Button } from "@/shared/components/ui/button";
 import { useOrganizations } from "../hooks/use-organizations";
+import { OrganizationOnboarding } from "../onboarding/organization-onboarding";
 import type { Organization } from "../types";
 import styles from "./organization-route-states.module.css";
 
@@ -76,22 +77,7 @@ export function OrganizationResolver() {
   if (organizations.length === 0) {
     return (
       <ApplicationFrame>
-        <section className={styles.messageCard}>
-          <span className={styles.messageIcon}>
-            <Building2 aria-hidden="true" className={styles.largeIcon} />
-          </span>
-          <h1 className={styles.emptyTitle}>No organization access yet</h1>
-          <p className={styles.messageDescription}>
-            Ask an organization owner to invite you, or create an organization
-            when onboarding becomes available.
-          </p>
-          {import.meta.env.DEV ? (
-            <p className={styles.developmentHint}>
-              Development: link this verified account with{" "}
-              <code>pnpm db:seed:demo-owner -- your@email.com</code>.
-            </p>
-          ) : null}
-        </section>
+        <OrganizationOnboarding />
       </ApplicationFrame>
     );
   }

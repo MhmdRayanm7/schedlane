@@ -13,6 +13,10 @@ import {
   OrganizationAccessGate,
   OrganizationResolver,
 } from "@/features/organizations/components/organization-route-states";
+import { PlatformAccessGate } from "@/features/platform/platform-access-gate";
+import { PlatformOrganizationsPage } from "@/features/platform/platform-organizations-page";
+import { PlatformRequestsPage } from "@/features/platform/platform-requests-page";
+import { PlatformShell } from "@/features/platform/platform-shell";
 import { GuestBookingManagePage } from "@/features/public-booking/routes/guest-booking-manage-page";
 import { PublicBookingPage } from "@/features/public-booking/routes/public-booking-page";
 import { ResourcesPage } from "@/features/resources/resources-page";
@@ -52,7 +56,14 @@ export const router = createBrowserRouter([
       {
         path: "/app",
         children: [
-          { index: true, element: <OrganizationResolver /> },
+          {
+            index: true,
+            element: (
+              <UnsavedChangesProvider>
+                <OrganizationResolver />
+              </UnsavedChangesProvider>
+            ),
+          },
           {
             path: ":organizationId",
             element: <OrganizationAccessGate />,
@@ -73,6 +84,21 @@ export const router = createBrowserRouter([
                   { path: "settings", element: <SettingsPage /> },
                 ],
               },
+            ],
+          },
+        ],
+      },
+      {
+        path: "/platform",
+        element: <PlatformAccessGate />,
+        children: [
+          {
+            element: <PlatformShell />,
+            children: [
+              { index: true, element: <Navigate replace to="requests" /> },
+              { path: "requests", element: <PlatformRequestsPage /> },
+              { path: "organizations", element: <PlatformOrganizationsPage /> },
+              { path: "*", element: <Navigate replace to="requests" /> },
             ],
           },
         ],
