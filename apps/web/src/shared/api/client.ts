@@ -57,7 +57,11 @@ export async function apiClient<T>(
     const fallbackRequestId = response.headers.get("x-request-id") ?? undefined;
 
     if (isErrorEnvelope(payload)) {
-      throw new ApiError({ status: response.status, ...payload });
+      throw new ApiError({
+        status: response.status,
+        ...payload,
+        details: payload as unknown as Record<string, unknown>,
+      });
     }
 
     throw new ApiError({

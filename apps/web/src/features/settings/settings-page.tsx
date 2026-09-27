@@ -1,13 +1,15 @@
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { useOutletContext, useParams } from "react-router";
+import { useNavigate, useOutletContext, useParams } from "react-router";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
 import { useUnsavedChangesGuard } from "@/shared/unsaved-changes/unsaved-changes";
+import { BookingPageSettingsSection } from "./components/booking-page-settings-section";
 import { GeneralSettingsSection } from "./components/general-settings-section";
 import { OrganizationLifecycleDialog } from "./components/organization-lifecycle-dialog";
 import { OrganizationStatusSection } from "./components/organization-status-section";
+import { PricingSettingsSection } from "./components/pricing-settings-section";
 import { TeamAccessSettingsSection } from "./components/team-access-settings-section";
 import { useOrganizationSettings } from "./hooks/use-organization-settings";
 import styles from "./settings.module.css";
@@ -36,6 +38,7 @@ export function SettingsPage() {
   const { currentOrganization } = useOutletContext<OrganizationAccessContext>();
   const { organizationId = "" } = useParams<{ organizationId: string }>();
   const settingsQuery = useOrganizationSettings(organizationId);
+  const navigate = useNavigate();
   const { requestChange } = useUnsavedChangesGuard();
   const [lifecycleAction, setLifecycleAction] = useState<
     "archive" | "restore" | null
@@ -48,6 +51,17 @@ export function SettingsPage() {
         `settings:team-access:${organizationId}`,
       ],
     });
+  }
+
+  function review(section: "services" | "resources" | "schedule" | "pricing") {
+    if (section === "pricing") {
+      document.getElementById("settings-pricing")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      return;
+    }
+    requestChange(() => navigate(`/app/${organizationId}/${section}`));
   }
 
   return (
@@ -100,10 +114,21 @@ export function SettingsPage() {
           </section>
         ) : null}
         {settingsQuery.data ? (
-          <TeamAccessSettingsSection
-            organization={currentOrganization}
-            persistedVisibility={settingsQuery.data.staffTeamVisibility}
-          />
+          <>
+            <PricingSettingsSection
+              organization={currentOrganization}
+              pricingEnabled={settingsQuery.data.pricingEnabled}
+              onReviewServices={() => review("services")}
+            />
+            <BookingPageSettingsSection
+              organization={currentOrganization}
+              onReview={review}
+            />
+            <TeamAccessSettingsSection
+              organization={currentOrganization}
+              persistedVisibility={settingsQuery.data.staffTeamVisibility}
+            />
+          </>
         ) : null}
 
         <OrganizationStatusSection

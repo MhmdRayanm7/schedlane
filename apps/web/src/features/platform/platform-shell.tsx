@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Building2, ClipboardList, LogOut } from "lucide-react";
+import { Building2, ClipboardList, LogOut, Send } from "lucide-react";
 import { NavLink, Outlet, useNavigate, useOutletContext } from "react-router";
 import { authClient } from "@/shared/auth/auth-client";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
@@ -10,6 +10,7 @@ import type { PlatformIdentity } from "./types";
 
 const navigation = [
   { to: "/platform/requests", label: "Requests", icon: ClipboardList },
+  { to: "/platform/publications", label: "Publications", icon: Send },
   { to: "/platform/organizations", label: "Organizations", icon: Building2 },
 ];
 

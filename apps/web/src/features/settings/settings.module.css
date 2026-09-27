@@ -46,6 +46,142 @@
   gap: var(--space-5);
 }
 
+.toggleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.toggleCopy {
+  display: grid;
+  min-width: 0;
+  gap: 0.125rem;
+}
+
+.switch {
+  width: 2.5rem;
+  height: 1.35rem;
+  margin: 0.125rem 0 0;
+  flex: 0 0 auto;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.switch:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.blockerAlert,
+.blockerContent {
+  min-width: 0;
+}
+
+.blockerContent {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.blockerContent ul {
+  margin: 0;
+  padding-left: 1.125rem;
+}
+
+.blockerContent li {
+  overflow-wrap: anywhere;
+}
+
+.publicUrlBlock {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.publicUrlBlock code {
+  display: block;
+  max-width: 100%;
+  padding: var(--space-3);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  font-size: 0.8125rem;
+}
+
+.inlineActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.inlineActions svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.publicationNotice span {
+  color: var(--color-muted-foreground);
+}
+
+.readiness {
+  padding-block: var(--space-4);
+  border-block: 1px solid var(--color-border);
+}
+
+.readiness h3 {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.readiness ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.readiness li {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--color-muted-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.3rem;
+}
+
+.readiness li[data-ready="true"] {
+  color: var(--color-primary);
+}
+
+.readiness li[data-ready="false"] {
+  color: var(--color-destructive);
+}
+
+.readiness li span {
+  overflow-wrap: anywhere;
+}
+
+.readiness svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.2rem;
+  flex: 0 0 auto;
+}
+
+.publicationNotice {
+  display: grid;
+  gap: 0.125rem;
+  padding: var(--space-3) var(--space-4);
+  border-left: 2px solid var(--color-primary);
+  background: var(--color-primary-subtle);
+  font-size: 0.8125rem;
+}
+
 .readOnlyField {
   display: grid;
   gap: var(--space-2);
@@ -320,9 +456,18 @@
   }
 
   .dangerAction,
-  .sectionError {
+  .sectionError,
+  .toggleRow {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .switch {
+    align-self: flex-start;
+  }
+
+  .inlineActions > button {
+    width: 100%;
   }
 
   .dangerAction > button,

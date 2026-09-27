@@ -5,13 +5,19 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { organizationsQueryKey } from "@/features/organizations/hooks/use-organizations";
+import type { PublicationRequestStatus } from "@/features/publication/types";
 import {
   approvePlatformRequest,
   getPlatformIdentity,
   getPlatformOrganizations,
+  getPlatformPublicationRequest,
+  getPlatformPublicationRequests,
   getPlatformRequest,
   getPlatformRequests,
+  publishPlatformPublicationRequest,
+  rejectPlatformPublicationRequest,
   rejectPlatformRequest,
+  unpublishPlatformOrganization,
 } from "../api/platform-api";
 import type { RequestStatus } from "../types";
 
@@ -20,6 +26,10 @@ export const platformRequestsQueryKey = ["platform", "requests"] as const;
 export const platformOrganizationsQueryKey = [
   "platform",
   "organizations",
+] as const;
+export const platformPublicationsQueryKey = [
+  "platform",
+  "publications",
 ] as const;
 
 export function usePlatformIdentity() {
@@ -79,5 +89,69 @@ export function usePlatformOrganizations() {
     queryFn: ({ pageParam, signal }) =>
       getPlatformOrganizations(pageParam, signal),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  });
+}
+
+export function usePlatformPublications(status: PublicationRequestStatus) {
+  return useQuery({
+    queryKey: [...platformPublicationsQueryKey, status],
+    queryFn: ({ signal }) => getPlatformPublicationRequests(status, signal),
+  });
+}
+
+export function usePlatformPublication(id: string | null) {
+  return useQuery({
+    queryKey: [...platformPublicationsQueryKey, "detail", id],
+    queryFn: ({ signal }) =>
+      getPlatformPublicationRequest(id as string, signal),
+    enabled: Boolean(id),
+  });
+}
+
+export function usePlatformPublicationDecision() {
+  const queryClient = useQueryClient();
+  const invalidate = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: platformPublicationsQueryKey }),
+      queryClient.invalidateQueries({
+        queryKey: platformOrganizationsQueryKey,
+      }),
+      queryClient.invalidateQueries({ queryKey: organizationsQueryKey }),
+    ]);
+  };
+  const publish = useMutation({
+    mutationFn: (id: string) => publishPlatformPublicationRequest(id),
+    onSuccess: invalidate,
+    onError: invalidate,
+  });
+  const reject = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      rejectPlatformPublicationRequest(id, reason),
+    onSuccess: invalidate,
+  });
+  return { publish, reject };
+}
+
+export function useUnpublishOrganization() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      organizationId,
+      reason,
+    }: {
+      organizationId: string;
+      reason: string;
+    }) => unpublishPlatformOrganization(organizationId, reason),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: platformOrganizationsQueryKey,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: platformPublicationsQueryKey,
+        }),
+        queryClient.invalidateQueries({ queryKey: organizationsQueryKey }),
+      ]);
+    },
   });
 }

@@ -15,6 +15,7 @@ import {
 } from "@/features/organizations/components/organization-route-states";
 import { PlatformAccessGate } from "@/features/platform/platform-access-gate";
 import { PlatformOrganizationsPage } from "@/features/platform/platform-organizations-page";
+import { PlatformPublicationsPage } from "@/features/platform/platform-publications-page";
 import { PlatformRequestsPage } from "@/features/platform/platform-requests-page";
 import { PlatformShell } from "@/features/platform/platform-shell";
 import { GuestBookingManagePage } from "@/features/public-booking/routes/guest-booking-manage-page";
@@ -97,6 +98,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate replace to="requests" /> },
               { path: "requests", element: <PlatformRequestsPage /> },
+              { path: "publications", element: <PlatformPublicationsPage /> },
               { path: "organizations", element: <PlatformOrganizationsPage /> },
               { path: "*", element: <Navigate replace to="requests" /> },
             ],

@@ -28,7 +28,6 @@ export function BookingRulesTab({
   const [minNotice, setMinNotice] = useState<string>("0");
   const [horizonDays, setHorizonDays] = useState<string>("60");
   const [cancellationCutoff, setCancellationCutoff] = useState<string>("0");
-  const [publicPaused, setPublicPaused] = useState<boolean>(false);
   const [persistedSettings, setPersistedSettings] =
     useState<AvailabilitySettings | null>(null);
   const isDirtyRef = useRef(false);
@@ -47,7 +46,6 @@ export function BookingRulesTab({
         setCancellationCutoff(
           String(settingsQuery.data.cancellationCutoffMinutes),
         );
-        setPublicPaused(settingsQuery.data.publicBookingPaused);
       }
       setPersistedSettings(settingsQuery.data);
     }
@@ -77,8 +75,7 @@ export function BookingRulesTab({
     (parsedSlot !== server.slotIntervalMinutes ||
       parsedNotice !== server.minBookingNoticeMinutes ||
       parsedHorizon !== server.maxBookingHorizonDays ||
-      parsedCutoff !== server.cancellationCutoffMinutes ||
-      publicPaused !== server.publicBookingPaused);
+      parsedCutoff !== server.cancellationCutoffMinutes);
   isDirtyRef.current = isDirty;
 
   useUnsavedChanges({
@@ -93,7 +90,6 @@ export function BookingRulesTab({
       setCancellationCutoff(
         String(persistedSettings.cancellationCutoffMinutes),
       );
-      setPublicPaused(persistedSettings.publicBookingPaused);
       setSaveError(null);
       clearSaveSuccess();
     },
@@ -110,7 +106,7 @@ export function BookingRulesTab({
         <div className={`${styles.skeleton} ${styles.loadingTitle}`} />
         <div className={`${styles.skeleton} ${styles.loadingDescription}`} />
         <div className={styles.loadingFields}>
-          {[1, 2, 3, 4, 5].map((i) => (
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className={styles.loadingField}>
               <div className={`${styles.skeleton} ${styles.loadingLabel}`} />
               <div className={`${styles.skeleton} ${styles.loadingControl}`} />
@@ -162,10 +158,9 @@ export function BookingRulesTab({
         minBookingNoticeMinutes: parsedNotice,
         maxBookingHorizonDays: parsedHorizon,
         cancellationCutoffMinutes: parsedCutoff,
-        publicBookingPaused: publicPaused,
       };
-      await updateSettingsMutation.mutateAsync(savedSettings);
-      setPersistedSettings(savedSettings);
+      const updated = await updateSettingsMutation.mutateAsync(savedSettings);
+      setPersistedSettings(updated);
       showSaveSuccess();
     } catch (err: unknown) {
       const message =
@@ -306,49 +301,6 @@ export function BookingRulesTab({
                 className={styles.numberInput}
               />
               <span className={styles.unit}>minutes before appointment</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Public Booking Pause Toggle */}
-        <div className={styles.rule}>
-          <div>
-            <span className={styles.ruleLabel}>Public booking status</span>
-            <p className={styles.ruleDescription}>
-              Pause public self-scheduling across your booking page.
-            </p>
-          </div>
-          <div className={styles.ruleControl}>
-            <div className={styles.checkboxControl}>
-              <input
-                id="pause-public-booking"
-                type="checkbox"
-                checked={publicPaused}
-                disabled={isWritesDisabled}
-                aria-describedby="pause-public-booking-desc"
-                onChange={(e) => {
-                  clearSaveSuccess();
-                  setSaveError(null);
-                  setPublicPaused(e.target.checked);
-                }}
-                className={styles.checkbox}
-              />
-              <div>
-                <label
-                  htmlFor="pause-public-booking"
-                  className={styles.checkboxLabel}
-                >
-                  Pause public booking
-                </label>
-                <p
-                  id="pause-public-booking-desc"
-                  className={styles.ruleDescription}
-                >
-                  When paused, the public booking flow will show that scheduling
-                  is unavailable. Existing bookings remain intact and staff can
-                  still manage the schedule.
-                </p>
-              </div>
             </div>
           </div>
         </div>

@@ -42,7 +42,7 @@ export function OrganizationStatusSection({
             Organization status
           </h2>
           <p className={styles.sectionDescription}>
-            Review lifecycle and publication state.
+            Review the workspace lifecycle state.
           </p>
         </div>
         <div className={styles.sectionContent}>
@@ -56,19 +56,6 @@ export function OrganizationStatusSection({
                 </span>
                 <span className={styles.statusDescription}>
                   {state.description}
-                </span>
-              </span>
-            </div>
-            <div className={styles.statusRow}>
-              <span className={styles.statusLabel}>Publication</span>
-              <span className={styles.statusValue}>
-                <span className={styles.publicationValue}>
-                  {organization.publishedAt ? "Published" : "Unpublished"}
-                </span>
-                <span className={styles.statusDescription}>
-                  {organization.publishedAt
-                    ? "The organization has a publication record. Booking availability is managed separately."
-                    : "The organization is not currently published."}
                 </span>
               </span>
             </div>
@@ -99,8 +86,8 @@ export function OrganizationStatusSection({
                 </h3>
                 <p className={styles.actionDescription}>
                   {organization.archivedAt
-                    ? "Make the organization editable again. Publication remains off."
-                    : "Make the organization read-only and remove public publication. Data is preserved."}
+                    ? "Make the organization editable again. Its publication approval is preserved."
+                    : "Make the organization read-only and unavailable for public booking. Publication approval and data are preserved."}
                 </p>
               </div>
               <Button

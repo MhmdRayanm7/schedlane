@@ -5,8 +5,12 @@ import { teamKeys } from "@/features/team/hooks/use-team";
 import {
   archiveOrganization,
   getOrganizationSettings,
+  getPublicationReadiness,
+  getPublicationStatus,
   renameOrganization,
+  requestPublication,
   restoreOrganization,
+  updateOrganizationPricing,
   updateStaffTeamVisibility,
 } from "../api/settings-api";
 import type { StaffTeamVisibility } from "../types";
@@ -14,6 +18,13 @@ import type { StaffTeamVisibility } from "../types";
 export const organizationSettingsKeys = {
   detail: (organizationId: string) =>
     ["organizations", organizationId, "settings"] as const,
+};
+
+export const publicationKeys = {
+  readiness: (organizationId: string) =>
+    ["organizations", organizationId, "publication-readiness"] as const,
+  status: (organizationId: string) =>
+    ["organizations", organizationId, "publication-status"] as const,
 };
 
 export function useOrganizationSettings(organizationId: string) {
@@ -80,6 +91,69 @@ export function useUpdateStaffTeamVisibility(organizationId: string) {
   });
 }
 
+export function useUpdateOrganizationPricing(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (pricingEnabled: boolean) =>
+      updateOrganizationPricing(organizationId, pricingEnabled),
+    onSuccess: (result) => {
+      queryClient.setQueryData(
+        organizationSettingsKeys.detail(organizationId),
+        (current: { pricingEnabled: boolean } | undefined) =>
+          current
+            ? { ...current, pricingEnabled: result.pricingEnabled }
+            : current,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: publicationKeys.readiness(organizationId),
+      });
+    },
+  });
+}
+
+export function usePublicationReadiness(organizationId: string) {
+  return useQuery({
+    queryKey: publicationKeys.readiness(organizationId),
+    queryFn: ({ signal }) => getPublicationReadiness(organizationId, signal),
+    enabled: Boolean(organizationId),
+  });
+}
+
+export function usePublicationStatus(organizationId: string) {
+  return useQuery({
+    queryKey: publicationKeys.status(organizationId),
+    queryFn: ({ signal }) => getPublicationStatus(organizationId, signal),
+    enabled: Boolean(organizationId),
+  });
+}
+
+export function useRequestPublication(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => requestPublication(organizationId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: publicationKeys.status(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: publicationKeys.readiness(organizationId),
+        }),
+      ]);
+    },
+    onError: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: publicationKeys.status(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: publicationKeys.readiness(organizationId),
+        }),
+      ]);
+    },
+  });
+}
+
 export function useArchiveOrganization(organizationId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -88,7 +162,6 @@ export function useArchiveOrganization(organizationId: string) {
       updateOrganizationCache(queryClient, organizationId, (current) => ({
         ...current,
         archivedAt: result.archivedAt,
-        publishedAt: null,
       }));
     },
   });

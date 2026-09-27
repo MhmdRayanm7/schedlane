@@ -29,7 +29,34 @@ export type PlatformOrganization = {
   publicBookingPaused: boolean;
   suspendedAt: string | null;
   archivedAt: string | null;
+  pendingPublicationRequestId: string | null;
   createdAt: string;
 };
 
+export type PlatformPublicationRequest = {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  slug: string;
+  requester: { name: string; email: string };
+  status: PublicationRequestStatus;
+  requestedAt: string;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  publishedAt: string | null;
+  readiness: PublicationReadiness | null;
+};
+
+export type PlatformPublicationRequestDetail = PlatformPublicationRequest & {
+  publicBookingPaused: boolean;
+  suspendedAt: string | null;
+  archivedAt: string | null;
+  pricingEnabled: boolean;
+};
+
 export type CursorPage<T> = { items: T[]; nextCursor: string | null };
+
+import type {
+  PublicationReadiness,
+  PublicationRequestStatus,
+} from "@/features/publication/types";

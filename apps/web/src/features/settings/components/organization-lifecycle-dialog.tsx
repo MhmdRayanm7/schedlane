@@ -67,7 +67,7 @@ export function OrganizationLifecycleDialog({
         <DialogDescription>
           {isArchive
             ? `${organization.name} will become read-only and unavailable for public booking. Existing data will be preserved.`
-            : "Restoring makes the organization editable again. Public publication is not automatically restored."}
+            : "Restoring makes the organization editable again. Any existing publication approval remains unchanged."}
         </DialogDescription>
         {error ? (
           <InlineAlert className={styles.dialogAlert} variant="error">

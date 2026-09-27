@@ -1,8 +1,11 @@
+import type { PublicationRequestStatus } from "@/features/publication/types";
 import { apiClient } from "@/shared/api/client";
 import type {
   CursorPage,
   PlatformIdentity,
   PlatformOrganization,
+  PlatformPublicationRequest,
+  PlatformPublicationRequestDetail,
   PlatformRequest,
   PlatformRequestDetail,
   RequestStatus,
@@ -53,3 +56,43 @@ export function getPlatformOrganizations(
     { signal },
   );
 }
+
+export function getPlatformPublicationRequests(
+  status: PublicationRequestStatus,
+  signal?: AbortSignal,
+) {
+  const query = new URLSearchParams({ status, limit: "100" });
+  return apiClient<{ items: PlatformPublicationRequest[] }>(
+    `/api/platform/publication-requests?${query}`,
+    { signal },
+  );
+}
+
+export const getPlatformPublicationRequest = (
+  id: string,
+  signal?: AbortSignal,
+) =>
+  apiClient<PlatformPublicationRequestDetail>(
+    `/api/platform/publication-requests/${id}`,
+    { signal },
+  );
+
+export const publishPlatformPublicationRequest = (id: string) =>
+  apiClient(`/api/platform/publication-requests/${id}/publish`, {
+    method: "POST",
+  });
+
+export const rejectPlatformPublicationRequest = (id: string, reason: string) =>
+  apiClient(`/api/platform/publication-requests/${id}/reject`, {
+    method: "POST",
+    body: { reason },
+  });
+
+export const unpublishPlatformOrganization = (
+  organizationId: string,
+  reason: string,
+) =>
+  apiClient(`/api/platform/organizations/${organizationId}/unpublish`, {
+    method: "POST",
+    body: { reason },
+  });

@@ -120,25 +120,6 @@
   font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
 }
-.checkboxControl {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-.checkbox {
-  width: 1rem;
-  height: 1rem;
-  margin-top: 0.125rem;
-  border-color: var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  accent-color: var(--color-primary);
-}
-.checkboxLabel {
-  cursor: pointer;
-  color: var(--color-foreground);
-  font-size: 0.875rem;
-  font-weight: 500;
-}
 .error {
   margin: 0;
   color: var(--color-destructive);

@@ -23,7 +23,6 @@ type ServiceFormDialogProps = {
   onSubmit: (data: CreateServiceInput | UpdateServiceInput) => Promise<void>;
   isPending: boolean;
   isReadOnly: boolean;
-  /** Whether pricing is known to be enabled in this organization */
   pricingEnabled?: boolean;
 };
 
@@ -48,7 +47,8 @@ export function ServiceFormDialog({
   const parsedBuffer = Number.parseInt(bufferAfterMinutes, 10);
   const parsedPrice = ilsToAgorot(priceIls);
   const numericPrice = Number(priceIls);
-  const effectivePrice = pricingEnabled ? parsedPrice : null;
+  const effectivePrice = priceIls.trim() ? parsedPrice : null;
+  const priceRequired = pricingEnabled === true && !service?.deactivatedAt;
   const isDirty = Boolean(
     service &&
       (name.trim() !== service.name ||
@@ -56,12 +56,9 @@ export function ServiceFormDialog({
         effectivePrice !== service.priceAgorot ||
         parsedBuffer !== service.bufferAfterMinutes),
   );
-  const isPriceValid =
-    pricingEnabled === false ||
-    (pricingEnabled === true &&
-      Boolean(priceIls.trim()) &&
-      Number.isFinite(numericPrice) &&
-      numericPrice >= 0);
+  const isPriceValid = priceIls.trim()
+    ? parsedPrice !== null && Number.isFinite(numericPrice) && numericPrice >= 0
+    : !priceRequired;
   const isValid =
     pricingEnabled !== undefined &&
     Boolean(name.trim()) &&
@@ -154,11 +151,6 @@ export function ServiceFormDialog({
           case "SERVICE_PRICE_REQUIRED":
             setErrorMessage(
               "A price is required while organization pricing is enabled.",
-            );
-            return;
-          case "ORGANIZATION_PRICING_DISABLED":
-            setErrorMessage(
-              "Organization pricing is disabled. Clear the price to save.",
             );
             return;
           case "SERVICE_MANAGEMENT_NOT_ALLOWED":
@@ -260,28 +252,32 @@ export function ServiceFormDialog({
             </FormField>
           </div>
 
-          {pricingEnabled ? (
-            <FormField
-              htmlFor="service-price"
-              label="Price (ILS ₪)"
-              helperText="Pricing is required for this organization."
-            >
-              <Input
-                id="service-price"
-                type="number"
-                min="0"
-                step="0.01"
-                disabled={isReadOnly || isPending}
-                value={priceIls}
-                onChange={(e) => {
-                  setErrorMessage(null);
-                  setPriceIls(e.target.value);
-                }}
-                required
-                placeholder="e.g. 70"
-              />
-            </FormField>
-          ) : null}
+          <FormField
+            htmlFor="service-price"
+            label="Price (ILS ₪)"
+            helperText={
+              pricingEnabled
+                ? priceRequired
+                  ? "Required while this Service is active."
+                  : "Saved price shown to customers when this Service is active."
+                : "Saved for when pricing is enabled. Customers won't see this price while pricing is off."
+            }
+          >
+            <Input
+              id="service-price"
+              type="number"
+              min="0"
+              step="0.01"
+              disabled={isReadOnly || isPending}
+              value={priceIls}
+              onChange={(e) => {
+                setErrorMessage(null);
+                setPriceIls(e.target.value);
+              }}
+              required={priceRequired}
+              placeholder="e.g. 70"
+            />
+          </FormField>
 
           <div className={styles.formActions}>
             {isEditing ? (

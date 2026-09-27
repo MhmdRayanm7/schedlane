@@ -234,6 +234,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
 .status,
 .lifecycle {
   display: inline-flex;
@@ -321,6 +326,34 @@
 .longText {
   line-height: 1.55;
   white-space: pre-wrap;
+}
+.reviewChecklist {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.reviewChecklist li {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--color-destructive);
+  font-size: 0.8125rem;
+  line-height: 1.3rem;
+}
+.reviewChecklist li[data-ready="true"] {
+  color: var(--color-primary);
+}
+.reviewChecklist svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.2rem;
+  flex: 0 0 auto;
+}
+.reviewChecklist span {
+  overflow-wrap: anywhere;
 }
 .detailActions {
   display: flex;

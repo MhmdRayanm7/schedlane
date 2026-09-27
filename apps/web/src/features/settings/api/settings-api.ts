@@ -1,4 +1,8 @@
 import type { Organization } from "@/features/organizations/types";
+import type {
+  OrganizationPublicationStatus,
+  PublicationReadiness,
+} from "@/features/publication/types";
 import { apiClient } from "@/shared/api/client";
 import type { OrganizationSettings, StaffTeamVisibility } from "../types";
 
@@ -27,6 +31,46 @@ export function updateStaffTeamVisibility(
     `/api/organizations/${organizationId}/settings/staff-team-visibility`,
     { method: "PATCH", body: { staffTeamVisibility } },
   );
+}
+
+export function updateOrganizationPricing(
+  organizationId: string,
+  pricingEnabled: boolean,
+) {
+  return apiClient<{ pricingEnabled: boolean }>(
+    `/api/organizations/${organizationId}/settings/pricing`,
+    { method: "PATCH", body: { pricingEnabled } },
+  );
+}
+
+export function getPublicationReadiness(
+  organizationId: string,
+  signal?: AbortSignal,
+) {
+  return apiClient<PublicationReadiness>(
+    `/api/organizations/${organizationId}/publication-readiness`,
+    { signal },
+  );
+}
+
+export function getPublicationStatus(
+  organizationId: string,
+  signal?: AbortSignal,
+) {
+  return apiClient<OrganizationPublicationStatus>(
+    `/api/organizations/${organizationId}/publication-status`,
+    { signal },
+  );
+}
+
+export function requestPublication(organizationId: string) {
+  return apiClient<{
+    id: string;
+    status: "pending";
+    requestedAt: string;
+  }>(`/api/organizations/${organizationId}/publication-requests`, {
+    method: "POST",
+  });
 }
 
 export function archiveOrganization(organizationId: string) {
