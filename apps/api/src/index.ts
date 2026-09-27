@@ -1,4 +1,5 @@
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { sql } from "kysely";
 import { config } from "./config.js";
@@ -20,6 +21,10 @@ await app.register(cors, {
   origin: config.WEB_ORIGIN,
   credentials: true,
   methods: ["GET", "HEAD", "PUT", "POST", "DELETE", "PATCH"],
+});
+
+await app.register(rateLimit, {
+  global: false,
 });
 
 registerAuthRoutes(app);

@@ -11,10 +11,12 @@
     "test": "vitest run",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed-development.ts",
-    "db:seed:demo-owner": "tsx src/seed-development-owner.ts"
+    "db:seed:demo-owner": "tsx src/seed-development-owner.ts",
+    "db:seed:platform-admin": "tsx src/seed-platform-admin.ts"
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",
+    "@fastify/rate-limit": "^10.3.0",
     "@fastify/type-provider-typebox": "6.1.0",
     "better-auth": "1.7.2",
     "env-schema": "8.0.0",

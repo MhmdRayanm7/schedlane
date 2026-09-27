@@ -1,9 +1,14 @@
 import { db } from "../../../db.js";
+import { insertOutboxEventInTransaction } from "../../../outbox/persistence.js";
+import {
+  type OrganizationRequestRejectedPayload,
+  organizationRequestEventTypes,
+} from "../domain/request-events.js";
 
 type RejectOrganizationRequestInput = {
   requestId: string;
   reviewedByUserId: string;
-  reason?: string;
+  reason: string;
 };
 
 type RejectOrganizationRequestFailure =
@@ -65,8 +70,19 @@ export async function rejectOrganizationRequest(
       };
     }
 
-    const rejectionReason = input.reason?.trim() || null;
+    const rejectionReason = input.reason.trim();
     const decidedAt = new Date();
+
+    const requestDetails = await trx
+      .selectFrom("organization_request")
+      .innerJoin("user", "user.id", "organization_request.requested_by_user_id")
+      .select([
+        "organization_request.name",
+        "user.name as applicant_name",
+        "user.email as applicant_email",
+      ])
+      .where("organization_request.id", "=", request.id)
+      .executeTakeFirstOrThrow();
 
     const rejectedRequest = await trx
       .updateTable("organization_request")
@@ -80,6 +96,23 @@ export async function rejectOrganizationRequest(
       .where("id", "=", request.id)
       .returning(["id", "status"])
       .executeTakeFirstOrThrow();
+
+    await insertOutboxEventInTransaction<
+      typeof organizationRequestEventTypes.rejected,
+      OrganizationRequestRejectedPayload
+    >(trx, {
+      aggregateType: "organization_request",
+      aggregateId: request.id,
+      eventType: organizationRequestEventTypes.rejected,
+      payload: {
+        requestId: request.id,
+        applicantName: requestDetails.applicant_name,
+        applicantEmail: requestDetails.applicant_email,
+        organizationName: requestDetails.name,
+        rejectionReason,
+      },
+      occurredAt: decidedAt,
+    });
 
     return {
       ok: true,

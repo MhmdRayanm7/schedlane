@@ -30,6 +30,10 @@ export type ListOrganizationRequestsResult =
       items: Array<{
         id: string;
         name: string;
+        description: string | null;
+        contactPhone: string | null;
+        additionalContext: string | null;
+        wantsSetupHelp: boolean;
         status: OrganizationRequestStatus;
         requestedBy: {
           id: string;
@@ -181,6 +185,10 @@ export async function listOrganizationRequests(
     .select([
       "organization_request.id",
       "organization_request.name",
+      "organization_request.description",
+      "organization_request.contact_phone",
+      "organization_request.additional_context",
+      "organization_request.wants_setup_help",
       "organization_request.status",
       "organization_request.organization_id",
       "organization_request.rejection_reason",
@@ -228,6 +236,10 @@ export async function listOrganizationRequests(
     items: pageRows.map((row) => ({
       id: row.id,
       name: row.name,
+      description: row.description,
+      contactPhone: row.contact_phone,
+      additionalContext: row.additional_context,
+      wantsSetupHelp: row.wants_setup_help,
       status: row.status,
       requestedBy: {
         id: row.requested_by_user_id,
@@ -240,5 +252,146 @@ export async function listOrganizationRequests(
       decidedAt: row.decided_at?.toISOString() ?? null,
     })),
     nextCursor,
+  };
+}
+
+export async function getApplicantOrganizationRequest(userId: string) {
+  const row = await db
+    .selectFrom("organization_request")
+    .select([
+      "id",
+      "name",
+      "description",
+      "contact_phone",
+      "additional_context",
+      "wants_setup_help",
+      "status",
+      "organization_id",
+      "rejection_reason",
+      "created_at",
+      "decided_at",
+    ])
+    .where("requested_by_user_id", "=", userId)
+    .orderBy("created_at", "desc")
+    .orderBy("id", "desc")
+    .executeTakeFirst();
+
+  if (!row) return { request: null };
+
+  return {
+    request: {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      contactPhone: row.contact_phone,
+      additionalContext: row.additional_context,
+      wantsSetupHelp: row.wants_setup_help,
+      status: row.status,
+      organizationId: row.organization_id,
+      rejectionReason: row.rejection_reason,
+      createdAt: row.created_at.toISOString(),
+      decidedAt: row.decided_at?.toISOString() ?? null,
+    },
+  };
+}
+
+export type GetPlatformOrganizationRequestResult =
+  | {
+      ok: true;
+      request: {
+        id: string;
+        name: string;
+        description: string | null;
+        contactPhone: string | null;
+        additionalContext: string | null;
+        wantsSetupHelp: boolean;
+        status: OrganizationRequestStatus;
+        requestedBy: { id: string; name: string; email: string };
+        reviewedBy: { id: string; name: string; email: string } | null;
+        organizationId: string | null;
+        rejectionReason: string | null;
+        createdAt: string;
+        decidedAt: string | null;
+      };
+    }
+  | { ok: false; reason: "platform_admin_required" | "request_not_found" };
+
+export async function getPlatformOrganizationRequest(input: {
+  userId: string;
+  requestId: string;
+}): Promise<GetPlatformOrganizationRequestResult> {
+  const admin = await db
+    .selectFrom("platform_admin")
+    .select("user_id")
+    .where("user_id", "=", input.userId)
+    .where("revoked_at", "is", null)
+    .executeTakeFirst();
+
+  if (!admin) return { ok: false, reason: "platform_admin_required" };
+
+  const row = await db
+    .selectFrom("organization_request")
+    .innerJoin(
+      "user as applicant",
+      "applicant.id",
+      "organization_request.requested_by_user_id",
+    )
+    .leftJoin(
+      "user as reviewer",
+      "reviewer.id",
+      "organization_request.reviewed_by_user_id",
+    )
+    .select([
+      "organization_request.id",
+      "organization_request.name",
+      "organization_request.description",
+      "organization_request.contact_phone",
+      "organization_request.additional_context",
+      "organization_request.wants_setup_help",
+      "organization_request.status",
+      "organization_request.requested_by_user_id",
+      "organization_request.reviewed_by_user_id",
+      "organization_request.organization_id",
+      "organization_request.rejection_reason",
+      "organization_request.created_at",
+      "organization_request.decided_at",
+      "applicant.name as applicant_name",
+      "applicant.email as applicant_email",
+      "reviewer.name as reviewer_name",
+      "reviewer.email as reviewer_email",
+    ])
+    .where("organization_request.id", "=", input.requestId)
+    .executeTakeFirst();
+
+  if (!row) return { ok: false, reason: "request_not_found" };
+
+  return {
+    ok: true,
+    request: {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      contactPhone: row.contact_phone,
+      additionalContext: row.additional_context,
+      wantsSetupHelp: row.wants_setup_help,
+      status: row.status,
+      requestedBy: {
+        id: row.requested_by_user_id,
+        name: row.applicant_name,
+        email: row.applicant_email,
+      },
+      reviewedBy:
+        row.reviewed_by_user_id && row.reviewer_name && row.reviewer_email
+          ? {
+              id: row.reviewed_by_user_id,
+              name: row.reviewer_name,
+              email: row.reviewer_email,
+            }
+          : null,
+      organizationId: row.organization_id,
+      rejectionReason: row.rejection_reason,
+      createdAt: row.created_at.toISOString(),
+      decidedAt: row.decided_at?.toISOString() ?? null,
+    },
   };
 }

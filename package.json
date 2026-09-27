@@ -14,7 +14,8 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "db:seed": "pnpm --filter @schedlane/api db:seed",
-    "db:seed:demo-owner": "pnpm --filter @schedlane/api db:seed:demo-owner"
+    "db:seed:demo-owner": "pnpm --filter @schedlane/api db:seed:demo-owner",
+    "db:seed:platform-admin": "pnpm --filter @schedlane/api db:seed:platform-admin"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.10",

@@ -1,4 +1,9 @@
 import { db } from "../../../db.js";
+import { insertOutboxEventInTransaction } from "../../../outbox/persistence.js";
+import {
+  type OrganizationRequestApprovedPayload,
+  organizationRequestEventTypes,
+} from "../domain/request-events.js";
 
 type ApproveOrganizationRequestInput = {
   requestId: string;
@@ -20,6 +25,7 @@ export type ApproveOrganizationRequestResult =
         slug: string;
         name: string;
         createdAt: string;
+        publishedAt: null;
       };
       request: {
         id: string;
@@ -99,6 +105,12 @@ export async function approveOrganizationRequest(
 
     const decidedAt = new Date();
 
+    const applicant = await trx
+      .selectFrom("user")
+      .select(["name", "email"])
+      .where("id", "=", request.requested_by_user_id)
+      .executeTakeFirstOrThrow();
+
     const approvedRequest = await trx
       .updateTable("organization_request")
       .set({
@@ -112,6 +124,24 @@ export async function approveOrganizationRequest(
       .returning(["id", "status"])
       .executeTakeFirstOrThrow();
 
+    await insertOutboxEventInTransaction<
+      typeof organizationRequestEventTypes.approved,
+      OrganizationRequestApprovedPayload
+    >(trx, {
+      aggregateType: "organization_request",
+      aggregateId: request.id,
+      eventType: organizationRequestEventTypes.approved,
+      payload: {
+        requestId: request.id,
+        applicantName: applicant.name,
+        applicantEmail: applicant.email,
+        organizationId: organization.id,
+        organizationName: organization.name,
+        organizationSlug: organization.slug,
+      },
+      occurredAt: decidedAt,
+    });
+
     return {
       ok: true,
       organization: {
@@ -119,6 +149,7 @@ export async function approveOrganizationRequest(
         slug: organization.slug,
         name: organization.name,
         createdAt: organization.created_at.toISOString(),
+        publishedAt: null,
       },
       request: {
         id: approvedRequest.id,

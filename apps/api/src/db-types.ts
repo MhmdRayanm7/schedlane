@@ -36,6 +36,10 @@ export interface OrganizationRequestTable {
   id: Generated<string>;
   requested_by_user_id: string;
   name: string;
+  description: string | null;
+  contact_phone: string | null;
+  additional_context: string | null;
+  wants_setup_help: Generated<boolean>;
   status: Generated<OrganizationRequestStatus>;
   reviewed_by_user_id: string | null;
   organization_id: string | null;

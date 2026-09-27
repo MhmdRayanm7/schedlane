@@ -1,8 +1,15 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
 import { approveOrganizationRequest } from "../application/approval.js";
+import {
+  getPlatformAdminIdentity,
+  listPlatformOrganizations,
+} from "../application/platform.js";
 import { rejectOrganizationRequest } from "../application/rejection.js";
-import { listOrganizationRequests } from "../application/request-queries.js";
+import {
+  getPlatformOrganizationRequest,
+  listOrganizationRequests,
+} from "../application/request-queries.js";
 import {
   suspendOrganization,
   unsuspendOrganization,
@@ -15,18 +22,22 @@ import {
 const approveOrganizationRequestBody = Type.Object({
   slug: Type.String({
     minLength: 1,
+    maxLength: 80,
     pattern: "^[a-z0-9]+(-[a-z0-9]+)*$",
   }),
 });
 
 const rejectOrganizationRequestBody = Type.Object({
-  reason: Type.Optional(
-    Type.String({
-      minLength: 1,
-      maxLength: 500,
-      pattern: ".*\\S.*",
-    }),
-  ),
+  reason: Type.String({
+    minLength: 1,
+    maxLength: 500,
+    pattern: ".*\\S.*",
+  }),
+});
+
+const listOrganizationsQuery = Type.Object({
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+  cursor: Type.Optional(Type.String({ minLength: 1 })),
 });
 
 const listOrganizationRequestsQuery = Type.Object({
@@ -54,6 +65,18 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
   // ---------------------------------------------------------------------------
   // Platform administration
   // ---------------------------------------------------------------------------
+
+  app.get("/api/platform/me", async (request, reply) => {
+    const result = await getPlatformAdminIdentity(request.verifiedUser.id);
+    if (!result.ok) {
+      return reply.code(403).send({
+        code: "PLATFORM_ADMIN_REQUIRED",
+        message: "Platform administrator access required",
+        requestId: request.id,
+      });
+    }
+    return reply.code(200).send(result.admin);
+  });
 
   app.get(
     "/api/platform/organization-requests",
@@ -90,6 +113,59 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
         }
       }
 
+      return reply.code(200).send(result);
+    },
+  );
+
+  app.get(
+    "/api/platform/organization-requests/:requestId",
+    { schema: { params: organizationRequestParamsSchema } },
+    async (request, reply) => {
+      const result = await getPlatformOrganizationRequest({
+        userId: request.verifiedUser.id,
+        requestId: request.params.requestId,
+      });
+
+      if (!result.ok) {
+        const forbidden = result.reason === "platform_admin_required";
+        return reply.code(forbidden ? 403 : 404).send({
+          code: forbidden
+            ? "PLATFORM_ADMIN_REQUIRED"
+            : "ORGANIZATION_REQUEST_NOT_FOUND",
+          message: forbidden
+            ? "Platform administrator access required"
+            : "Organization request not found",
+          requestId: request.id,
+        });
+      }
+
+      return reply.code(200).send(result.request);
+    },
+  );
+
+  app.get(
+    "/api/platform/organizations",
+    { schema: { querystring: listOrganizationsQuery } },
+    async (request, reply) => {
+      const result = await listPlatformOrganizations({
+        userId: request.verifiedUser.id,
+        limit: request.query.limit ?? 20,
+        cursor: request.query.cursor,
+      });
+      if (!result.ok) {
+        if (result.reason === "platform_admin_required") {
+          return reply.code(403).send({
+            code: "PLATFORM_ADMIN_REQUIRED",
+            message: "Platform administrator access required",
+            requestId: request.id,
+          });
+        }
+        return reply.code(400).send({
+          code: "INVALID_CURSOR",
+          message: "The pagination cursor is invalid",
+          requestId: request.id,
+        });
+      }
       return reply.code(200).send(result);
     },
   );
@@ -161,11 +237,7 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
       const result = await rejectOrganizationRequest({
         requestId: request.params.requestId,
         reviewedByUserId: user.id,
-        ...(request.body.reason !== undefined
-          ? {
-              reason: request.body.reason,
-            }
-          : {}),
+        reason: request.body.reason,
       });
 
       if (!result.ok) {

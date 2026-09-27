@@ -38,6 +38,11 @@ const configSchema = Type.Object({
     minLength: 1,
   }),
 
+  ORGANIZATION_REQUEST_RATE_LIMIT_MAX: Type.Integer({
+    default: 5,
+    minimum: 1,
+  }),
+
   EMAIL_PROVIDER: Type.Union(
     [Type.Literal("console"), Type.Literal("resend")],
     {
