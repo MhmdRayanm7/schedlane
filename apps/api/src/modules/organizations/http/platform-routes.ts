@@ -5,6 +5,15 @@ import {
   getPlatformAdminIdentity,
   listPlatformOrganizations,
 } from "../application/platform.js";
+import {
+  publishOrganization,
+  rejectPublicationRequest,
+  unpublishOrganization,
+} from "../application/publication-decisions.js";
+import {
+  getPlatformPublicationRequest,
+  listPublicationRequests,
+} from "../application/publication-platform.js";
 import { rejectOrganizationRequest } from "../application/rejection.js";
 import {
   getPlatformOrganizationRequest,
@@ -17,6 +26,7 @@ import {
 import {
   organizationParamsSchema,
   organizationRequestParamsSchema,
+  publicationRequestParamsSchema,
 } from "./schemas.js";
 
 const approveOrganizationRequestBody = Type.Object({
@@ -60,6 +70,28 @@ const listOrganizationRequestsQuery = Type.Object({
     }),
   ),
 });
+
+const listPublicationRequestsQuery = Type.Object({
+  status: Type.Optional(
+    Type.Union([
+      Type.Literal("pending"),
+      Type.Literal("approved"),
+      Type.Literal("rejected"),
+    ]),
+  ),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+});
+
+const publicationReasonBody = Type.Object(
+  {
+    reason: Type.String({
+      minLength: 1,
+      maxLength: 500,
+      pattern: ".*\\S.*",
+    }),
+  },
+  { additionalProperties: Type.Never() },
+);
 
 export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
   // ---------------------------------------------------------------------------
@@ -113,6 +145,179 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
         }
       }
 
+      return reply.code(200).send(result);
+    },
+  );
+
+  app.get(
+    "/api/platform/publication-requests",
+    { schema: { querystring: listPublicationRequestsQuery } },
+    async (request, reply) => {
+      const result = await listPublicationRequests({
+        userId: request.verifiedUser.id,
+        status: request.query.status,
+        limit: request.query.limit ?? 50,
+      });
+      if (!result.ok) {
+        return reply.code(403).send({
+          code: "PLATFORM_ADMIN_REQUIRED",
+          message: "Platform administrator access required",
+          requestId: request.id,
+        });
+      }
+      return reply.code(200).send({ items: result.items });
+    },
+  );
+
+  app.get(
+    "/api/platform/publication-requests/:requestId",
+    { schema: { params: publicationRequestParamsSchema } },
+    async (request, reply) => {
+      const result = await getPlatformPublicationRequest({
+        userId: request.verifiedUser.id,
+        requestId: request.params.requestId,
+      });
+      if (!result.ok) {
+        const forbidden = result.reason === "platform_admin_required";
+        return reply.code(forbidden ? 403 : 404).send({
+          code: forbidden
+            ? "PLATFORM_ADMIN_REQUIRED"
+            : "PUBLICATION_REQUEST_NOT_FOUND",
+          message: forbidden
+            ? "Platform administrator access required"
+            : "Publication request not found",
+          requestId: request.id,
+        });
+      }
+      return reply.code(200).send(result.request);
+    },
+  );
+
+  app.post(
+    "/api/platform/publication-requests/:requestId/publish",
+    { schema: { params: publicationRequestParamsSchema } },
+    async (request, reply) => {
+      const result = await publishOrganization({
+        userId: request.verifiedUser.id,
+        requestId: request.params.requestId,
+      });
+      if (!result.ok) {
+        switch (result.reason) {
+          case "platform_admin_required":
+            return reply.code(403).send({
+              code: "PLATFORM_ADMIN_REQUIRED",
+              message: "Platform administrator access required",
+              requestId: request.id,
+            });
+          case "request_not_found":
+            return reply.code(404).send({
+              code: "PUBLICATION_REQUEST_NOT_FOUND",
+              message: "Publication request not found",
+              requestId: request.id,
+            });
+          case "request_not_pending":
+            return reply.code(409).send({
+              code: "PUBLICATION_REQUEST_NOT_PENDING",
+              message: "Publication request is no longer pending",
+              requestId: request.id,
+            });
+          case "already_published":
+            return reply.code(409).send({
+              code: "ORGANIZATION_ALREADY_PUBLISHED",
+              message: "Organization is already published",
+              requestId: request.id,
+            });
+          case "readiness_changed":
+            return reply.code(409).send({
+              code: "PUBLICATION_READINESS_CHANGED",
+              message: "Organization readiness changed after the request",
+              readiness: result.readiness,
+              requestId: request.id,
+            });
+        }
+      }
+      return reply.code(200).send(result);
+    },
+  );
+
+  app.post(
+    "/api/platform/publication-requests/:requestId/reject",
+    {
+      schema: {
+        params: publicationRequestParamsSchema,
+        body: publicationReasonBody,
+      },
+    },
+    async (request, reply) => {
+      const result = await rejectPublicationRequest({
+        userId: request.verifiedUser.id,
+        requestId: request.params.requestId,
+        reason: request.body.reason,
+      });
+      if (!result.ok) {
+        const status =
+          result.reason === "platform_admin_required"
+            ? 403
+            : result.reason === "request_not_found"
+              ? 404
+              : 409;
+        return reply.code(status).send({
+          code:
+            result.reason === "platform_admin_required"
+              ? "PLATFORM_ADMIN_REQUIRED"
+              : result.reason === "request_not_found"
+                ? "PUBLICATION_REQUEST_NOT_FOUND"
+                : "PUBLICATION_REQUEST_NOT_PENDING",
+          message:
+            status === 403
+              ? "Platform administrator access required"
+              : status === 404
+                ? "Publication request not found"
+                : "Publication request is no longer pending",
+          requestId: request.id,
+        });
+      }
+      return reply.code(200).send(result.request);
+    },
+  );
+
+  app.post(
+    "/api/platform/organizations/:organizationId/unpublish",
+    {
+      schema: {
+        params: organizationParamsSchema,
+        body: publicationReasonBody,
+      },
+    },
+    async (request, reply) => {
+      const result = await unpublishOrganization({
+        userId: request.verifiedUser.id,
+        organizationId: request.params.organizationId,
+        reason: request.body.reason,
+      });
+      if (!result.ok) {
+        const status =
+          result.reason === "platform_admin_required"
+            ? 403
+            : result.reason === "organization_not_found"
+              ? 404
+              : 409;
+        return reply.code(status).send({
+          code:
+            result.reason === "platform_admin_required"
+              ? "PLATFORM_ADMIN_REQUIRED"
+              : result.reason === "organization_not_found"
+                ? "ORGANIZATION_NOT_FOUND"
+                : "ORGANIZATION_NOT_PUBLISHED",
+          message:
+            status === 403
+              ? "Platform administrator access required"
+              : status === 404
+                ? "Organization not found"
+                : "Organization is not published",
+          requestId: request.id,
+        });
+      }
       return reply.code(200).send(result);
     },
   );

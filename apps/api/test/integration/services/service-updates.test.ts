@@ -4,7 +4,10 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { db } from "../../../src/db.js";
 import type { MembershipRole } from "../../../src/db-types.js";
 import { createService } from "../../../src/modules/services/application/create-update.js";
-import { deactivateService } from "../../../src/modules/services/application/lifecycle.js";
+import {
+  deactivateService,
+  reactivateService,
+} from "../../../src/modules/services/application/lifecycle.js";
 import { serviceRoutes } from "../../../src/modules/services/http/index.js";
 import {
   addTestMembership,
@@ -162,13 +165,11 @@ describe("Service updates", () => {
     expect(response.json().code).toBe("ORGANIZATION_NOT_FOUND");
   });
 
-  it("rejects non-null prices when pricing is disabled", async () => {
+  it("allows preparing a non-null price when pricing is disabled", async () => {
     const f = await fixture();
-    const before = await f.read();
     const response = await f.patch({ priceAgorot: 0 });
-    expect(response.statusCode).toBe(409);
-    expect(response.json().code).toBe("ORGANIZATION_PRICING_DISABLED");
-    expect(await f.read()).toEqual(before);
+    expect(response.statusCode).toBe(200);
+    expect(await f.read()).toMatchObject({ price_agorot: 0 });
   });
 
   it("rejects explicit null with pricing enabled and accepts a non-null price", async () => {
@@ -197,18 +198,19 @@ describe("Service updates", () => {
     expect((await f.patch({ priceAgorot: 100 })).statusCode).toBe(200);
   });
 
-  it("validates a retained non-null price when disabled and allows explicitly clearing it", async () => {
+  it("preserves a retained non-null price while disabled and allows explicitly clearing it", async () => {
     const f = await fixture(true);
     await db
       .updateTable("organization")
       .set({ pricing_enabled: false })
       .where("id", "=", f.organizationId)
       .execute();
-    const before = await f.read();
-    const response = await f.patch({ name: "Rejected" });
-    expect(response.statusCode).toBe(409);
-    expect(response.json().code).toBe("ORGANIZATION_PRICING_DISABLED");
-    expect(await f.read()).toEqual(before);
+    const response = await f.patch({ name: "Preserved" });
+    expect(response.statusCode).toBe(200);
+    expect(await f.read()).toMatchObject({
+      name: "Preserved",
+      price_agorot: 5000,
+    });
     expect((await f.patch({ priceAgorot: null })).statusCode).toBe(200);
     expect(await f.read()).toMatchObject({ price_agorot: null });
   });
@@ -227,6 +229,30 @@ describe("Service updates", () => {
       ...before,
       name: "Updated inactive Service",
       updated_at: expect.any(Date),
+    });
+  });
+
+  it("requires a stored price before reactivating while pricing is enabled", async () => {
+    const f = await fixture();
+    expect((await deactivateService(f)).ok).toBe(true);
+    await db
+      .updateTable("organization")
+      .set({ pricing_enabled: true })
+      .where("id", "=", f.organizationId)
+      .execute();
+    expect(await reactivateService(f)).toEqual({
+      ok: false,
+      reason: "price_required",
+    });
+    expect((await f.read()).deactivated_at).not.toBeNull();
+    await db
+      .updateTable("service")
+      .set({ price_agorot: 2500 })
+      .where("id", "=", f.serviceId)
+      .execute();
+    expect(await reactivateService(f)).toMatchObject({
+      ok: true,
+      service: { id: f.serviceId, deactivatedAt: null },
     });
   });
 

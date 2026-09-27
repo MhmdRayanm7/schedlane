@@ -11,6 +11,14 @@ type UpdateStaffTeamVisibilityInput = {
   visibility: StaffTeamVisibility;
 };
 
+type UpdatePricingInput = {
+  userId: string;
+  organizationId: string;
+  pricingEnabled: boolean;
+};
+
+export type PricingBlocker = { serviceId: string; serviceName: string };
+
 type GetOrganizationSettingsInput = {
   userId: string;
   organizationId: string;
@@ -122,5 +130,68 @@ export async function updateStaffTeamVisibility(
       ok: true,
       staffTeamVisibility: input.visibility,
     };
+  });
+}
+
+export async function updateOrganizationPricing(
+  input: UpdatePricingInput,
+): Promise<
+  | { ok: true; pricingEnabled: boolean }
+  | {
+      ok: false;
+      reason:
+        | "organization_not_found"
+        | "owner_required"
+        | "active_services_missing_price"
+        | OrganizationWriteStateFailure;
+      services?: PricingBlocker[];
+    }
+> {
+  return db.transaction().execute(async (trx) => {
+    const membership = await trx
+      .selectFrom("membership")
+      .select("role")
+      .where("user_id", "=", input.userId)
+      .where("organization_id", "=", input.organizationId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!membership) return { ok: false, reason: "organization_not_found" };
+    if (membership.role !== "owner")
+      return { ok: false, reason: "owner_required" };
+
+    const writeState = await requireWritableOrganization(
+      trx,
+      input.organizationId,
+    );
+    if (!writeState.ok) return writeState;
+
+    if (input.pricingEnabled) {
+      const missingPrices = await trx
+        .selectFrom("service")
+        .select(["id", "name"])
+        .where("organization_id", "=", input.organizationId)
+        .where("deactivated_at", "is", null)
+        .where("price_agorot", "is", null)
+        .orderBy("display_order", "asc")
+        .orderBy("id", "asc")
+        .execute();
+      if (missingPrices.length > 0) {
+        return {
+          ok: false,
+          reason: "active_services_missing_price",
+          services: missingPrices.map((service) => ({
+            serviceId: service.id,
+            serviceName: service.name,
+          })),
+        };
+      }
+    }
+
+    await trx
+      .updateTable("organization")
+      .set({ pricing_enabled: input.pricingEnabled, updated_at: new Date() })
+      .where("id", "=", input.organizationId)
+      .executeTakeFirstOrThrow();
+    return { ok: true, pricingEnabled: input.pricingEnabled };
   });
 }

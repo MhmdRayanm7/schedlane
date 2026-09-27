@@ -18,3 +18,7 @@ export const organizationMembershipParamsSchema = Type.Object({
 export const organizationRequestParamsSchema = Type.Object({
   requestId: uuidSchema,
 });
+
+export const publicationRequestParamsSchema = Type.Object({
+  requestId: uuidSchema,
+});

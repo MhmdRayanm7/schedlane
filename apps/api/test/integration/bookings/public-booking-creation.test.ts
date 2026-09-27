@@ -654,7 +654,7 @@ describe("public guest Booking creation", () => {
   });
 
   it.each([
-    [false, null, null],
+    [false, 5000, null],
     [true, 5000, 5000],
     [true, 0, 0],
   ] as const)(

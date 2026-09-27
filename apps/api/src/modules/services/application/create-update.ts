@@ -17,7 +17,6 @@ type CreateServiceFailure =
   | "organization_not_found"
   | "insufficient_role"
   | "price_required"
-  | "pricing_disabled"
   | OrganizationWriteStateFailure;
 
 export type CreateServiceResult =
@@ -87,13 +86,6 @@ export async function createService(
       };
     }
 
-    if (!organization.pricing_enabled && input.priceAgorot !== null) {
-      return {
-        ok: false,
-        reason: "pricing_disabled",
-      };
-    }
-
     const currentOrder = await trx
       .selectFrom("service")
       .select((eb) => eb.fn.max("display_order").as("max_display_order"))
@@ -155,7 +147,6 @@ type UpdateServiceFailure =
   | "service_not_found"
   | "insufficient_role"
   | "price_required"
-  | "pricing_disabled"
   | OrganizationWriteStateFailure;
 
 export type UpdateServiceResult =
@@ -223,11 +214,12 @@ export async function updateService(
       input.priceAgorot !== undefined
         ? input.priceAgorot
         : currentService.price_agorot;
-    if (organization.pricing_enabled && effectivePrice === null) {
+    if (
+      organization.pricing_enabled &&
+      currentService.deactivated_at === null &&
+      effectivePrice === null
+    ) {
       return { ok: false, reason: "price_required" };
-    }
-    if (!organization.pricing_enabled && effectivePrice !== null) {
-      return { ok: false, reason: "pricing_disabled" };
     }
 
     const service = await trx

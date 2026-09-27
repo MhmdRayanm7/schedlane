@@ -14,6 +14,7 @@ type ManageServiceLifecycleFailure =
   | "organization_not_found"
   | "service_not_found"
   | "insufficient_role"
+  | "price_required"
   | OrganizationWriteStateFailure;
 
 export type ManageServiceLifecycleResult =
@@ -66,7 +67,7 @@ export async function deactivateService(
 
     const service = await trx
       .selectFrom("service")
-      .select(["id", "deactivated_at"])
+      .select(["id", "deactivated_at", "price_agorot"])
       .where("id", "=", input.serviceId)
       .where("organization_id", "=", input.organizationId)
       .forUpdate()
@@ -147,7 +148,7 @@ export async function reactivateService(
 
     const service = await trx
       .selectFrom("service")
-      .select(["id", "deactivated_at"])
+      .select(["id", "deactivated_at", "price_agorot"])
       .where("id", "=", input.serviceId)
       .where("organization_id", "=", input.organizationId)
       .forUpdate()
@@ -168,6 +169,15 @@ export async function reactivateService(
           deactivatedAt: null,
         },
       };
+    }
+
+    const organization = await trx
+      .selectFrom("organization")
+      .select("pricing_enabled")
+      .where("id", "=", input.organizationId)
+      .executeTakeFirstOrThrow();
+    if (organization.pricing_enabled && service.price_agorot === null) {
+      return { ok: false, reason: "price_required" };
     }
 
     const updatedAt = new Date();

@@ -4,6 +4,11 @@ export type MembershipRole = "owner" | "manager" | "staff";
 
 export type OrganizationRequestStatus = "pending" | "approved" | "rejected";
 
+export type OrganizationPublicationRequestStatus =
+  | "pending"
+  | "approved"
+  | "rejected";
+
 export type StaffTeamVisibility = "team" | "self";
 
 export type BookingStatus = "confirmed" | "cancelled" | "no_show";
@@ -46,6 +51,25 @@ export interface OrganizationRequestTable {
   rejection_reason: string | null;
   created_at: Generated<Date>;
   decided_at: Date | null;
+}
+
+export interface OrganizationPublicationRequestTable {
+  id: Generated<string>;
+  organization_id: string;
+  requested_by_user_id: string;
+  status: Generated<OrganizationPublicationRequestStatus>;
+  requested_at: Generated<Date>;
+  reviewed_by_user_id: string | null;
+  reviewed_at: Date | null;
+  rejection_reason: string | null;
+}
+
+export interface OrganizationUnpublicationTable {
+  id: Generated<string>;
+  organization_id: string;
+  unpublished_by_user_id: string;
+  reason: string;
+  unpublished_at: Generated<Date>;
 }
 
 export interface MembershipTable {
@@ -218,6 +242,8 @@ export interface Database {
   platform_admin: PlatformAdminTable;
   organization: OrganizationTable;
   organization_request: OrganizationRequestTable;
+  organization_publication_request: OrganizationPublicationRequestTable;
+  organization_unpublication: OrganizationUnpublicationTable;
   membership: MembershipTable;
   organization_invitation: OrganizationInvitationTable;
   resource: ResourceTable;

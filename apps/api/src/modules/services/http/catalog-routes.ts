@@ -99,14 +99,6 @@ export const catalogRoutes: FastifyPluginAsyncTypebox = async (app) => {
               requestId: request.id,
             });
 
-          case "pricing_disabled":
-            return reply.code(409).send({
-              code: "ORGANIZATION_PRICING_DISABLED",
-              message:
-                "Enable organization pricing before setting a Service price",
-              requestId: request.id,
-            });
-
           case "organization_archived":
           case "organization_suspended":
             return sendOrganizationWriteStateError(
@@ -171,14 +163,6 @@ export const catalogRoutes: FastifyPluginAsyncTypebox = async (app) => {
               requestId: request.id,
             });
 
-          case "pricing_disabled":
-            return reply.code(409).send({
-              code: "ORGANIZATION_PRICING_DISABLED",
-              message:
-                "Enable organization pricing before setting a Service price",
-              requestId: request.id,
-            });
-
           case "organization_archived":
           case "organization_suspended":
             return sendOrganizationWriteStateError(
@@ -231,6 +215,14 @@ export const catalogRoutes: FastifyPluginAsyncTypebox = async (app) => {
               requestId: request.id,
             });
 
+          case "price_required":
+            return reply.code(409).send({
+              code: "SERVICE_PRICE_REQUIRED",
+              message:
+                "A price is required while organization pricing is enabled",
+              requestId: request.id,
+            });
+
           case "organization_archived":
           case "organization_suspended":
             return sendOrganizationWriteStateError(
@@ -280,6 +272,14 @@ export const catalogRoutes: FastifyPluginAsyncTypebox = async (app) => {
               code: "SERVICE_MANAGEMENT_NOT_ALLOWED",
               message:
                 "Your organization role does not allow Service management",
+              requestId: request.id,
+            });
+
+          case "price_required":
+            return reply.code(409).send({
+              code: "SERVICE_PRICE_REQUIRED",
+              message:
+                "Set a price before reactivating this Service while pricing is enabled",
               requestId: request.id,
             });
 

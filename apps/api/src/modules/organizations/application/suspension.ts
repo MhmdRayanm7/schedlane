@@ -92,8 +92,6 @@ export async function suspendOrganization(
       .updateTable("organization")
       .set({
         suspended_at: suspendedAt,
-        // Suspension immediately removes the organization from public booking.
-        published_at: null,
         updated_at: suspendedAt,
       })
       .where("id", "=", organization.id)

@@ -94,13 +94,13 @@ describe("Service creation pricing", () => {
     },
   );
 
-  it("rejects a non-null price when pricing is disabled", async () => {
+  it("stores a non-null price while pricing is disabled", async () => {
     const f = await fixture(false);
     const response = await f.post(4500);
 
-    expect(response.statusCode).toBe(409);
-    expect(response.json().code).toBe("ORGANIZATION_PRICING_DISABLED");
-    expect(await f.read()).toEqual([]);
+    expect(response.statusCode).toBe(201);
+    expect(response.json().priceAgorot).toBe(4500);
+    expect(await f.read()).toMatchObject([{ price_agorot: 4500 }]);
   });
 
   it("rejects a negative price at the HTTP validation boundary", async () => {

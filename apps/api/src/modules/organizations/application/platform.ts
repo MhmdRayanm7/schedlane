@@ -90,6 +90,13 @@ export async function listPlatformOrganizations(input: {
         WHERE m.organization_id = organization.id AND m.role = 'owner'
         ORDER BY m.created_at, m.id LIMIT 1
       )`.as("owner_email"),
+      sql<string | null>`(
+        SELECT publication_request.id
+        FROM organization_publication_request publication_request
+        WHERE publication_request.organization_id = organization.id
+          AND publication_request.status = 'pending'
+        LIMIT 1
+      )`.as("pending_publication_request_id"),
     ])
     .orderBy("organization.created_at", "desc")
     .orderBy("organization.id", "desc")
@@ -130,6 +137,7 @@ export async function listPlatformOrganizations(input: {
       publicBookingPaused: row.public_booking_paused,
       suspendedAt: row.suspended_at?.toISOString() ?? null,
       archivedAt: row.archived_at?.toISOString() ?? null,
+      pendingPublicationRequestId: row.pending_publication_request_id,
       createdAt: row.created_at.toISOString(),
     })),
     nextCursor,

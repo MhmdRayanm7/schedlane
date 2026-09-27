@@ -102,7 +102,6 @@ export async function archiveOrganization(
       .updateTable("organization")
       .set({
         archived_at: archivedAt,
-        published_at: null,
         updated_at: archivedAt,
       })
       .where("id", "=", input.organizationId)

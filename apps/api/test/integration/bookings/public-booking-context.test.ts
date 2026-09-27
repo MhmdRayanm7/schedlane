@@ -111,7 +111,9 @@ describe("public Booking context", () => {
       slug: "acme-barbers",
       name: "Acme Barbers",
       publishedAt,
+      pricingEnabled: true,
     });
+
     const secondService = await createService({
       id: "00000000-0000-4000-8000-000000000102",
       organizationId: organization.id,
@@ -189,6 +191,31 @@ describe("public Booking context", () => {
           ],
         },
       ],
+    });
+  });
+
+  it("hides stored Service prices while organization pricing is disabled", async () => {
+    const organization = await createTestOrganization({ publishedAt });
+    const service = await createService({
+      id: "00000000-0000-4000-8000-000000000501",
+      organizationId: organization.id,
+      name: "Prepared price",
+      displayOrder: 0,
+      priceAgorot: 8500,
+    });
+    const resource = await createResource({
+      id: "00000000-0000-4000-8000-000000000502",
+      organizationId: organization.id,
+      name: "Available resource",
+    });
+    await assign(organization.id, resource.id, service.id);
+
+    const response = await request(organization.slug);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().services[0]).toMatchObject({
+      id: service.id,
+      priceAgorot: null,
     });
   });
 

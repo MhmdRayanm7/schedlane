@@ -64,7 +64,13 @@ export async function getPublicBookingContext(
     .execute(async (trx) => {
       const organization = await trx
         .selectFrom("organization")
-        .select(["id", "name", "slug", "max_booking_horizon_days"])
+        .select([
+          "id",
+          "name",
+          "slug",
+          "max_booking_horizon_days",
+          "pricing_enabled",
+        ])
         .where("slug", "=", organizationSlug)
         .where("published_at", "is not", null)
         .where("archived_at", "is", null)
@@ -126,7 +132,14 @@ export async function getPublicBookingContext(
             now,
             organization.max_booking_horizon_days,
           ),
-          services: projectPublicServices(rows),
+          services: projectPublicServices(
+            rows.map((row) => ({
+              ...row,
+              priceAgorot: organization.pricing_enabled
+                ? row.priceAgorot
+                : null,
+            })),
+          ),
         },
       };
     });
