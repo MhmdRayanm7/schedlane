@@ -12,6 +12,7 @@ import styles from "../bookings.module.css";
 import { useBookingActions } from "../hooks/use-booking-actions";
 import { bookingActionErrorMessage } from "../lib/booking-action-errors";
 import {
+  bookingCustomerLabel,
   formatBookingDate,
   formatBookingTimeRange,
 } from "../lib/booking-format";
@@ -83,7 +84,7 @@ export function BookingLifecycleDialog({
         : "Revert no-show?";
   const description =
     action === "cancel"
-      ? `${booking.guestName} | ${formatBookingDate(booking.startAt)} | ${formatBookingTimeRange(booking)} | ${booking.serviceName}`
+      ? `${bookingCustomerLabel(booking)} | ${formatBookingDate(booking.startAt)} | ${formatBookingTimeRange(booking)} | ${booking.serviceName}`
       : action === "mark-no-show"
         ? "This records that the customer did not arrive for the appointment."
         : "This returns the booking to Confirmed and restores its occupied time.";

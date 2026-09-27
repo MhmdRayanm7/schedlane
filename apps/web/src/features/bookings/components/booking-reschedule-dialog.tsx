@@ -27,6 +27,7 @@ import {
   useRescheduleOptions,
 } from "../hooks/use-booking-reschedule";
 import {
+  bookingCustomerLabel,
   bookingDateTime,
   bookingLocalDate,
   formatMinuteOfDay,
@@ -168,7 +169,7 @@ export function BookingRescheduleDialog({
       >
         <header>
           <DialogTitle>Reschedule booking</DialogTitle>
-          <DialogDescription>{booking.guestName}</DialogDescription>
+          <DialogDescription>{bookingCustomerLabel(booking)}</DialogDescription>
         </header>
 
         <div className={styles.rescheduleContent}>

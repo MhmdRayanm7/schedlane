@@ -45,6 +45,13 @@ export function formatPriceAgorot(priceAgorot: number) {
   return priceFormatter.format(priceAgorot / 100);
 }
 
+export function bookingCustomerLabel(booking: ManagementBooking) {
+  if (booking.guestName) return booking.guestName;
+  if (booking.guestPhone) return booking.guestPhone;
+  if (booking.guestEmail) return booking.guestEmail;
+  return booking.source === "manual" ? "Walk-in" : "Customer";
+}
+
 export function groupBookingsByLocalDate(bookings: ManagementBooking[]) {
   return bookings.reduce<Map<string, ManagementBooking[]>>(
     (groups, booking) => {

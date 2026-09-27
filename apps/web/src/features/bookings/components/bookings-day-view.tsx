@@ -1,5 +1,6 @@
 import styles from "../bookings.module.css";
 import {
+  bookingCustomerLabel,
   formatBookingTime,
   formatBookingTimeRange,
 } from "../lib/booking-format";
@@ -36,7 +37,7 @@ export function BookingsDayView({
             {formatBookingTime(booking.startAt)}
           </div>
           <button
-            aria-label={`View ${booking.guestName}'s ${booking.serviceName} booking at ${formatBookingTime(booking.startAt)}`}
+            aria-label={`View ${bookingCustomerLabel(booking)}'s ${booking.serviceName} booking at ${formatBookingTime(booking.startAt)}`}
             className={styles.bookingRow}
             data-status={booking.status}
             aria-pressed={selectedBookingId === booking.id}
@@ -44,7 +45,9 @@ export function BookingsDayView({
             type="button"
           >
             <span className={styles.bookingCopy}>
-              <span className={styles.guest}>{booking.guestName}</span>
+              <span className={styles.guest}>
+                {bookingCustomerLabel(booking)}
+              </span>
               <span className={styles.service}>
                 {booking.serviceName} · {booking.resourceName}
               </span>

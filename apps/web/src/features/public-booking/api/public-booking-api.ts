@@ -93,7 +93,11 @@ export function getManagedBooking(token: string, signal?: AbortSignal) {
 
 export function updateManagedContact(
   token: string,
-  input: Pick<GuestDetails, "guestName" | "guestPhone" | "guestEmail">,
+  input: {
+    guestName?: string;
+    guestPhone?: string;
+    guestEmail?: string | null;
+  },
 ) {
   return apiClient<
     Pick<
@@ -103,7 +107,12 @@ export function updateManagedContact(
   >("/api/public/bookings/manage/contact", {
     method: "PATCH",
     headers: bearer(token),
-    body: { ...input, guestEmail: input.guestEmail.trim() || null },
+    body: {
+      ...input,
+      ...(input.guestEmail !== undefined
+        ? { guestEmail: input.guestEmail?.trim() || null }
+        : {}),
+    },
   });
 }
 

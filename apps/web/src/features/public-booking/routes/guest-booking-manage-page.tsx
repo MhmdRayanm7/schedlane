@@ -52,20 +52,20 @@ function EditContactDialog({
   ) => void;
   onUnavailable: (message: string) => void;
 }) {
-  const [name, setName] = useState(booking.guestName);
+  const [name, setName] = useState(booking.guestName ?? "");
   const [phone, setPhone] = useState(booking.guestPhone ?? "");
   const [email, setEmail] = useState(booking.guestEmail ?? "");
   const [error, setError] = useState("");
   const update = useMutation({
     mutationFn: () =>
       updateManagedContact(token, {
-        guestName: name.trim(),
+        ...(name.trim() ? { guestName: name.trim() } : {}),
         guestPhone: phone.trim(),
         guestEmail: email.trim(),
       }),
   });
   const dirty =
-    name.trim() !== booking.guestName ||
+    name.trim() !== (booking.guestName ?? "") ||
     phoneForComparison(phone) !==
       phoneForComparison(booking.guestPhone ?? "") ||
     email.trim() !== (booking.guestEmail ?? "");
@@ -73,7 +73,7 @@ function EditContactDialog({
     id: "guest-contact",
     dirty: open && dirty,
     discard: () => {
-      setName(booking.guestName);
+      setName(booking.guestName ?? "");
       setPhone(booking.guestPhone ?? "");
       setEmail(booking.guestEmail ?? "");
       setError("");
@@ -82,7 +82,7 @@ function EditContactDialog({
 
   useEffect(() => {
     if (open) {
-      setName(booking.guestName);
+      setName(booking.guestName ?? "");
       setPhone(booking.guestPhone ?? "");
       setEmail(booking.guestEmail ?? "");
       setError("");
@@ -491,7 +491,7 @@ export function GuestBookingManagePage() {
             <dl className={styles.manageDetails}>
               <div>
                 <dt>Name</dt>
-                <dd>{booking.guestName}</dd>
+                <dd>{booking.guestName ?? "Customer"}</dd>
               </div>
               <div>
                 <dt>Phone</dt>

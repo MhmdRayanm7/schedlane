@@ -47,7 +47,7 @@ export type ManagedBooking = {
   serviceEndAt: string;
   durationMinutes: number;
   priceAgorot: number | null;
-  guestName: string;
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
   customerNote: string | null;

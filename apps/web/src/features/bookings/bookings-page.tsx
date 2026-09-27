@@ -1,7 +1,9 @@
+import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useOutletContext, useParams, useSearchParams } from "react-router";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
 import { PageHeader } from "@/shared/components/page-header";
+import { Button } from "@/shared/components/ui/button";
 import { formatLocalDate, schedulingToday } from "@/shared/lib/date-time";
 import styles from "./bookings.module.css";
 import { BookingDetailsSheet } from "./components/booking-details-sheet";
@@ -12,6 +14,7 @@ import {
 } from "./components/bookings-query-states";
 import { BookingsToolbar } from "./components/bookings-toolbar";
 import { BookingsWeekView } from "./components/bookings-week-view";
+import { CreateBookingDialog } from "./components/create-booking-dialog";
 import { useBookings } from "./hooks/use-bookings";
 import {
   type BookingsView,
@@ -27,6 +30,8 @@ export function BookingsPage() {
   const { organizationId } = useParams<{ organizationId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creationMessage, setCreationMessage] = useState("");
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
     null,
   );
@@ -67,13 +72,27 @@ export function BookingsPage() {
     ) ?? null;
 
   if (!organizationId) return null;
+  const isReadOnly = Boolean(
+    currentOrganization.archivedAt || currentOrganization.suspendedAt,
+  );
 
   return (
     <div className={styles.page}>
       <PageHeader
         title="Bookings"
         description="View and manage your organization's appointments."
+        action={
+          <Button disabled={isReadOnly} onClick={() => setCreateOpen(true)}>
+            <Plus aria-hidden="true" className={styles.smallIcon} />
+            New booking
+          </Button>
+        }
       />
+      {creationMessage ? (
+        <p className={styles.creationNotice} role="status">
+          {creationMessage}
+        </p>
+      ) : null}
       <BookingsToolbar
         date={date}
         dateLabel={dateLabel}
@@ -125,13 +144,25 @@ export function BookingsPage() {
         key={selectedBookingId}
         open={detailsOpen && Boolean(selectedBooking)}
         booking={selectedBooking}
-        isReadOnly={Boolean(
-          currentOrganization.archivedAt || currentOrganization.suspendedAt,
-        )}
+        isReadOnly={isReadOnly}
         onOpenChange={setDetailsOpen}
         onRescheduled={(targetDate) => {
           updateSearch(targetDate, view);
           setSelectedBookingId(null);
+        }}
+        organizationId={organizationId}
+      />
+      <CreateBookingDialog
+        defaultDate={formatLocalDate(date)}
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(targetDate, emailProvided) => {
+          updateSearch(targetDate, view);
+          setCreationMessage(
+            emailProvided
+              ? "Booking created. Customer confirmation will be sent by email."
+              : "Booking created.",
+          );
         }}
         organizationId={organizationId}
       />

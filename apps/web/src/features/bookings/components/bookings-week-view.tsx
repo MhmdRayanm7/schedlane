@@ -3,6 +3,7 @@ import { formatLocalDate } from "@/shared/lib/date-time";
 import styles from "../bookings.module.css";
 import { weekDates } from "../lib/booking-date-range";
 import {
+  bookingCustomerLabel,
   formatBookingTime,
   groupBookingsByLocalDate,
 } from "../lib/booking-format";
@@ -28,7 +29,7 @@ function WeekBooking({
 }) {
   return (
     <button
-      aria-label={`View ${booking.guestName}'s ${booking.serviceName} booking at ${formatBookingTime(booking.startAt)}`}
+      aria-label={`View ${bookingCustomerLabel(booking)}'s ${booking.serviceName} booking at ${formatBookingTime(booking.startAt)}`}
       className={styles.weekBooking}
       data-status={booking.status}
       aria-pressed={selected}
@@ -38,7 +39,7 @@ function WeekBooking({
       <span className={styles.weekTime}>
         {formatBookingTime(booking.startAt)}
       </span>
-      <span className={styles.weekGuest}>{booking.guestName}</span>
+      <span className={styles.weekGuest}>{bookingCustomerLabel(booking)}</span>
       <span className={styles.weekService}>{booking.serviceName}</span>
       <span className={styles.weekStatus}>
         <BookingStatus status={booking.status} />

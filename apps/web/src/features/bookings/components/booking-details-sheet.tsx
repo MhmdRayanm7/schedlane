@@ -9,6 +9,7 @@ import {
 } from "@/shared/components/ui/sheet";
 import styles from "../bookings.module.css";
 import {
+  bookingCustomerLabel,
   formatBookingDate,
   formatBookingDateTime,
   formatBookingTimeRange,
@@ -71,7 +72,7 @@ export function BookingDetailsSheet({
               <SheetHeader className={styles.detailsHeader}>
                 <div className={styles.detailsHeading}>
                   <SheetTitle className={styles.detailsTitle}>
-                    {booking.guestName}
+                    {bookingCustomerLabel(booking)}
                   </SheetTitle>
                   <BookingStatus status={booking.status} />
                 </div>
@@ -111,6 +112,30 @@ export function BookingDetailsSheet({
                       <DetailItem
                         label="Price"
                         value={formatPriceAgorot(booking.priceAgorot)}
+                      />
+                    ) : null}
+                  </dl>
+                </section>
+
+                <section
+                  aria-labelledby="booking-origin-heading"
+                  className={styles.detailSection}
+                >
+                  <h2
+                    className={styles.sectionTitle}
+                    id="booking-origin-heading"
+                  >
+                    Booking origin
+                  </h2>
+                  <dl className={styles.singleColumnGrid}>
+                    <DetailItem
+                      label="Source"
+                      value={booking.source === "manual" ? "Manual" : "Online"}
+                    />
+                    {booking.source === "manual" ? (
+                      <DetailItem
+                        label="Created by"
+                        value={booking.creator?.name ?? "Former team member"}
                       />
                     ) : null}
                   </dl>
