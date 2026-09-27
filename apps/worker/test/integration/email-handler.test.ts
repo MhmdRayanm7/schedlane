@@ -141,14 +141,20 @@ describe("Booking Email Handler Integration", () => {
     expect(receipt.rows[0].outcome).toBe("email_sent");
   });
 
-  it("sends confirmation email without management link for manual booking", async () => {
+  it("sends a neutral confirmation with management link for a manual booking", async () => {
     const orgId = randomUUID();
     const serviceId = randomUUID();
     const bookingId = randomUUID();
 
     await createOrganization(infra.pool, orgId);
     await createService(infra.pool, serviceId, orgId);
-    await createBooking(infra.pool, bookingId, orgId, serviceId, null);
+    await createBooking(
+      infra.pool,
+      bookingId,
+      orgId,
+      serviceId,
+      encryptedTokenEnvelope,
+    );
 
     const emailService = new FakeTransactionalEmailService();
     const handler = createBookingEmailHandler({
@@ -173,7 +179,8 @@ describe("Booking Email Handler Integration", () => {
         startAt: "2026-06-15T10:00:00.000Z",
         serviceEndAt: "2026-06-15T10:30:00.000Z",
         durationMinutes: 30,
-        guestName: "Bob Jones",
+        source: "manual",
+        guestName: null,
         guestEmail: "bob@example.com",
         guestPhone: null,
         priceAgorot: null,
@@ -187,7 +194,11 @@ describe("Booking Email Handler Integration", () => {
     expect(sent).toBeDefined();
     if (!sent) throw new Error("sent is undefined");
     expect(sent.to).toBe("bob@example.com");
-    expect(sent.text).not.toContain("Manage booking:");
+    expect(sent.text).not.toContain("Hi null");
+    expect(sent.text).toContain("Your booking has been confirmed.");
+    expect(sent.text).toContain(
+      `http://localhost:5173/booking/manage#token=${rawToken}`,
+    );
   });
 
   it("records skipped_no_email and sends no email when guestEmail is null", async () => {

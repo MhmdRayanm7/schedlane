@@ -75,6 +75,31 @@ describe("email-templates", () => {
       expect(email.text).not.toContain("Price:");
       expect(email.text).not.toContain("Manage booking:");
     });
+
+    it("uses neutral copy for a manual booking without a customer name", () => {
+      const email = renderBookingCreatedEmail(
+        {
+          ...baseEvent,
+          payload: {
+            ...baseEvent.payload,
+            source: "manual",
+            guestName: null,
+          },
+        },
+        "https://example.com/booking/manage#token=tok123",
+        {
+          organizationName: "Calm Studio",
+          resourceName: "Room One",
+          serviceName: "Consultation",
+        },
+      );
+
+      expect(email.text).not.toContain("Hi null");
+      expect(email.text).toContain("Your booking has been confirmed.");
+      expect(email.text).toContain("Organization: Calm Studio");
+      expect(email.text).toContain("Service: Consultation");
+      expect(email.text).toContain("Resource: Room One");
+    });
   });
 
   describe("renderBookingRescheduledEmail", () => {

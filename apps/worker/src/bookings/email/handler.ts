@@ -12,6 +12,7 @@ import {
   decryptGuestManagementToken,
 } from "./guest-management-link.js";
 import {
+  type BookingEmailContext,
   type RenderedEmail,
   renderBookingCancelledEmail,
   renderBookingCreatedEmail,
@@ -48,8 +49,22 @@ export function createBookingEmailHandler(
 
         const bookingResult = await client.query<{
           guest_management_token_encrypted: string | null;
+          organization_name: string;
+          resource_name: string | null;
+          service_name: string;
         }>(
-          `SELECT guest_management_token_encrypted FROM booking WHERE id = $1`,
+          `SELECT
+             booking.guest_management_token_encrypted,
+             organization.name AS organization_name,
+             resource.name AS resource_name,
+             service.name AS service_name
+           FROM booking
+           JOIN organization ON organization.id = booking.organization_id
+           LEFT JOIN resource ON resource.id = booking.resource_id
+             AND resource.organization_id = booking.organization_id
+           JOIN service ON service.id = booking.service_id
+             AND service.organization_id = booking.organization_id
+           WHERE booking.id = $1`,
           [event.payload.bookingId],
         );
 
@@ -84,15 +99,32 @@ export function createBookingEmailHandler(
         }
 
         let rendered: RenderedEmail;
+        const bookingContext: BookingEmailContext = {
+          organizationName: bookingResult.rows[0]?.organization_name ?? "",
+          resourceName: bookingResult.rows[0]?.resource_name ?? "",
+          serviceName: bookingResult.rows[0]?.service_name ?? "",
+        };
         switch (event.eventType) {
           case "booking.created":
-            rendered = renderBookingCreatedEmail(event, managementUrl);
+            rendered = renderBookingCreatedEmail(
+              event,
+              managementUrl,
+              bookingContext,
+            );
             break;
           case "booking.rescheduled":
-            rendered = renderBookingRescheduledEmail(event, managementUrl);
+            rendered = renderBookingRescheduledEmail(
+              event,
+              managementUrl,
+              bookingContext,
+            );
             break;
           case "booking.cancelled":
-            rendered = renderBookingCancelledEmail(event, managementUrl);
+            rendered = renderBookingCancelledEmail(
+              event,
+              managementUrl,
+              bookingContext,
+            );
             break;
         }
 

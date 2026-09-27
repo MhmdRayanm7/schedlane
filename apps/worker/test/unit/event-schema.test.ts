@@ -18,6 +18,7 @@ describe("booking event schema validation", () => {
       serviceEndAt: "2026-10-05T12:30:00.000Z",
       durationMinutes: 30,
       priceAgorot: 5000,
+      source: "public",
       guestName: "Alice",
       guestPhone: "+972501234567",
       guestEmail: "alice@example.com",
@@ -31,6 +32,35 @@ describe("booking event schema validation", () => {
     expect(result.event.eventType).toBe("booking.created");
     expect(result.event.eventId).toBe(validCreatedEvent.eventId);
     expect(result.event.payload.guestEmail).toBe("alice@example.com");
+  });
+
+  it("accepts a manual event with no guest name", () => {
+    const result = parseBookingEventMessage(
+      JSON.stringify({
+        ...validCreatedEvent,
+        payload: {
+          ...validCreatedEvent.payload,
+          source: "manual",
+          guestName: null,
+        },
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.event.payload).toMatchObject({
+      source: "manual",
+      guestName: null,
+    });
+  });
+
+  it("treats a historical event without source as public", () => {
+    const { source: _source, ...historicalPayload } = validCreatedEvent.payload;
+    const result = parseBookingEventMessage(
+      JSON.stringify({ ...validCreatedEvent, payload: historicalPayload }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.event.payload.source).toBe("public");
   });
 
   it("parses and validates a valid booking.rescheduled event", () => {

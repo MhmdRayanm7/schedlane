@@ -7,9 +7,29 @@ export interface RenderedEmail {
   text: string;
 }
 
+export interface BookingEmailContext {
+  organizationName: string;
+  resourceName: string;
+  serviceName: string;
+}
+
+function greeting(guestName: string | null): string[] {
+  return guestName ? [`Hi ${guestName},`, ""] : [];
+}
+
+function appointmentContext(context?: BookingEmailContext): string[] {
+  if (!context) return [];
+  return [
+    `Organization: ${context.organizationName}`,
+    `Service: ${context.serviceName}`,
+    `Resource: ${context.resourceName}`,
+  ];
+}
+
 export function renderBookingCreatedEmail(
   event: Extract<ValidatedBookingEvent, { eventType: "booking.created" }>,
   managementUrl?: string | null,
+  context?: BookingEmailContext,
 ): RenderedEmail {
   const { guestName, guestEmail, publicReference, startAt, priceAgorot } =
     event.payload;
@@ -21,10 +41,10 @@ export function renderBookingCreatedEmail(
   const formattedDateTime = formatJerusalemDateTime(startAt);
 
   const lines = [
-    `Hi ${guestName},`,
-    "",
+    ...greeting(guestName),
     "Your booking has been confirmed.",
     "",
+    ...appointmentContext(context),
     `Reference: ${publicReference}`,
     `Appointment: ${formattedDateTime} (Asia/Jerusalem)`,
   ];
@@ -50,6 +70,7 @@ export function renderBookingCreatedEmail(
 export function renderBookingRescheduledEmail(
   event: Extract<ValidatedBookingEvent, { eventType: "booking.rescheduled" }>,
   managementUrl?: string | null,
+  context?: BookingEmailContext,
 ): RenderedEmail {
   const {
     guestName,
@@ -68,10 +89,10 @@ export function renderBookingRescheduledEmail(
   const formattedNew = formatJerusalemDateTime(startAt);
 
   const lines = [
-    `Hi ${guestName},`,
-    "",
+    ...greeting(guestName),
     "Your booking has been rescheduled.",
     "",
+    ...appointmentContext(context),
     `Reference: ${publicReference}`,
     `Previous Appointment: ${formattedPrevious} (Asia/Jerusalem)`,
     `New Appointment: ${formattedNew} (Asia/Jerusalem)`,
@@ -98,6 +119,7 @@ export function renderBookingRescheduledEmail(
 export function renderBookingCancelledEmail(
   event: Extract<ValidatedBookingEvent, { eventType: "booking.cancelled" }>,
   managementUrl?: string | null,
+  context?: BookingEmailContext,
 ): RenderedEmail {
   const {
     guestName,
@@ -114,10 +136,10 @@ export function renderBookingCancelledEmail(
   const formattedDateTime = formatJerusalemDateTime(startAt);
 
   const lines = [
-    `Hi ${guestName},`,
-    "",
+    ...greeting(guestName),
     "Your booking has been cancelled.",
     "",
+    ...appointmentContext(context),
     `Reference: ${publicReference}`,
     `Scheduled Appointment: ${formattedDateTime} (Asia/Jerusalem)`,
   ];

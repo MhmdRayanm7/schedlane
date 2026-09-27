@@ -47,10 +47,17 @@ export async function startWorkerTestInfrastructure() {
         price_agorot integer NULL
       );
 
+      CREATE TABLE IF NOT EXISTS resource (
+        id uuid PRIMARY KEY,
+        organization_id uuid NOT NULL REFERENCES organization(id),
+        name text NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS booking (
         id uuid PRIMARY KEY,
         organization_id uuid NOT NULL REFERENCES organization(id),
         service_id uuid NOT NULL REFERENCES service(id),
+        resource_id uuid NULL REFERENCES resource(id),
         public_reference text NOT NULL,
         status text NOT NULL,
         start_at timestamptz NOT NULL,
@@ -93,7 +100,7 @@ export async function startWorkerTestInfrastructure() {
       rabbitChannel,
       async reset() {
         await pool.query(
-          "TRUNCATE TABLE outbox_event, consumer_receipt, booking, service, organization CASCADE",
+          "TRUNCATE TABLE outbox_event, consumer_receipt, booking, resource, service, organization CASCADE",
         );
         await rabbitChannel?.purgeQueue(BOOKING_EVENTS_QUEUE);
         await rabbitChannel?.purgeQueue(BOOKING_EVENTS_RETRY_QUEUE);

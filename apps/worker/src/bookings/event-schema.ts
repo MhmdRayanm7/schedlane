@@ -8,7 +8,8 @@ export type ValidatedBookingCreatedPayload = {
   serviceEndAt: string;
   durationMinutes: number;
   priceAgorot: number | null;
-  guestName: string;
+  source?: "public" | "manual";
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
 };
@@ -26,7 +27,8 @@ export type ValidatedBookingCancelledPayload = {
   resourceId: string;
   serviceId: string;
   startAt: string;
-  guestName: string;
+  source?: "public" | "manual";
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
   cancelledAt: string;
@@ -82,6 +84,14 @@ function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
 }
 
+function isNullableNonEmptyString(value: unknown): value is string | null {
+  return value === null || isNonEmptyString(value);
+}
+
+function isBookingSource(value: unknown): value is "public" | "manual" {
+  return value === "public" || value === "manual";
+}
+
 function isNullableNonNegativeInteger(value: unknown): value is number | null {
   return (
     value === null ||
@@ -106,7 +116,8 @@ function validateCreatedPayload(
   if (!isValidIsoDate(payload.serviceEndAt)) return false;
   if (!isPositiveInteger(payload.durationMinutes)) return false;
   if (!isNullableNonNegativeInteger(payload.priceAgorot)) return false;
-  if (!isNonEmptyString(payload.guestName)) return false;
+  if (!isBookingSource(payload.source)) return false;
+  if (!isNullableNonEmptyString(payload.guestName)) return false;
   if (!isNullableString(payload.guestPhone)) return false;
   if (!isNullableString(payload.guestEmail)) return false;
   return true;
@@ -133,7 +144,8 @@ function validateCancelledPayload(
   if (!isNonEmptyString(payload.resourceId)) return false;
   if (!isNonEmptyString(payload.serviceId)) return false;
   if (!isValidIsoDate(payload.startAt)) return false;
-  if (!isNonEmptyString(payload.guestName)) return false;
+  if (!isBookingSource(payload.source)) return false;
+  if (!isNullableNonEmptyString(payload.guestName)) return false;
   if (!isNullableString(payload.guestPhone)) return false;
   if (!isNullableString(payload.guestEmail)) return false;
   if (!isValidIsoDate(payload.cancelledAt)) return false;
@@ -174,7 +186,11 @@ export function parseBookingEventMessage(
     return { ok: false, deadLetterReason: "invalid_envelope" };
   }
 
-  const payload = record.payload as Record<string, unknown>;
+  const rawPayload = record.payload as Record<string, unknown>;
+  const payload = {
+    ...rawPayload,
+    source: rawPayload.source ?? "public",
+  };
   const eventId = record.eventId;
   const aggregateId = record.aggregateId;
   const occurredAt = record.occurredAt;
