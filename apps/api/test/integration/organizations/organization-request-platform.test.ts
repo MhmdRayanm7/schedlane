@@ -534,4 +534,41 @@ describe("Platform review and organization directory", () => {
     });
     expect(decidedAgain.statusCode).toBe(409);
   });
+
+  it("paginates organizations without losing sub-millisecond rows", async () => {
+    const f = await fixture();
+    const ids: string[] = [];
+    for (const createdAt of [
+      "2026-10-05T12:00:00.123800Z",
+      "2026-10-05T12:00:00.123900Z",
+    ]) {
+      const organization = await db
+        .insertInto("organization")
+        .values({
+          name: `Organization ${createdAt}`,
+          slug: `org-${randomUUID()}`,
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow();
+      await sql`UPDATE organization SET created_at = ${createdAt}::timestamptz WHERE id = ${organization.id}::uuid`.execute(
+        db,
+      );
+      ids.push(organization.id);
+    }
+
+    const first = await app.inject({
+      method: "GET",
+      url: "/api/platform/organizations?limit=1",
+      headers: { "x-test-user": f.adminId },
+    });
+    const firstPage = first.json();
+    const second = await app.inject({
+      method: "GET",
+      url: `/api/platform/organizations?limit=1&cursor=${encodeURIComponent(firstPage.nextCursor)}`,
+      headers: { "x-test-user": f.adminId },
+    });
+    expect([firstPage.items[0].id, second.json().items[0].id]).toEqual(
+      ids.reverse(),
+    );
+  });
 });

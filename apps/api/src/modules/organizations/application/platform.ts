@@ -19,6 +19,10 @@ export async function getPlatformAdminIdentity(userId: string) {
 }
 
 type OrganizationCursor = { createdAt: string; id: string };
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CURSOR_TIMESTAMP_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
 
 function decodeCursor(value: string): OrganizationCursor | null {
   try {
@@ -29,9 +33,9 @@ function decodeCursor(value: string): OrganizationCursor | null {
     const cursor = parsed as Record<string, unknown>;
     if (
       typeof cursor.createdAt !== "string" ||
-      !Number.isFinite(Date.parse(cursor.createdAt)) ||
+      !CURSOR_TIMESTAMP_PATTERN.test(cursor.createdAt) ||
       typeof cursor.id !== "string" ||
-      !/^[0-9a-f-]{36}$/i.test(cursor.id)
+      !UUID_PATTERN.test(cursor.id)
     ) {
       return null;
     }
@@ -71,6 +75,9 @@ export async function listPlatformOrganizations(input: {
       "organization.suspended_at",
       "organization.archived_at",
       "organization.created_at",
+      sql<string>`to_char(organization.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`.as(
+        "created_at_cursor",
+      ),
       sql<string | null>`(
         SELECT u.name FROM membership m
         JOIN "user" u ON u.id = m.user_id
@@ -103,7 +110,7 @@ export async function listPlatformOrganizations(input: {
     rows.length > input.limit && last
       ? Buffer.from(
           JSON.stringify({
-            createdAt: last.created_at.toISOString(),
+            createdAt: last.created_at_cursor,
             id: last.id,
           }),
         ).toString("base64url")
