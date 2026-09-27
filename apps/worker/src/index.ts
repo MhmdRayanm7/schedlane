@@ -9,6 +9,8 @@ import { RabbitMqOutboxPublisher } from "./messaging/rabbitmq-publisher.js";
 import { runOrganizationRequestConsumer } from "./organization-requests/consumer.js";
 import { createOrganizationRequestEmailHandler } from "./organization-requests/email/handler.js";
 import { runOutboxDispatcher } from "./outbox/dispatcher.js";
+import { runPublicationConsumer } from "./publication/consumer.js";
+import { createPublicationEmailHandler } from "./publication/email/handler.js";
 
 const pool = new Pool({ connectionString: config.DATABASE_URL });
 const shutdown = new AbortController();
@@ -54,6 +56,14 @@ const organizationRequestEventHandler = createOrganizationRequestEmailHandler({
   supportEmail: config.SUPPORT_EMAIL,
 });
 
+const publicationEventHandler = createPublicationEmailHandler({
+  pool,
+  emailService,
+  platformNotificationEmail: config.PLATFORM_NOTIFICATION_EMAIL,
+  appBaseUrl: config.APP_BASE_URL,
+  supportEmail: config.SUPPORT_EMAIL,
+});
+
 try {
   await Promise.all([
     runOutboxDispatcher({
@@ -80,6 +90,15 @@ try {
       prefetch: config.ORGANIZATION_REQUEST_EVENT_PREFETCH,
       retryDelayMs: eventRetryDelayMs,
       maxAttempts: config.ORGANIZATION_REQUEST_EVENT_MAX_ATTEMPTS,
+      reconnectDelayMs: config.RABBITMQ_RECONNECT_DELAY_MS,
+      signal: shutdown.signal,
+    }),
+    runPublicationConsumer({
+      url: config.RABBITMQ_URL,
+      handler: publicationEventHandler,
+      prefetch: config.PUBLICATION_EVENT_PREFETCH,
+      retryDelayMs: eventRetryDelayMs,
+      maxAttempts: config.PUBLICATION_EVENT_MAX_ATTEMPTS,
       reconnectDelayMs: config.RABBITMQ_RECONNECT_DELAY_MS,
       signal: shutdown.signal,
     }),

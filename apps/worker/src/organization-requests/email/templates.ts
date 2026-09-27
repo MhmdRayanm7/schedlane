@@ -1,3 +1,8 @@
+import {
+  brandedEmailShell,
+  escapeHtml,
+  supportLine,
+} from "../../email/branded-template.js";
 import type { ValidatedOrganizationRequestEvent } from "../event-schema.js";
 
 export type RenderedEmail = {
@@ -6,36 +11,6 @@ export type RenderedEmail = {
   text: string;
   html: string;
 };
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function shell(
-  title: string,
-  paragraphs: string[],
-  action?: { label: string; url: string },
-) {
-  const content = paragraphs
-    .map(
-      (paragraph) =>
-        `<p style="margin:0 0 16px;line-height:1.6">${paragraph}</p>`,
-    )
-    .join("");
-  const button = action
-    ? `<p style="margin:24px 0"><a href="${escapeHtml(action.url)}" style="display:inline-block;padding:11px 18px;border-radius:6px;background:#0F766E;color:#fff;text-decoration:none;font-weight:600">${escapeHtml(action.label)}</a></p>`
-    : "";
-  return `<!doctype html><html><body style="margin:0;background:#F7F8F8;color:#181B1B;font-family:Arial,sans-serif"><div style="padding:32px 16px"><div style="max-width:560px;margin:auto;border:1px solid #E5E9E8;border-radius:8px;background:#fff;padding:32px"><div style="margin-bottom:24px;color:#0F766E;font-size:20px;font-weight:700">Schedlane</div><h1 style="margin:0 0 20px;font-size:24px">${escapeHtml(title)}</h1>${content}${button}</div></div></body></html>`;
-}
-
-function supportLine(supportEmail?: string) {
-  return supportEmail ? `Questions? Contact us at ${supportEmail}.` : null;
-}
 
 export function renderRequestReceivedEmail(
   event: Extract<
@@ -65,7 +40,7 @@ export function renderRequestReceivedEmail(
     to: event.payload.applicantEmail,
     subject: `We received your ${event.payload.organizationName} request`,
     text: lines.join("\n"),
-    html: shell("Request received", paragraphs),
+    html: brandedEmailShell("Request received", paragraphs),
   };
 }
 
@@ -91,7 +66,7 @@ export function renderInternalRequestEmail(
     to,
     subject: `Review request: ${event.payload.organizationName}`,
     text: details.join("\n"),
-    html: shell(
+    html: brandedEmailShell(
       "Review organization request",
       details.filter(Boolean).map(escapeHtml),
       platformUrl ? { label: "Review request", url: platformUrl } : undefined,
@@ -120,7 +95,7 @@ export function renderRequestApprovedEmail(
     to: event.payload.applicantEmail,
     subject: `Your ${event.payload.organizationName} workspace is ready`,
     text: lines.join("\n"),
-    html: shell(
+    html: brandedEmailShell(
       "Your workspace is ready",
       [
         `Hi ${escapeHtml(event.payload.applicantName)},`,
@@ -157,7 +132,7 @@ export function renderRequestRejectedEmail(
     to: event.payload.applicantEmail,
     subject: `Update on your ${event.payload.organizationName} request`,
     text: lines.join("\n"),
-    html: shell(
+    html: brandedEmailShell(
       "An update on your request",
       [
         `Hi ${escapeHtml(event.payload.applicantName)},`,

@@ -17,6 +17,8 @@ const configSchema = Type.Object({
     default: 5,
     minimum: 1,
   }),
+  PUBLICATION_EVENT_PREFETCH: Type.Integer({ default: 5, minimum: 1 }),
+  PUBLICATION_EVENT_MAX_ATTEMPTS: Type.Integer({ default: 5, minimum: 1 }),
   GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY: Type.Optional(
     Type.String({ minLength: 1 }),
   ),

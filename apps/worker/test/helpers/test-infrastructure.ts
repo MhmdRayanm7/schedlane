@@ -10,6 +10,9 @@ import {
   ORGANIZATION_REQUEST_EVENTS_DLQ,
   ORGANIZATION_REQUEST_EVENTS_QUEUE,
   ORGANIZATION_REQUEST_EVENTS_RETRY_QUEUE,
+  PUBLICATION_EVENTS_DLQ,
+  PUBLICATION_EVENTS_QUEUE,
+  PUBLICATION_EVENTS_RETRY_QUEUE,
 } from "../../src/messaging/topology.js";
 
 export async function startWorkerTestInfrastructure() {
@@ -100,6 +103,9 @@ export async function startWorkerTestInfrastructure() {
           ORGANIZATION_REQUEST_EVENTS_RETRY_QUEUE,
         );
         await rabbitChannel?.purgeQueue(ORGANIZATION_REQUEST_EVENTS_DLQ);
+        await rabbitChannel?.purgeQueue(PUBLICATION_EVENTS_QUEUE);
+        await rabbitChannel?.purgeQueue(PUBLICATION_EVENTS_RETRY_QUEUE);
+        await rabbitChannel?.purgeQueue(PUBLICATION_EVENTS_DLQ);
       },
       async stop() {
         await rabbitChannel?.close().catch(() => undefined);

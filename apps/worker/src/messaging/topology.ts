@@ -17,6 +17,11 @@ export const ORGANIZATION_REQUEST_EVENTS_DLQ =
   "schedlane.organization-request.events.dlq";
 export const ORGANIZATION_REQUEST_EVENTS_ROUTING_PATTERN =
   "organization_request.#";
+export const PUBLICATION_EVENTS_QUEUE = "schedlane.publication.events";
+export const PUBLICATION_EVENTS_RETRY_QUEUE =
+  "schedlane.publication.events.retry";
+export const PUBLICATION_EVENTS_DLQ = "schedlane.publication.events.dlq";
+export const PUBLICATION_EVENTS_ROUTING_PATTERN = "organization.#";
 
 export type AssertTopologyOptions = {
   retryDelayMs?: number;
@@ -92,5 +97,32 @@ export async function assertEventTopology(
     ORGANIZATION_REQUEST_EVENTS_DLQ,
     DEAD_LETTER_EXCHANGE,
     ORGANIZATION_REQUEST_EVENTS_ROUTING_PATTERN,
+  );
+
+  await channel.assertQueue(PUBLICATION_EVENTS_QUEUE, { durable: true });
+  await channel.bindQueue(
+    PUBLICATION_EVENTS_QUEUE,
+    EVENTS_EXCHANGE,
+    PUBLICATION_EVENTS_ROUTING_PATTERN,
+  );
+
+  await channel.assertQueue(PUBLICATION_EVENTS_RETRY_QUEUE, {
+    durable: true,
+    arguments: {
+      "x-message-ttl": retryDelayMs,
+      "x-dead-letter-exchange": EVENTS_EXCHANGE,
+    },
+  });
+  await channel.bindQueue(
+    PUBLICATION_EVENTS_RETRY_QUEUE,
+    RETRY_EXCHANGE,
+    PUBLICATION_EVENTS_ROUTING_PATTERN,
+  );
+
+  await channel.assertQueue(PUBLICATION_EVENTS_DLQ, { durable: true });
+  await channel.bindQueue(
+    PUBLICATION_EVENTS_DLQ,
+    DEAD_LETTER_EXCHANGE,
+    PUBLICATION_EVENTS_ROUTING_PATTERN,
   );
 }
