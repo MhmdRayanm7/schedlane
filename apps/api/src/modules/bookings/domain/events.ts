@@ -1,3 +1,4 @@
+import type { BookingSource } from "../../../db-types.js";
 import type { ConfirmedBooking } from "../persistence/confirmed-booking-write.js";
 
 export const bookingEventType = {
@@ -16,7 +17,8 @@ export type BookingCreatedEventPayload = {
   serviceEndAt: string;
   durationMinutes: number;
   priceAgorot: number | null;
-  guestName: string;
+  source: BookingSource;
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
 };
@@ -33,7 +35,8 @@ export type BookingCancelledEventPayload = {
   resourceId: string;
   serviceId: string;
   startAt: string;
-  guestName: string;
+  source: BookingSource;
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
   cancelledAt: string;
@@ -54,6 +57,7 @@ export function createBookingCreatedEventPayload(
     serviceEndAt: booking.serviceEndAt,
     durationMinutes: booking.durationMinutes,
     priceAgorot: booking.priceAgorot,
+    source: booking.source,
     guestName: booking.guestName,
     guestPhone: booking.guestPhone,
     guestEmail: booking.guestEmail,
@@ -72,7 +76,8 @@ type RescheduledBookingSnapshot = {
   serviceEndAt: Date;
   durationMinutes: number;
   priceAgorot: number | null;
-  guestName: string;
+  source: BookingSource;
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
 };
@@ -92,6 +97,7 @@ export function createBookingRescheduledEventPayload(
     serviceEndAt: booking.serviceEndAt.toISOString(),
     durationMinutes: booking.durationMinutes,
     priceAgorot: booking.priceAgorot,
+    source: booking.source,
     guestName: booking.guestName,
     guestPhone: booking.guestPhone,
     guestEmail: booking.guestEmail,
@@ -105,7 +111,8 @@ type CancelledBookingSnapshot = {
   resourceId: string;
   serviceId: string;
   startAt: Date;
-  guestName: string;
+  source: BookingSource;
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
   cancelledAt: Date;
@@ -123,6 +130,7 @@ export function createBookingCancelledEventPayload(
     resourceId: booking.resourceId,
     serviceId: booking.serviceId,
     startAt: booking.startAt.toISOString(),
+    source: booking.source,
     guestName: booking.guestName,
     guestPhone: booking.guestPhone,
     guestEmail: booking.guestEmail,

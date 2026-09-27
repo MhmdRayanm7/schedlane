@@ -18,7 +18,7 @@ export type GuestManagedBooking = {
   serviceEndAt: string;
   durationMinutes: number;
   priceAgorot: number | null;
-  guestName: string;
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
   customerNote: string | null;
@@ -43,7 +43,7 @@ type GuestBookingRow = {
   service_end_at: Date;
   duration_minutes: number;
   price_agorot: number | null;
-  guest_name: string;
+  guest_name: string | null;
   guest_phone: string | null;
   guest_email: string | null;
   customer_note: string | null;

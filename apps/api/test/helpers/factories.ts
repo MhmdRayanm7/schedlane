@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { db } from "../../src/db.js";
-import type { BookingStatus, MembershipRole } from "../../src/db-types.js";
+import type {
+  BookingSource,
+  BookingStatus,
+  MembershipRole,
+} from "../../src/db-types.js";
 
 type CreateTestUserInput = {
   id?: string;
@@ -153,6 +157,8 @@ type CreateTestBookingInput = {
   durationMinutes: number;
   bufferAfterMinutes: number;
   status?: BookingStatus;
+  source?: BookingSource;
+  createdByUserId?: string | null;
   priceAgorot?: number | null;
   guestName?: string;
   guestPhone?: string | null;
@@ -175,6 +181,8 @@ export async function createTestBooking({
   durationMinutes,
   bufferAfterMinutes,
   status = "confirmed",
+  source = "public",
+  createdByUserId = null,
   priceAgorot = null,
   guestName = "Test guest",
   guestPhone = null,
@@ -191,6 +199,9 @@ export async function createTestBooking({
   const occupiedUntilAt = new Date(
     serviceEndAt.getTime() + bufferAfterMinutes * 60_000,
   );
+  const pairedEncryptedToken =
+    guestManagementTokenEncrypted ??
+    (guestManagementTokenHash ? "test-encrypted-token" : null);
 
   return db
     .insertInto("booking")
@@ -200,6 +211,8 @@ export async function createTestBooking({
       service_id: serviceId,
       public_reference: publicReference,
       status,
+      source,
+      created_by_user_id: createdByUserId,
       start_at: startAt,
       service_end_at: serviceEndAt,
       occupied_until_at: occupiedUntilAt,
@@ -215,7 +228,7 @@ export async function createTestBooking({
       cancellation_reason: cancellationReason,
       cancellation_cutoff_minutes: cancellationCutoffMinutes,
       guest_management_token_hash: guestManagementTokenHash,
-      guest_management_token_encrypted: guestManagementTokenEncrypted,
+      guest_management_token_encrypted: pairedEncryptedToken,
     })
     .returningAll()
     .executeTakeFirstOrThrow();

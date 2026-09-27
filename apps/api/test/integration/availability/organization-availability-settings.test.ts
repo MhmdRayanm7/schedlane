@@ -135,6 +135,7 @@ describe("Organization Availability settings", () => {
         resource_id: resource.id,
         service_id: service.id,
         public_reference: `BK-${randomUUID()}`,
+        source: "public",
         start_at: new Date("2026-10-05T06:00:00Z"),
         service_end_at: new Date("2026-10-05T06:30:00Z"),
         occupied_until_at: new Date("2026-10-05T06:30:00Z"),

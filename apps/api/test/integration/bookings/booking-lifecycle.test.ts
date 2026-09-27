@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { db } from "../../../src/db.js";
-import type { BookingStatus, MembershipRole } from "../../../src/db-types.js";
+import type {
+  BookingSource,
+  BookingStatus,
+  MembershipRole,
+} from "../../../src/db-types.js";
 import { resolveResourceServiceFreeSlotStartsForDate } from "../../../src/modules/availability/resolvers/resource-service-free-slots.js";
 import {
   cancelManagementBooking,
@@ -25,11 +29,13 @@ async function fixture({
   linked = role === "staff",
   status = "confirmed",
   bookingResource = "primary",
+  source = "public",
 }: {
   role?: MembershipRole;
   linked?: boolean;
   status?: BookingStatus;
   bookingResource?: "primary" | "other";
+  source?: BookingSource;
 } = {}) {
   const actor = await createTestUser();
   const organization = await createTestOrganization();
@@ -57,6 +63,8 @@ async function fixture({
     serviceId: service.id,
     publicReference: `LIFE-${randomUUID()}`,
     status,
+    source,
+    createdByUserId: source === "manual" ? actor.id : null,
     startAt,
     durationMinutes: 30,
     bufferAfterMinutes: 0,
@@ -125,6 +133,20 @@ async function freeStarts(f: Fixture) {
 }
 
 describe("management Booking cancellation", () => {
+  it("preserves manual source and creator through no-show, revert, and cancellation", async () => {
+    const f = await fixture({ source: "manual" });
+    expect(await f.markNoShow()).toMatchObject({ ok: true });
+    expect(await f.revertNoShow()).toMatchObject({ ok: true });
+    expect(await f.cancel()).toMatchObject({ ok: true });
+    expect(
+      await db
+        .selectFrom("booking")
+        .select(["source", "created_by_user_id"])
+        .where("id", "=", f.booking.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ source: "manual", created_by_user_id: f.actor.id });
+  });
+
   it.each(["owner", "manager"] as const)(
     "allows %s to cancel any Organization Booking",
     async (role) => {

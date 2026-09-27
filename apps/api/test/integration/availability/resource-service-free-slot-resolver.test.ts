@@ -145,6 +145,7 @@ async function insertBooking({
       service_id: serviceId,
       public_reference: randomUUID(),
       status,
+      source: "public",
       start_at: startAt,
       service_end_at: serviceEndAt,
       occupied_until_at: occupiedUntilAt,

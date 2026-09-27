@@ -8,6 +8,11 @@ import {
   down as downGuestManagement,
   up as upGuestManagement,
 } from "../../../src/migrations/0019_add_guest_booking_management.js";
+import { up as upEncryptedGuestManagementToken } from "../../../src/migrations/0021_add_encrypted_guest_management_token.js";
+import {
+  down as downManualBookingMetadata,
+  up as upManualBookingMetadata,
+} from "../../../src/migrations/0025_add_manual_booking_metadata.js";
 import {
   createTestBooking,
   createTestOrganization,
@@ -44,6 +49,7 @@ async function insertBooking(
       resource_id: resource.id,
       service_id: service.id,
       public_reference: randomUUID(),
+      source: "public",
       start_at: startAt,
       service_end_at: serviceEndAt,
       occupied_until_at: occupiedUntilAt,
@@ -59,6 +65,10 @@ async function insertBooking(
       cancellation_reason: null,
       cancellation_cutoff_minutes: 0,
       guest_management_token_hash: null,
+      guest_management_token_encrypted:
+        overrides.guest_management_token_hash == null
+          ? null
+          : "test-encrypted-token",
       ...overrides,
     })
     .returningAll()
@@ -66,6 +76,63 @@ async function insertBooking(
 }
 
 describe("Booking persistence", () => {
+  it("accepts nullable names while rejecting blank non-null names and invalid sources", async () => {
+    await expect(insertBooking({ guest_name: null })).resolves.toMatchObject({
+      guest_name: null,
+      source: "public",
+    });
+    await expect(insertBooking({ guest_name: "   " })).rejects.toMatchObject({
+      constraint: "booking_guest_name_check",
+    });
+    await expect(
+      insertBooking({ source: "invalid" as "public" }),
+    ).rejects.toMatchObject({ constraint: "booking_source_check" });
+  });
+
+  it("preserves Booking history when its attributed creator is deleted", async () => {
+    const creator = await createTestUser();
+    const row = await insertBooking({
+      source: "manual",
+      created_by_user_id: creator.id,
+    });
+    await db.deleteFrom("user").where("id", "=", creator.id).execute();
+    expect(
+      await db
+        .selectFrom("booking")
+        .select(["source", "created_by_user_id"])
+        .where("id", "=", row.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ source: "manual", created_by_user_id: null });
+  });
+
+  it("backfills historical Bookings as public without creator attribution", async () => {
+    const f = await fixture();
+    await db.transaction().execute(async (trx) => {
+      const migrationDb = trx as unknown as Kysely<unknown>;
+      await downManualBookingMetadata(migrationDb);
+      const id = randomUUID();
+      await sql`
+        INSERT INTO booking (
+          id, organization_id, resource_id, service_id, public_reference,
+          status, start_at, service_end_at, occupied_until_at,
+          duration_minutes, buffer_after_minutes, guest_name
+        ) VALUES (
+          ${id}, ${f.organization.id}, ${f.resource.id}, ${f.service.id},
+          ${randomUUID()}, 'confirmed', ${startAt}, ${serviceEndAt},
+          ${occupiedUntilAt}, 30, 15, 'Historical guest'
+        )
+      `.execute(trx);
+      await upManualBookingMetadata(migrationDb);
+      expect(
+        await trx
+          .selectFrom("booking")
+          .select(["source", "created_by_user_id"])
+          .where("id", "=", id)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ source: "public", created_by_user_id: null });
+    });
+  });
+
   it("inserts a confirmed Booking with temporal and guest snapshots", async () => {
     const row = await insertBooking({
       guest_phone: "+972501234567",
@@ -129,6 +196,25 @@ describe("Booking persistence", () => {
     ).rejects.toMatchObject({
       code: "23505",
       constraint: "booking_guest_management_token_hash_key",
+    });
+  });
+
+  it("requires new management-token hashes and encrypted copies as a pair", async () => {
+    await expect(
+      insertBooking({
+        guest_management_token_hash: "hash-only",
+        guest_management_token_encrypted: null,
+      }),
+    ).rejects.toMatchObject({
+      constraint: "booking_guest_management_token_pair_check",
+    });
+    await expect(
+      insertBooking({
+        guest_management_token_hash: null,
+        guest_management_token_encrypted: "encrypted-only",
+      }),
+    ).rejects.toMatchObject({
+      constraint: "booking_guest_management_token_pair_check",
     });
   });
 
@@ -281,6 +367,7 @@ describe("Booking persistence", () => {
     await insertBooking();
     await db.transaction().execute(async (trx) => {
       const migrationDb = trx as unknown as Kysely<unknown>;
+      await downManualBookingMetadata(migrationDb);
       await downGuestManagement(migrationDb);
       await down(migrationDb);
       const { rows } = await sql<{ table_name: string | null }>`
@@ -289,6 +376,8 @@ describe("Booking persistence", () => {
       expect(rows[0]?.table_name).toBeNull();
       await up(migrationDb);
       await upGuestManagement(migrationDb);
+      await upEncryptedGuestManagementToken(migrationDb);
+      await upManualBookingMetadata(migrationDb);
     });
     expect((await insertBooking()).status).toBe("confirmed");
   });

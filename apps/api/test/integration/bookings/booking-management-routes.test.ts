@@ -229,3 +229,104 @@ describe("Booking management HTTP reads", () => {
     expect(body).not.toContain("userId");
   });
 });
+
+describe("Manual Booking HTTP workflow", () => {
+  async function configureManualBooking(
+    f: Awaited<ReturnType<typeof fixture>>,
+  ) {
+    await db
+      .insertInto("organization_weekly_hours")
+      .values({
+        organization_id: f.organization.id,
+        weekday: 1,
+        start_minute: 540,
+        end_minute: 660,
+      })
+      .execute();
+    await db
+      .insertInto("resource_service")
+      .values({
+        organization_id: f.organization.id,
+        resource_id: f.resource.id,
+        service_id: f.service.id,
+      })
+      .execute();
+  }
+
+  it("exposes context/options and creates without returning a capability", async () => {
+    const f = await fixture();
+    await configureManualBooking(f);
+    const context = await app.inject({
+      method: "GET",
+      url: `/api/organizations/${f.organization.id}/bookings/manual-context`,
+      headers: { "x-test-user": f.actor.id },
+    });
+    expect(context.statusCode).toBe(200);
+    expect(context.json()).toMatchObject({
+      role: "owner",
+      resources: [
+        { id: f.otherResource.id, services: [] },
+        { id: f.resource.id, services: [{ id: f.service.id }] },
+      ],
+    });
+
+    const options = await app.inject({
+      method: "GET",
+      url: `/api/organizations/${f.organization.id}/bookings/manual-options?${new URLSearchParams(
+        { resourceId: f.resource.id, serviceId: f.service.id, date: fromDate },
+      )}`,
+      headers: { "x-test-user": f.actor.id },
+    });
+    expect(options.statusCode).toBe(200);
+    expect(options.json()).toMatchObject({
+      starts: expect.arrayContaining([540]),
+    });
+
+    const created = await app.inject({
+      method: "POST",
+      url: `/api/organizations/${f.organization.id}/bookings/manual`,
+      headers: { "x-test-user": f.actor.id },
+      payload: {
+        resourceId: f.resource.id,
+        serviceId: f.service.id,
+        date: fromDate,
+        startMinute: 540,
+        guestEmail: "manual@example.test",
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({
+      source: "manual",
+      guestName: null,
+      guestEmail: "manual@example.test",
+      creator: { id: f.actor.id },
+    });
+    expect(JSON.stringify(created.json())).not.toContain("managementToken");
+  });
+
+  it("maps stale occupancy to SLOT_UNAVAILABLE", async () => {
+    const f = await fixture();
+    await configureManualBooking(f);
+    const payload = {
+      resourceId: f.resource.id,
+      serviceId: f.service.id,
+      date: fromDate,
+      startMinute: 540,
+    };
+    const first = await app.inject({
+      method: "POST",
+      url: `/api/organizations/${f.organization.id}/bookings/manual`,
+      headers: { "x-test-user": f.actor.id },
+      payload,
+    });
+    expect(first.statusCode).toBe(201);
+    const conflict = await app.inject({
+      method: "POST",
+      url: `/api/organizations/${f.organization.id}/bookings/manual`,
+      headers: { "x-test-user": f.actor.id },
+      payload,
+    });
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json()).toMatchObject({ code: "SLOT_UNAVAILABLE" });
+  });
+});

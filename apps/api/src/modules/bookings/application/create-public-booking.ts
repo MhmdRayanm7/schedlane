@@ -1,4 +1,3 @@
-import { config } from "../../../config.js";
 import { db } from "../../../db.js";
 import { insertOutboxEventInTransaction } from "../../../outbox/persistence.js";
 import {
@@ -14,18 +13,13 @@ import {
   normalizeGuestName,
   normalizeIsraeliGuestPhone,
 } from "../domain/guest-contact.js";
-import {
-  encryptGuestManagementToken,
-  generateGuestManagementToken,
-  hashGuestManagementToken,
-} from "../domain/management-token.js";
 import { localBookingStartToUtc } from "../domain/time.js";
 import {
   type ConfirmedBooking,
   insertConfirmedBookingInTransaction,
   runConfirmedBookingWriteWithRetries,
 } from "../persistence/confirmed-booking-write.js";
-import { postgresErrorMetadata } from "../persistence/postgres-errors.js";
+import { runWithGuestManagementCapability } from "./guest-management-capability.js";
 
 export type CreatePublicBookingInput = {
   organizationSlug: string;
@@ -148,6 +142,8 @@ async function executePublicBookingTransaction(
         durationMinutes: availability.context.durationMinutes,
         bufferAfterMinutes: availability.context.bufferAfterMinutes,
         priceAgorot,
+        source: "public",
+        createdByUserId: null,
         guestName: input.guestName,
         guestPhone: input.guestPhone,
         guestEmail: input.guestEmail,
@@ -168,10 +164,6 @@ async function executePublicBookingTransaction(
     });
 }
 
-const MAX_GUEST_MANAGEMENT_TOKEN_ATTEMPTS = 5;
-const GUEST_MANAGEMENT_TOKEN_CONSTRAINT =
-  "booking_guest_management_token_hash_key";
-
 type CreatePublicBookingDependencies = {
   generateManagementToken?: () => string;
   encryptionKey?: string | Buffer;
@@ -185,49 +177,25 @@ export async function createPublicBooking(
   const normalized = normalizePublicBookingInput(input);
   if ("ok" in normalized) return normalized;
 
-  const generateManagementToken =
-    dependencies.generateManagementToken ?? generateGuestManagementToken;
-  const encryptionKey =
-    dependencies.encryptionKey ?? config.GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY;
-  for (
-    let tokenAttempt = 1;
-    tokenAttempt <= MAX_GUEST_MANAGEMENT_TOKEN_ATTEMPTS;
-    tokenAttempt += 1
-  ) {
-    const managementToken = generateManagementToken();
-    const managementTokenHash = hashGuestManagementToken(managementToken);
-    const managementTokenEncrypted = encryptGuestManagementToken(
-      managementToken,
-      encryptionKey,
-    );
-    try {
-      const result = await runConfirmedBookingWriteWithRetries({
+  const allocated = await runWithGuestManagementCapability(
+    async (capability) =>
+      runConfirmedBookingWriteWithRetries({
         executeTransactionAttempt: (publicReference) =>
           executePublicBookingTransaction(
             normalized,
             publicReference,
             new Date(now.getTime()),
-            managementTokenHash,
-            managementTokenEncrypted,
+            capability.tokenHash,
+            capability.encryptedToken,
           ),
-      });
-      return result.ok ? { ...result, managementToken } : result;
-    } catch (error) {
-      const { code, constraint } = postgresErrorMetadata(error);
-      if (
-        code === "23505" &&
-        constraint === GUEST_MANAGEMENT_TOKEN_CONSTRAINT &&
-        tokenAttempt < MAX_GUEST_MANAGEMENT_TOKEN_ATTEMPTS
-      )
-        continue;
-      if (code === "23505" && constraint === GUEST_MANAGEMENT_TOKEN_CONSTRAINT)
-        throw new Error("Could not allocate a unique guest management token");
-      throw error;
-    }
-  }
-  throw new Error("Could not allocate a unique guest management token");
+      }),
+    dependencies,
+  );
+  return allocated.result.ok
+    ? { ...allocated.result, managementToken: allocated.managementToken }
+    : allocated.result;
 }
 
 export const publicBookingTestInternals = {
-  maxGuestManagementTokenAttempts: MAX_GUEST_MANAGEMENT_TOKEN_ATTEMPTS,
+  maxGuestManagementTokenAttempts: 5,
 };

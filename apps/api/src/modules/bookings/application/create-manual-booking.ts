@@ -3,7 +3,7 @@ import { db } from "../../../db.js";
 import type { Database } from "../../../db-types.js";
 import { insertOutboxEventInTransaction } from "../../../outbox/persistence.js";
 import { isLocalDate } from "../../availability/domain/local-date.js";
-import { resolveResourceServiceSlotContextAfterAccessInTransaction } from "../../availability/resolvers/resource-service-slots.js";
+import { resolveResourceServiceFreeSlotContextAfterAccessInTransaction } from "../../availability/resolvers/resource-service-free-slots.js";
 import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
@@ -14,7 +14,7 @@ import {
 } from "../domain/events.js";
 import {
   normalizeGuestEmail,
-  normalizeGuestName,
+  normalizeOptionalGuestName,
   normalizeOptionalIsraeliGuestPhone,
 } from "../domain/guest-contact.js";
 import { cloneValidOperationTime } from "../domain/operation-time.js";
@@ -25,6 +25,10 @@ import {
   insertConfirmedBookingInTransaction,
   runConfirmedBookingWriteWithRetries,
 } from "../persistence/confirmed-booking-write.js";
+import {
+  type GuestManagementCapability,
+  runWithGuestManagementCapability,
+} from "./guest-management-capability.js";
 
 export type CreateManualBookingInput = {
   userId: string;
@@ -33,10 +37,15 @@ export type CreateManualBookingInput = {
   serviceId: string;
   date: string;
   startMinute: number;
-  guestName: string;
+  guestName?: string | null;
   guestPhone?: string | null;
   guestEmail?: string | null;
   customerNote?: string | null;
+};
+
+type CreateManualBookingDependencies = {
+  generateManagementToken?: () => string;
+  encryptionKey?: string | Buffer;
 };
 
 type CreateManualBookingFailure =
@@ -52,13 +61,16 @@ type CreateManualBookingFailure =
   | "invalid_start_time"
   | "invalid_guest_name"
   | "invalid_guest_phone"
+  | "booking_start_in_past"
   | "start_not_available"
   | "booking_conflict";
 
 export type CreateManualBookingResult =
   | {
       ok: true;
-      booking: ConfirmedBooking;
+      booking: Omit<ConfirmedBooking, "createdByUserId"> & {
+        creator: { id: string; name: string; email: string };
+      };
     }
   | { ok: false; reason: CreateManualBookingFailure };
 
@@ -66,7 +78,7 @@ type NormalizedManualBookingInput = Omit<
   CreateManualBookingInput,
   "guestName" | "guestPhone" | "guestEmail" | "customerNote"
 > & {
-  guestName: string;
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
   customerNote: string | null;
@@ -77,12 +89,19 @@ async function executeManualBookingTransaction(
   input: NormalizedManualBookingInput,
   publicReference: string,
   now: Date,
+  capability: GuestManagementCapability | null,
 ): Promise<CreateManualBookingResult> {
   return db
     .transaction()
     .setIsolationLevel("serializable")
     .execute((trx) =>
-      createManualBookingInTransaction(trx, input, publicReference, now),
+      createManualBookingInTransaction(
+        trx,
+        input,
+        publicReference,
+        now,
+        capability,
+      ),
     );
 }
 
@@ -91,10 +110,12 @@ async function createManualBookingInTransaction(
   input: NormalizedManualBookingInput,
   publicReference: string,
   now: Date,
+  capability: GuestManagementCapability | null,
 ): Promise<CreateManualBookingResult> {
   const membership = await trx
     .selectFrom("membership")
-    .select("role")
+    .innerJoin("user", "user.id", "membership.user_id")
+    .select(["membership.role", "user.name", "user.email"])
     .where("organization_id", "=", input.organizationId)
     .where("user_id", "=", input.userId)
     .executeTakeFirst();
@@ -128,15 +149,13 @@ async function createManualBookingInTransaction(
   if (resource.deactivated_at)
     return { ok: false, reason: "resource_inactive" };
 
-  const slots = await resolveResourceServiceSlotContextAfterAccessInTransaction(
-    trx,
-    {
+  const slots =
+    await resolveResourceServiceFreeSlotContextAfterAccessInTransaction(trx, {
       organizationId: input.organizationId,
       resourceId: resource.id,
       serviceId: input.serviceId,
       date: input.date,
-    },
-  );
+    });
   if (!slots.ok) return slots;
   if (slots.context.serviceDeactivatedAt)
     return { ok: false, reason: "service_inactive" };
@@ -163,6 +182,10 @@ async function createManualBookingInTransaction(
     guestEmail: input.guestEmail,
     customerNote: input.customerNote,
     cancellationCutoffMinutes: organization.cancellation_cutoff_minutes,
+    source: "manual",
+    createdByUserId: input.userId,
+    guestManagementTokenHash: capability?.tokenHash ?? null,
+    guestManagementTokenEncrypted: capability?.encryptedToken ?? null,
   });
   await insertOutboxEventInTransaction(trx, {
     aggregateType: "booking",
@@ -171,9 +194,17 @@ async function createManualBookingInTransaction(
     payload: createBookingCreatedEventPayload(booking),
     occurredAt: now,
   });
+  const { createdByUserId: _createdByUserId, ...safeBooking } = booking;
   return {
     ok: true,
-    booking,
+    booking: {
+      ...safeBooking,
+      creator: {
+        id: input.userId,
+        name: membership.name,
+        email: membership.email,
+      },
+    },
   };
 }
 
@@ -187,7 +218,7 @@ function normalizeManualBookingInput(
     input.startMinute >= 1440
   )
     return { ok: false, reason: "invalid_start_time" };
-  const guestName = normalizeGuestName(input.guestName);
+  const guestName = normalizeOptionalGuestName(input.guestName);
   if (!guestName.ok) return guestName;
   const guestPhone = normalizeOptionalIsraeliGuestPhone(input.guestPhone);
   if (!guestPhone.ok) return guestPhone;
@@ -206,6 +237,7 @@ function normalizeManualBookingInput(
 export async function createManualBooking(
   input: CreateManualBookingInput,
   now: Date = new Date(),
+  dependencies: CreateManualBookingDependencies = {},
 ): Promise<CreateManualBookingResult> {
   const operationNow = cloneValidOperationTime(
     now,
@@ -213,12 +245,23 @@ export async function createManualBooking(
   );
   const normalized = normalizeManualBookingInput(input);
   if ("ok" in normalized) return normalized;
-  return runConfirmedBookingWriteWithRetries({
-    executeTransactionAttempt: (publicReference) =>
-      executeManualBookingTransaction(
-        normalized,
-        publicReference,
-        operationNow,
-      ),
-  });
+  if (normalized.startAt.getTime() < operationNow.getTime())
+    return { ok: false, reason: "booking_start_in_past" };
+
+  const execute = (capability: GuestManagementCapability | null) =>
+    runConfirmedBookingWriteWithRetries({
+      executeTransactionAttempt: (publicReference) =>
+        executeManualBookingTransaction(
+          normalized,
+          publicReference,
+          operationNow,
+          capability,
+        ),
+    });
+  if (!normalized.guestEmail) return execute(null);
+  const allocated = await runWithGuestManagementCapability(
+    execute,
+    dependencies,
+  );
+  return allocated.result;
 }

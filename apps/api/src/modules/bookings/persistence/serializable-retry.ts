@@ -14,8 +14,9 @@ export async function runWithSerializationRetry<Result>(
     try {
       return await attempt();
     } catch (error) {
+      const code = postgresErrorMetadata(error).code;
       if (
-        postgresErrorMetadata(error).code === "40001" &&
+        (code === "40001" || code === "40P01") &&
         serializationAttempt < MAX_SERIALIZATION_ATTEMPTS
       )
         continue;

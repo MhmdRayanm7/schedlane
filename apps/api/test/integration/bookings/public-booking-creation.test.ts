@@ -236,6 +236,8 @@ describe("public guest Booking creation", () => {
         "service_id",
         "public_reference",
         "status",
+        "source",
+        "created_by_user_id",
         "start_at",
         "service_end_at",
         "duration_minutes",
@@ -249,6 +251,8 @@ describe("public guest Booking creation", () => {
       .executeTakeFirstOrThrow();
     expect(booking).toMatchObject({
       status: "confirmed",
+      source: "public",
+      created_by_user_id: null,
       guest_name: "Public guest",
       guest_phone: "+972501234567",
       guest_email: "guest@example.test",
@@ -278,6 +282,7 @@ describe("public guest Booking creation", () => {
         serviceEndAt: booking.service_end_at.toISOString(),
         durationMinutes: 30,
         priceAgorot: null,
+        source: "public",
         guestName: "Public guest",
         guestPhone: "+972501234567",
         guestEmail: "guest@example.test",

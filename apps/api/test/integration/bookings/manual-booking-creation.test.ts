@@ -7,8 +7,13 @@ import {
   type CreateManualBookingInput,
   createManualBooking,
 } from "../../../src/modules/bookings/application/create-manual-booking.js";
+import { createPublicBooking } from "../../../src/modules/bookings/application/create-public-booking.js";
+import { getGuestManagedBooking } from "../../../src/modules/bookings/application/guest/read.js";
+import { rescheduleManagementBooking } from "../../../src/modules/bookings/application/reschedule.js";
+import { hashGuestManagementToken } from "../../../src/modules/bookings/domain/management-token.js";
 import {
   addTestMembership,
+  createTestBooking,
   createTestOrganization,
   createTestResource,
   createTestService,
@@ -124,6 +129,115 @@ async function makeReady(
 }
 
 describe("Transactional manual Booking creation", () => {
+  it("allows all customer information to be absent without persisting a fake identity", async () => {
+    const f = await fixture();
+    await makeReady(f);
+    const { guestName: _guestName, ...input } = f.input;
+    const result = await createManualBooking(input);
+    expect(result).toMatchObject({
+      ok: true,
+      booking: {
+        source: "manual",
+        guestName: null,
+        guestPhone: null,
+        guestEmail: null,
+        customerNote: null,
+      },
+    });
+    if (!result.ok) throw new Error("Expected Booking creation to succeed");
+    expect(
+      await db
+        .selectFrom("booking")
+        .select([
+          "guest_name",
+          "source",
+          "created_by_user_id",
+          "guest_management_token_hash",
+          "guest_management_token_encrypted",
+        ])
+        .where("id", "=", result.booking.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({
+      guest_name: null,
+      source: "manual",
+      created_by_user_id: f.actor.id,
+      guest_management_token_hash: null,
+      guest_management_token_encrypted: null,
+    });
+  });
+
+  it.each([null, "   "])(
+    "normalizes optional manual name %j to null",
+    async (guestName) => {
+      const f = await fixture();
+      await makeReady(f);
+      expect(await f.create({ guestName })).toMatchObject({
+        ok: true,
+        booking: { guestName: null },
+      });
+    },
+  );
+
+  it("creates a secure guest capability only when normalized email is present", async () => {
+    const f = await fixture();
+    await makeReady(f);
+    const rawToken = "0123456789012345678901234567890123456789012";
+    const result = await createManualBooking(
+      { ...f.input, guestName: null, guestEmail: "  guest@example.test  " },
+      new Date("2026-10-01T00:00:00.000Z"),
+      {
+        generateManagementToken: () => rawToken,
+        encryptionKey: "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=",
+      },
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      booking: { guestName: null, guestEmail: "guest@example.test" },
+    });
+    if (!result.ok) throw new Error("Expected Booking creation to succeed");
+    const persisted = await db
+      .selectFrom("booking")
+      .select([
+        "guest_management_token_hash",
+        "guest_management_token_encrypted",
+      ])
+      .where("id", "=", result.booking.id)
+      .executeTakeFirstOrThrow();
+    expect(persisted.guest_management_token_hash).toBe(
+      hashGuestManagementToken(rawToken),
+    );
+    expect(persisted.guest_management_token_encrypted).toMatch(/^v1\./);
+    const event = await db
+      .selectFrom("outbox_event")
+      .select("payload")
+      .where("aggregate_id", "=", result.booking.id)
+      .executeTakeFirstOrThrow();
+    expect(JSON.stringify(event.payload)).not.toContain(rawToken);
+    expect(await getGuestManagedBooking(rawToken)).toMatchObject({
+      ok: true,
+      booking: { guestName: null, guestEmail: "guest@example.test" },
+    });
+  });
+
+  it("allows internal booking while unpublished and publicly paused", async () => {
+    const f = await fixture();
+    await makeReady(f);
+    await db
+      .updateTable("organization")
+      .set({ published_at: null, public_booking_paused: true })
+      .where("id", "=", f.organization.id)
+      .execute();
+    expect(await f.create()).toMatchObject({ ok: true });
+  });
+
+  it("rejects a start in the past independently of configured availability", async () => {
+    const f = await fixture();
+    await makeReady(f);
+    expect(
+      await createManualBooking(f.input, new Date("2026-10-05T06:00:00.001Z")),
+    ).toEqual({ ok: false, reason: "booking_start_in_past" });
+  });
+
   it("snapshots the Organization cancellation cutoff without issuing a token", async () => {
     const f = await fixture({ cancellationCutoffMinutes: 30 });
     await makeReady(f);
@@ -209,6 +323,7 @@ describe("Transactional manual Booking creation", () => {
         serviceEndAt: "2026-10-05T06:30:00.000Z",
         durationMinutes: 30,
         priceAgorot: null,
+        source: "manual",
         guestName: "Manual guest",
         guestPhone: "+97225310747",
         guestEmail: "Manual@Example.test",
@@ -360,7 +475,6 @@ describe("Transactional manual Booking creation", () => {
     [{ startMinute: -1 }, "invalid_start_time"],
     [{ startMinute: 1440 }, "invalid_start_time"],
     [{ startMinute: 540.5 }, "invalid_start_time"],
-    [{ guestName: "   " }, "invalid_guest_name"],
   ] as const)("rejects invalid input %j", async (overrides, reason) => {
     const f = await fixture();
     expect(await f.create(overrides)).toEqual({ ok: false, reason });
@@ -529,13 +643,13 @@ describe("Transactional manual Booking creation", () => {
     );
   });
 
-  it("maps an existing confirmed occupancy to booking_conflict", async () => {
+  it("maps an existing confirmed occupancy to an unavailable start", async () => {
     const f = await fixture();
     await makeReady(f);
     expect(await f.create()).toMatchObject({ ok: true });
     expect(await f.create()).toEqual({
       ok: false,
-      reason: "booking_conflict",
+      reason: "start_not_available",
     });
   });
 
@@ -545,7 +659,7 @@ describe("Transactional manual Booking creation", () => {
     const results = await Promise.all([f.create(), f.create()]);
     expect(results.filter((result) => result.ok)).toHaveLength(1);
     expect(results.filter((result) => !result.ok)).toEqual([
-      { ok: false, reason: "booking_conflict" },
+      { ok: false, reason: "start_not_available" },
     ]);
     expect(
       await db
@@ -553,6 +667,87 @@ describe("Transactional manual Booking creation", () => {
         .select("id")
         .where("resource_id", "=", f.resource.id)
         .where("status", "=", "confirmed")
+        .execute(),
+    ).toHaveLength(1);
+  });
+
+  it("shares occupancy protection with concurrent public creation", async () => {
+    const f = await fixture();
+    await makeReady(f);
+    await db
+      .updateTable("organization")
+      .set({ published_at: new Date("2026-10-01T00:00:00.000Z") })
+      .where("id", "=", f.organization.id)
+      .execute();
+    const now = new Date("2026-10-01T00:00:00.000Z");
+    const [manual, publicResult] = await Promise.all([
+      createManualBooking(f.input, now),
+      createPublicBooking(
+        {
+          organizationSlug: f.organization.slug,
+          resourceId: f.resource.id,
+          serviceId: f.service.id,
+          date,
+          startMinute: 540,
+          guestName: "Public guest",
+          guestPhone: "0501234567",
+        },
+        now,
+      ),
+    ]);
+    expect([manual, publicResult].filter((result) => result.ok)).toHaveLength(
+      1,
+    );
+    expect(
+      await db
+        .selectFrom("booking")
+        .select("id")
+        .where("resource_id", "=", f.resource.id)
+        .where("status", "=", "confirmed")
+        .execute(),
+    ).toHaveLength(1);
+  });
+
+  it("shares occupancy protection with a concurrent management reschedule", async () => {
+    const f = await fixture();
+    await makeReady(f);
+    const source = await createTestResource({
+      organizationId: f.organization.id,
+      name: "Reschedule source",
+    });
+    const existing = await createTestBooking({
+      organizationId: f.organization.id,
+      resourceId: source.id,
+      serviceId: f.service.id,
+      publicReference: `MOVE-${randomUUID()}`,
+      startAt: new Date("2026-10-05T09:00:00.000Z"),
+      durationMinutes: 30,
+      bufferAfterMinutes: 0,
+    });
+    const now = new Date("2026-10-01T00:00:00.000Z");
+    const results = await Promise.all([
+      createManualBooking(f.input, now),
+      rescheduleManagementBooking(
+        {
+          userId: f.actor.id,
+          organizationId: f.organization.id,
+          bookingId: existing.id,
+          resourceId: f.resource.id,
+          date,
+          startMinute: 540,
+        },
+        now,
+      ),
+    ]);
+
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(
+      await db
+        .selectFrom("booking")
+        .select("id")
+        .where("resource_id", "=", f.resource.id)
+        .where("status", "=", "confirmed")
+        .where("start_at", "=", new Date("2026-10-05T06:00:00.000Z"))
         .execute(),
     ).toHaveLength(1);
   });

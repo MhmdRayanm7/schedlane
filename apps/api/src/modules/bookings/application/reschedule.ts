@@ -144,6 +144,7 @@ async function rescheduleInTransaction(
       "duration_minutes",
       "buffer_after_minutes",
       "price_agorot",
+      "source",
       "guest_name",
       "guest_phone",
       "guest_email",
@@ -231,6 +232,7 @@ async function rescheduleInTransaction(
       "duration_minutes",
       "buffer_after_minutes",
       "price_agorot",
+      "source",
       "guest_name",
       "guest_phone",
       "guest_email",
@@ -253,6 +255,7 @@ async function rescheduleInTransaction(
       serviceEndAt: row.service_end_at,
       durationMinutes: row.duration_minutes,
       priceAgorot: row.price_agorot,
+      source: row.source,
       guestName: row.guest_name,
       guestPhone: row.guest_phone,
       guestEmail: row.guest_email,
@@ -293,7 +296,10 @@ export async function rescheduleManagementBooking(
     );
   } catch (error) {
     const { code, constraint } = postgresErrorMetadata(error);
-    if (code === "23P01" && constraint === BOOKING_CONFLICT_CONSTRAINT)
+    if (
+      code === "40P01" ||
+      (code === "23P01" && constraint === BOOKING_CONFLICT_CONSTRAINT)
+    )
       return { ok: false, reason: "booking_conflict" };
     throw error;
   }

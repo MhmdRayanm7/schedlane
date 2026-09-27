@@ -12,6 +12,7 @@ export type OrganizationPublicationRequestStatus =
 export type StaffTeamVisibility = "team" | "self";
 
 export type BookingStatus = "confirmed" | "cancelled" | "no_show";
+export type BookingSource = "public" | "manual";
 
 export interface PlatformAdminTable {
   user_id: string;
@@ -204,7 +205,7 @@ export interface BookingTable {
   duration_minutes: number;
   buffer_after_minutes: number;
   price_agorot: number | null;
-  guest_name: string;
+  guest_name: string | null;
   guest_phone: string | null;
   guest_email: string | null;
   customer_note: string | null;
@@ -214,6 +215,8 @@ export interface BookingTable {
   cancellation_cutoff_minutes: Generated<number>;
   guest_management_token_hash: string | null;
   guest_management_token_encrypted: string | null;
+  source: BookingSource;
+  created_by_user_id: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }

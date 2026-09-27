@@ -58,7 +58,7 @@ export type UpdateGuestManagedBookingContactResult =
       ok: true;
       booking: {
         publicReference: string;
-        guestName: string;
+        guestName: string | null;
         guestPhone: string | null;
         guestEmail: string | null;
         updatedAt: string;
@@ -222,6 +222,7 @@ async function cancelGuestBookingInTransaction(
       "resource_id",
       "service_id",
       "start_at",
+      "source",
       "guest_name",
       "guest_phone",
       "guest_email",
@@ -275,6 +276,7 @@ async function cancelGuestBookingInTransaction(
       resourceId: booking.resource_id,
       serviceId: booking.service_id,
       startAt: booking.start_at,
+      source: booking.source,
       guestName: booking.guest_name,
       guestPhone: booking.guest_phone,
       guestEmail: booking.guest_email,

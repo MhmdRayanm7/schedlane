@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import { DateTime } from "luxon";
 import { describe, expect, it } from "vitest";
 import { db } from "../../../src/db.js";
-import type { BookingStatus, MembershipRole } from "../../../src/db-types.js";
+import type {
+  BookingSource,
+  BookingStatus,
+  MembershipRole,
+} from "../../../src/db-types.js";
 import {
   type ListManagementBookingsInput,
   listManagementBookings,
@@ -75,6 +79,8 @@ async function addBooking(
     durationMinutes = 30,
     bufferAfterMinutes = 0,
     priceAgorot = null as number | null,
+    source = "public" as BookingSource,
+    createdByUserId = null as string | null,
     cancelledAt = status === "cancelled"
       ? new Date("2026-10-04T12:00:00.000Z")
       : null,
@@ -88,6 +94,8 @@ async function addBooking(
     durationMinutes?: number;
     bufferAfterMinutes?: number;
     priceAgorot?: number | null;
+    source?: BookingSource;
+    createdByUserId?: string | null;
     cancelledAt?: Date | null;
     cancellationReason?: string | null;
   } = {},
@@ -102,6 +110,8 @@ async function addBooking(
     durationMinutes,
     bufferAfterMinutes,
     priceAgorot,
+    source,
+    createdByUserId,
     guestName: "Guest name",
     guestPhone: "050-123-4567",
     guestEmail: "guest@example.test",
@@ -117,6 +127,27 @@ function bookingIds(result: Awaited<ReturnType<Fixture["list"]>>) {
 }
 
 describe("management Booking queries", () => {
+  it("projects source and a safe creator summary for manual Bookings", async () => {
+    const f = await fixture();
+    const manual = await addBooking(f, {
+      source: "manual",
+      createdByUserId: f.actor.id,
+    });
+    const result = await f.list();
+    if (!result.ok) throw new Error("Expected management schedule");
+    expect(result.schedule.bookings).toEqual([
+      expect.objectContaining({
+        id: manual.id,
+        source: "manual",
+        creator: {
+          id: f.actor.id,
+          name: f.actor.name,
+          email: f.actor.email,
+        },
+      }),
+    ]);
+  });
+
   it.each(["owner", "manager"] as const)(
     "%s sees all Organization Resources' Bookings",
     async (role) => {

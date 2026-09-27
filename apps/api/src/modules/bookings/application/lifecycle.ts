@@ -1,6 +1,10 @@
 import type { Transaction } from "kysely";
 import { db } from "../../../db.js";
-import type { BookingStatus, Database } from "../../../db-types.js";
+import type {
+  BookingSource,
+  BookingStatus,
+  Database,
+} from "../../../db-types.js";
 import { insertOutboxEventInTransaction } from "../../../outbox/persistence.js";
 import {
   type OrganizationWriteStateFailure,
@@ -81,7 +85,8 @@ type LockedManagementBooking = {
   resourceId: string;
   serviceId: string;
   startAt: Date;
-  guestName: string;
+  source: BookingSource;
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
 };
@@ -127,6 +132,7 @@ async function loadManagementBookingForUpdate(
       "resource_id",
       "service_id",
       "start_at",
+      "source",
       "guest_name",
       "guest_phone",
       "guest_email",
@@ -161,6 +167,7 @@ async function loadManagementBookingForUpdate(
       resourceId: booking.resource_id,
       serviceId: booking.service_id,
       startAt: booking.start_at,
+      source: booking.source,
       guestName: booking.guest_name,
       guestPhone: booking.guest_phone,
       guestEmail: booking.guest_email,
@@ -238,6 +245,7 @@ export async function cancelManagementBooking(
             resourceId: access.booking.resourceId,
             serviceId: access.booking.serviceId,
             startAt: access.booking.startAt,
+            source: access.booking.source,
             guestName: access.booking.guestName,
             guestPhone: access.booking.guestPhone,
             guestEmail: access.booking.guestEmail,

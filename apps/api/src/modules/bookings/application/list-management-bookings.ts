@@ -1,5 +1,5 @@
 import { db } from "../../../db.js";
-import type { BookingStatus } from "../../../db-types.js";
+import type { BookingSource, BookingStatus } from "../../../db-types.js";
 import {
   localBookingDateRangeToUtc,
   SCHEDULING_TIMEZONE,
@@ -16,6 +16,8 @@ export type ManagementBooking = {
   id: string;
   publicReference: string;
   status: BookingStatus;
+  source: BookingSource;
+  creator: { id: string; name: string; email: string } | null;
   resourceId: string;
   resourceName: string;
   serviceId: string;
@@ -26,7 +28,7 @@ export type ManagementBooking = {
   durationMinutes: number;
   bufferAfterMinutes: number;
   priceAgorot: number | null;
-  guestName: string;
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
   customerNote: string | null;
@@ -100,10 +102,15 @@ export async function listManagementBookings(
             .onRef("service.id", "=", "booking.service_id")
             .onRef("service.organization_id", "=", "booking.organization_id"),
         )
+        .leftJoin("user as creator", "creator.id", "booking.created_by_user_id")
         .select([
           "booking.id",
           "booking.public_reference",
           "booking.status",
+          "booking.source",
+          "booking.created_by_user_id",
+          "creator.name as creator_name",
+          "creator.email as creator_email",
           "booking.resource_id",
           "resource.name as resource_name",
           "booking.service_id",
@@ -143,6 +150,15 @@ export async function listManagementBookings(
             id: row.id,
             publicReference: row.public_reference,
             status: row.status,
+            source: row.source,
+            creator:
+              row.created_by_user_id && row.creator_name && row.creator_email
+                ? {
+                    id: row.created_by_user_id,
+                    name: row.creator_name,
+                    email: row.creator_email,
+                  }
+                : null,
             resourceId: row.resource_id,
             resourceName: row.resource_name,
             serviceId: row.service_id,

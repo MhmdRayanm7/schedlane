@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { db } from "../../../src/db.js";
-import type { BookingStatus, MembershipRole } from "../../../src/db-types.js";
+import type {
+  BookingSource,
+  BookingStatus,
+  MembershipRole,
+} from "../../../src/db-types.js";
 import { resolveResourceServiceFreeSlotStartsForDate } from "../../../src/modules/availability/resolvers/resource-service-free-slots.js";
 import { rescheduleManagementBooking } from "../../../src/modules/bookings/application/reschedule.js";
 import {
@@ -25,6 +29,7 @@ async function fixture({
   targetDeactivated = false,
   durationMinutes = 30,
   bufferAfterMinutes = 10,
+  bookingSource = "public",
 }: {
   role?: MembershipRole;
   status?: BookingStatus;
@@ -33,6 +38,7 @@ async function fixture({
   targetDeactivated?: boolean;
   durationMinutes?: number;
   bufferAfterMinutes?: number;
+  bookingSource?: BookingSource;
 } = {}) {
   const actor = await createTestUser();
   const organization = await createTestOrganization();
@@ -64,6 +70,8 @@ async function fixture({
     serviceId: service.id,
     publicReference: `MOVE-${randomUUID()}`,
     status,
+    source: bookingSource,
+    createdByUserId: bookingSource === "manual" ? actor.id : null,
     startAt: originalStartAt,
     durationMinutes,
     bufferAfterMinutes,
@@ -160,6 +168,19 @@ async function bookingRow(id: string) {
 }
 
 describe("management Booking reschedule", () => {
+  it("preserves the original manual source and creator", async () => {
+    const f = await fixture({ bookingSource: "manual" });
+    await makeReady(f);
+    expect(await f.reschedule()).toMatchObject({ ok: true });
+    expect(
+      await db
+        .selectFrom("booking")
+        .select(["source", "created_by_user_id"])
+        .where("id", "=", f.booking.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ source: "manual", created_by_user_id: f.actor.id });
+  });
+
   it.each(["owner", "manager"] as const)(
     "allows %s to move any Organization Booking",
     async (role) => {

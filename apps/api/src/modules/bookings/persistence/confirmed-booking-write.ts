@@ -1,5 +1,5 @@
 import type { Transaction } from "kysely";
-import type { Database } from "../../../db-types.js";
+import type { BookingSource, Database } from "../../../db-types.js";
 import { generateBookingPublicReference } from "../domain/public-reference.js";
 import { calculateBookingTemporalSnapshot } from "../domain/time.js";
 import { postgresErrorMetadata } from "./postgres-errors.js";
@@ -13,6 +13,8 @@ export type ConfirmedBooking = {
   id: string;
   publicReference: string;
   status: "confirmed";
+  source: BookingSource;
+  createdByUserId: string | null;
   organizationId: string;
   resourceId: string;
   serviceId: string;
@@ -22,7 +24,7 @@ export type ConfirmedBooking = {
   durationMinutes: number;
   bufferAfterMinutes: number;
   priceAgorot: number | null;
-  guestName: string;
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
   customerNote: string | null;
@@ -38,7 +40,9 @@ export type InsertConfirmedBookingInput = {
   durationMinutes: number;
   bufferAfterMinutes: number;
   priceAgorot: number | null;
-  guestName: string;
+  source: BookingSource;
+  createdByUserId: string | null;
+  guestName: string | null;
   guestPhone: string | null;
   guestEmail: string | null;
   customerNote: string | null;
@@ -64,6 +68,8 @@ export async function insertConfirmedBookingInTransaction(
       service_id: input.serviceId,
       public_reference: input.publicReference,
       status: "confirmed",
+      source: input.source,
+      created_by_user_id: input.createdByUserId,
       start_at: input.startAt,
       service_end_at: serviceEndAt,
       occupied_until_at: occupiedUntilAt,
@@ -86,6 +92,8 @@ export async function insertConfirmedBookingInTransaction(
       "id",
       "public_reference",
       "status",
+      "source",
+      "created_by_user_id",
       "organization_id",
       "resource_id",
       "service_id",
@@ -109,6 +117,8 @@ export async function insertConfirmedBookingInTransaction(
     id: booking.id,
     publicReference: booking.public_reference,
     status: booking.status,
+    source: booking.source,
+    createdByUserId: booking.created_by_user_id,
     organizationId: booking.organization_id,
     resourceId: booking.resource_id,
     serviceId: booking.service_id,
@@ -127,7 +137,7 @@ export async function insertConfirmedBookingInTransaction(
 }
 
 type ConfirmedBookingWriteResult =
-  | { ok: true; booking: ConfirmedBooking }
+  | { ok: true; booking: unknown }
   | { ok: false; reason: string };
 
 type RunConfirmedBookingWriteDependencies<
@@ -163,10 +173,11 @@ export async function runConfirmedBookingWriteWithRetries<
       } catch (error) {
         const { code, constraint } = postgresErrorMetadata(error);
         if (
-          code === "40001" &&
+          (code === "40001" || code === "40P01") &&
           serializationAttempt < MAX_SERIALIZATION_ATTEMPTS
         )
           continue;
+        if (code === "40P01") return { ok: false, reason: "booking_conflict" };
         if (
           code === "23505" &&
           constraint === BOOKING_PUBLIC_REFERENCE_CONSTRAINT

@@ -137,6 +137,17 @@ describe("Booking reschedule transaction retries", () => {
     ).rejects.toBe(failure);
     expect(attempt).toHaveBeenCalledOnce();
   });
+
+  it("retries a deadlock before returning the next result", async () => {
+    const attempt = vi
+      .fn()
+      .mockRejectedValueOnce({ code: "40P01" })
+      .mockResolvedValueOnce("complete");
+    await expect(
+      bookingRescheduleTestInternals.runWithSerializationRetry(attempt),
+    ).resolves.toBe("complete");
+    expect(attempt).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("Manual Booking transaction retries", () => {
@@ -176,6 +187,42 @@ describe("Manual Booking transaction retries", () => {
           executeTransactionAttempt(input, reference),
       }),
     ).rejects.toBe(serializationFailure);
+    expect(executeTransactionAttempt).toHaveBeenCalledTimes(3);
+  });
+
+  it("retries a deadlock with the same reference and then succeeds", async () => {
+    const references: string[] = [];
+    const executeTransactionAttempt = vi
+      .fn()
+      .mockImplementationOnce(async (reference) => {
+        references.push(reference);
+        throw { code: "40P01" };
+      })
+      .mockImplementationOnce(async (reference) => {
+        references.push(reference);
+        return stoppedResult;
+      });
+
+    await expect(
+      runConfirmedBookingWriteWithRetries({
+        generatePublicReference: () => "BK-2222222222",
+        executeTransactionAttempt,
+      }),
+    ).resolves.toEqual(stoppedResult);
+    expect(references).toEqual(["BK-2222222222", "BK-2222222222"]);
+  });
+
+  it("maps a persistent deadlock to a booking conflict", async () => {
+    const executeTransactionAttempt = vi
+      .fn()
+      .mockRejectedValue({ code: "40P01" });
+
+    await expect(
+      runConfirmedBookingWriteWithRetries({
+        generatePublicReference: () => "BK-2222222222",
+        executeTransactionAttempt,
+      }),
+    ).resolves.toEqual({ ok: false, reason: "booking_conflict" });
     expect(executeTransactionAttempt).toHaveBeenCalledTimes(3);
   });
 

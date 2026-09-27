@@ -4,6 +4,10 @@ type GuestNameNormalizationResult =
   | { ok: true; guestName: string }
   | { ok: false; reason: "invalid_guest_name" };
 
+type OptionalGuestNameNormalizationResult =
+  | { ok: true; guestName: string | null }
+  | { ok: false; reason: "invalid_guest_name" };
+
 type GuestPhoneNormalizationResult =
   | { ok: true; guestPhone: string }
   | { ok: false; reason: "invalid_guest_phone" };
@@ -19,6 +23,14 @@ export function normalizeGuestName(
   return normalized === ""
     ? { ok: false, reason: "invalid_guest_name" }
     : { ok: true, guestName: normalized };
+}
+
+export function normalizeOptionalGuestName(
+  guestName: string | null | undefined,
+): OptionalGuestNameNormalizationResult {
+  if (guestName == null || guestName.trim() === "")
+    return { ok: true, guestName: null };
+  return normalizeGuestName(guestName);
 }
 
 function normalizeIsraeliInternationalPrefix(value: string): string {

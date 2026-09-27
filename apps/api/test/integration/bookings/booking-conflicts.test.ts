@@ -42,6 +42,7 @@ function bookingValues(
     service_id: f.service.id,
     public_reference: randomUUID(),
     status,
+    source: "public" as const,
     start_at: temporal.startAt,
     service_end_at: temporal.serviceEndAt,
     occupied_until_at: temporal.occupiedUntilAt,

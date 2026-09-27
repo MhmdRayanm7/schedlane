@@ -6,6 +6,10 @@ import { requireVerifiedUser } from "../../../http/auth-guard.js";
 import { uuidSchema } from "../../../http/schemas.js";
 import { typeboxValidatorCompiler } from "../../../http/typebox-validator.js";
 import {
+  type CreateManualBookingResult,
+  createManualBooking,
+} from "../application/create-manual-booking.js";
+import {
   type CancelManagementBookingResult,
   cancelManagementBooking,
   type MarkManagementBookingNoShowResult,
@@ -14,6 +18,14 @@ import {
   revertManagementBookingNoShow,
 } from "../application/lifecycle.js";
 import { listManagementBookings } from "../application/list-management-bookings.js";
+import {
+  type GetManualBookingContextResult,
+  getManualBookingContext,
+} from "../application/manual-context.js";
+import {
+  type GetManualBookingOptionsResult,
+  getManualBookingOptions,
+} from "../application/manual-options.js";
 import {
   type RescheduleManagementBookingResult,
   rescheduleManagementBooking,
@@ -64,6 +76,89 @@ const rescheduleOptionsQuerySchema = Type.Object(
   },
   { additionalProperties: Type.Never() },
 );
+const manualOptionsQuerySchema = Type.Object(
+  {
+    resourceId: uuidSchema,
+    serviceId: uuidSchema,
+    date: Type.String(),
+  },
+  { additionalProperties: Type.Never() },
+);
+const manualBookingBodySchema = Type.Object(
+  {
+    resourceId: uuidSchema,
+    serviceId: uuidSchema,
+    date: Type.String(),
+    startMinute: Type.Integer({ minimum: 0, maximum: 1439 }),
+    guestName: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+    guestPhone: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+    guestEmail: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+    customerNote: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  },
+  { additionalProperties: Type.Never() },
+);
+
+type ManualBookingFailure = Extract<
+  | CreateManualBookingResult
+  | GetManualBookingContextResult
+  | GetManualBookingOptionsResult,
+  { ok: false }
+>["reason"];
+
+function sendManualBookingError(
+  reply: FastifyReply,
+  requestId: string,
+  reason: ManualBookingFailure,
+) {
+  const errors = {
+    organization_not_found: [
+      404,
+      "ORGANIZATION_NOT_FOUND",
+      "Organization not found",
+    ],
+    insufficient_role: [
+      403,
+      "INSUFFICIENT_ROLE",
+      "Your role cannot book this Resource",
+    ],
+    organization_archived: [
+      409,
+      "ORGANIZATION_ARCHIVED",
+      "Restore the organization before creating bookings",
+    ],
+    organization_suspended: [
+      409,
+      "ORGANIZATION_SUSPENDED",
+      "The organization is suspended and read-only",
+    ],
+    resource_not_found: [404, "RESOURCE_NOT_FOUND", "Resource not found"],
+    resource_inactive: [409, "RESOURCE_INACTIVE", "Resource is inactive"],
+    service_not_found: [404, "SERVICE_NOT_FOUND", "Service not found"],
+    service_inactive: [409, "SERVICE_INACTIVE", "Service is inactive"],
+    service_not_assigned: [
+      409,
+      "SERVICE_NOT_ASSIGNED",
+      "Service is not assigned to this Resource",
+    ],
+    invalid_date: [400, "INVALID_DATE", "Date is invalid"],
+    invalid_start_time: [400, "INVALID_START_TIME", "Start time is invalid"],
+    invalid_guest_name: [400, "INVALID_GUEST_NAME", "Customer name is invalid"],
+    invalid_guest_phone: [
+      400,
+      "INVALID_GUEST_PHONE",
+      "Customer phone is invalid",
+    ],
+    booking_start_in_past: [
+      409,
+      "BOOKING_START_IN_PAST",
+      "Booking cannot start in the past",
+    ],
+    start_not_available: [409, "SLOT_UNAVAILABLE", "Slot is unavailable"],
+    booking_conflict: [409, "SLOT_UNAVAILABLE", "Slot is unavailable"],
+  } as const;
+  const [status, code, message] = errors[reason];
+  return reply.code(status).send({ code, message, requestId });
+}
 
 type BookingActionResult =
   | CancelManagementBookingResult
@@ -254,6 +349,66 @@ export const bookingRoutes: FastifyPluginAsyncTypebox<
       }
 
       return reply.code(200).send(result.schedule);
+    },
+  );
+
+  app.get(
+    "/api/organizations/:organizationId/bookings/manual-context",
+    { schema: { params: organizationParamsSchema } },
+    async (request, reply) => {
+      const result = await getManualBookingContext({
+        userId: request.verifiedUser.id,
+        organizationId: request.params.organizationId,
+      });
+      if (!result.ok)
+        return sendManualBookingError(reply, request.id, result.reason);
+      return reply.code(200).send(result.context);
+    },
+  );
+
+  app.get(
+    "/api/organizations/:organizationId/bookings/manual-options",
+    {
+      schema: {
+        params: organizationParamsSchema,
+        querystring: manualOptionsQuerySchema,
+      },
+    },
+    async (request, reply) => {
+      const result = await getManualBookingOptions(
+        {
+          userId: request.verifiedUser.id,
+          organizationId: request.params.organizationId,
+          ...request.query,
+        },
+        options.now?.() ?? new Date(),
+      );
+      if (!result.ok)
+        return sendManualBookingError(reply, request.id, result.reason);
+      return reply.code(200).send(result.options);
+    },
+  );
+
+  app.post(
+    "/api/organizations/:organizationId/bookings/manual",
+    {
+      schema: {
+        params: organizationParamsSchema,
+        body: manualBookingBodySchema,
+      },
+    },
+    async (request, reply) => {
+      const result = await createManualBooking(
+        {
+          userId: request.verifiedUser.id,
+          organizationId: request.params.organizationId,
+          ...request.body,
+        },
+        options.now?.() ?? new Date(),
+      );
+      if (!result.ok)
+        return sendManualBookingError(reply, request.id, result.reason);
+      return reply.code(201).send(result.booking);
     },
   );
 
