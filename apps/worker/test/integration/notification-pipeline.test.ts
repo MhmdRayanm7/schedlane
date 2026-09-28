@@ -198,7 +198,7 @@ describe("Booking Notification Pipeline End-to-End Reliability", () => {
     expect(sentEmail).toBeDefined();
     if (!sentEmail) throw new Error("sentEmail is undefined");
     expect(sentEmail.to).toBe("jane@example.com");
-    expect(sentEmail.subject).toBe("Booking confirmed — SL-CREATE-001");
+    expect(sentEmail.subject).toBe("Booking confirmed with Acme Clinic");
     expect(sentEmail.idempotencyKey).toBe(`booking-email/${eventId}`);
     expect(sentEmail.text).toContain("Price: ₪250.00");
     expect(sentEmail.text).toContain(
@@ -298,9 +298,9 @@ describe("Booking Notification Pipeline End-to-End Reliability", () => {
     const sentEmail = emailService.sent[0];
     expect(sentEmail).toBeDefined();
     if (!sentEmail) throw new Error("sentEmail is undefined");
-    expect(sentEmail.subject).toBe("Booking rescheduled — SL-RESCHED-001");
-    expect(sentEmail.text).toContain("Previous Appointment:");
-    expect(sentEmail.text).toContain("New Appointment:");
+    expect(sentEmail.subject).toBe("Booking updated with Acme Clinic");
+    expect(sentEmail.text).toContain("Previous appointment:");
+    expect(sentEmail.text).toContain("New appointment:");
     expect(sentEmail.text).toContain(
       `http://localhost:5173/booking/manage#token=${rawToken}`,
     );
@@ -348,6 +348,7 @@ describe("Booking Notification Pipeline End-to-End Reliability", () => {
       emailService,
       encryptionKey,
       guestBookingManagementUrl: managementBaseUrl,
+      appBaseUrl: "http://localhost:5173",
     });
 
     const shutdown = new AbortController();
@@ -383,11 +384,11 @@ describe("Booking Notification Pipeline End-to-End Reliability", () => {
     const sentEmail = emailService.sent[0];
     expect(sentEmail).toBeDefined();
     if (!sentEmail) throw new Error("sentEmail is undefined");
-    expect(sentEmail.subject).toBe("Booking cancelled — SL-CANCEL-001");
+    expect(sentEmail.subject).toBe("Booking cancelled with Acme Clinic");
     expect(sentEmail.text).toContain("Cancellation reason: Schedule conflict");
-    expect(sentEmail.text).toContain(
-      `http://localhost:5173/booking/manage#token=${rawToken}`,
-    );
+    expect(sentEmail.text).toContain(`http://localhost:5173/book/org-${orgId}`);
+    expect(sentEmail.text).not.toContain("Manage booking");
+    expect(sentEmail.html).toContain("Book another appointment");
   });
 
   it("handles events with guestEmail = null by creating skipped_no_email receipt without sending email", async () => {

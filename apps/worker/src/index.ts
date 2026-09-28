@@ -46,6 +46,7 @@ const bookingEventHandler = createBookingEmailHandler({
   emailService,
   encryptionKey: config.GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY,
   guestBookingManagementUrl: config.GUEST_BOOKING_MANAGEMENT_URL,
+  appBaseUrl: config.APP_BASE_URL,
 });
 
 const organizationRequestEventHandler = createOrganizationRequestEmailHandler({

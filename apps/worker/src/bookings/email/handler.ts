@@ -24,13 +24,23 @@ export interface BookingEmailHandlerOptions {
   emailService: TransactionalEmailService;
   encryptionKey?: string | Buffer | undefined;
   guestBookingManagementUrl?: string | undefined;
+  appBaseUrl?: string | undefined;
+}
+
+function appUrl(baseUrl: string | undefined, path: string) {
+  return baseUrl ? `${baseUrl.replace(/\/$/, "")}${path}` : null;
 }
 
 export function createBookingEmailHandler(
   options: BookingEmailHandlerOptions,
 ): BookingEventHandler {
-  const { pool, emailService, encryptionKey, guestBookingManagementUrl } =
-    options;
+  const {
+    pool,
+    emailService,
+    encryptionKey,
+    guestBookingManagementUrl,
+    appBaseUrl,
+  } = options;
 
   return async (event: ValidatedBookingEvent) => {
     if (event.aggregateId !== event.payload.bookingId) {
@@ -50,12 +60,14 @@ export function createBookingEmailHandler(
         const bookingResult = await client.query<{
           guest_management_token_encrypted: string | null;
           organization_name: string;
+          organization_slug: string;
           resource_name: string | null;
           service_name: string;
         }>(
           `SELECT
              booking.guest_management_token_encrypted,
              organization.name AS organization_name,
+             organization.slug AS organization_slug,
              resource.name AS resource_name,
              service.name AS service_name
            FROM booking
@@ -76,7 +88,7 @@ export function createBookingEmailHandler(
           bookingResult.rows[0]?.guest_management_token_encrypted;
         let managementUrl: string | null = null;
 
-        if (encryptedToken) {
+        if (encryptedToken && event.eventType !== "booking.cancelled") {
           if (!encryptionKey) {
             throw new PermanentEventError(
               "missing_token_encryption_key_config",
@@ -101,6 +113,7 @@ export function createBookingEmailHandler(
         let rendered: RenderedEmail;
         const bookingContext: BookingEmailContext = {
           organizationName: bookingResult.rows[0]?.organization_name ?? "",
+          organizationSlug: bookingResult.rows[0]?.organization_slug ?? "",
           resourceName: bookingResult.rows[0]?.resource_name ?? "",
           serviceName: bookingResult.rows[0]?.service_name ?? "",
         };
@@ -122,7 +135,10 @@ export function createBookingEmailHandler(
           case "booking.cancelled":
             rendered = renderBookingCancelledEmail(
               event,
-              managementUrl,
+              appUrl(
+                appBaseUrl,
+                `/book/${encodeURIComponent(bookingContext.organizationSlug)}`,
+              ),
               bookingContext,
             );
             break;
@@ -134,6 +150,7 @@ export function createBookingEmailHandler(
           to: rendered.to,
           subject: rendered.subject,
           text: rendered.text,
+          html: rendered.html,
           idempotencyKey,
         });
 

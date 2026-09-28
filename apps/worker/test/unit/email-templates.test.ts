@@ -48,7 +48,7 @@ describe("email-templates", () => {
       );
 
       expect(email.to).toBe("alice@example.com");
-      expect(email.subject).toBe("Booking confirmed — SL-ABCD-1234");
+      expect(email.subject).toBe("Booking confirmed with Schedlane");
       expect(email.text).toContain("Hi Alice Smith,");
       expect(email.text).toContain("Reference: SL-ABCD-1234");
       expect(email.text).toContain("Appointment: ");
@@ -57,6 +57,8 @@ describe("email-templates", () => {
       expect(email.text).toContain(
         "https://example.com/booking/manage#token=tok123",
       );
+      expect(email.html).toContain("Your appointment is confirmed");
+      expect(email.html).toContain("Manage booking");
     });
 
     it("renders created email without price or management link", () => {
@@ -89,16 +91,19 @@ describe("email-templates", () => {
         "https://example.com/booking/manage#token=tok123",
         {
           organizationName: "Calm Studio",
+          organizationSlug: "calm-studio",
           resourceName: "Room One",
           serviceName: "Consultation",
         },
       );
 
       expect(email.text).not.toContain("Hi null");
-      expect(email.text).toContain("Your booking has been confirmed.");
-      expect(email.text).toContain("Organization: Calm Studio");
+      expect(email.text).toContain("Your appointment is confirmed.");
+      expect(email.text).toContain("Calm Studio");
       expect(email.text).toContain("Service: Consultation");
-      expect(email.text).toContain("Resource: Room One");
+      expect(email.text).toContain("With: Room One");
+      expect(email.subject).toBe("Booking confirmed with Calm Studio");
+      expect(email.html).not.toContain("Hi null");
     });
   });
 
@@ -137,12 +142,14 @@ describe("email-templates", () => {
       );
 
       expect(email.to).toBe("alice@example.com");
-      expect(email.subject).toBe("Booking rescheduled — SL-ABCD-1234");
-      expect(email.text).toContain("Previous Appointment:");
-      expect(email.text).toContain("New Appointment:");
+      expect(email.subject).toBe("Booking updated with Schedlane");
+      expect(email.text).toContain("Previous appointment:");
+      expect(email.text).toContain("New appointment:");
       expect(email.text).toContain(
         "https://example.com/booking/manage#token=tok123",
       );
+      expect(email.html).toContain("New appointment");
+      expect(email.html).toContain("Previous appointment");
     });
   });
 
@@ -172,18 +179,27 @@ describe("email-templates", () => {
       },
     };
 
-    it("renders cancelled email with reason and management link", () => {
+    it("renders cancelled email with reason and Book Again link", () => {
       const email = renderBookingCancelledEmail(
         baseEvent,
-        "https://example.com/booking/manage#token=tok123",
+        "https://example.com/book/calm-studio",
+        {
+          organizationName: "Calm <Studio>",
+          organizationSlug: "calm-studio",
+          resourceName: "Room & One",
+          serviceName: "Consultation <script>",
+        },
       );
 
       expect(email.to).toBe("alice@example.com");
-      expect(email.subject).toBe("Booking cancelled — SL-ABCD-1234");
+      expect(email.subject).toBe("Booking cancelled with Calm <Studio>");
       expect(email.text).toContain("Cancellation reason: Change of plans");
-      expect(email.text).toContain(
-        "https://example.com/booking/manage#token=tok123",
-      );
+      expect(email.text).toContain("https://example.com/book/calm-studio");
+      expect(email.text).not.toContain("Manage booking");
+      expect(email.html).toContain("Book another appointment");
+      expect(email.html).toContain("Calm &lt;Studio&gt;");
+      expect(email.html).toContain("Room &amp; One");
+      expect(email.html).not.toContain("<script>");
     });
 
     it("renders cancelled email when reason is null", () => {

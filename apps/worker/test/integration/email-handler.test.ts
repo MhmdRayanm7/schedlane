@@ -126,11 +126,12 @@ describe("Booking Email Handler Integration", () => {
     expect(sent).toBeDefined();
     if (!sent) throw new Error("sent is undefined");
     expect(sent.to).toBe("alice@example.com");
-    expect(sent.subject).toBe("Booking confirmed — SL-TEST-1234");
+    expect(sent.subject).toBe("Booking confirmed with Org 1");
     expect(sent.idempotencyKey).toBe(`booking-email/${event.eventId}`);
     expect(sent.text).toContain(
       `http://localhost:5173/booking/manage#token=${rawToken}`,
     );
+    expect(sent.html).toContain("Manage booking");
 
     // Check consumer receipt in DB
     const receipt = await infra.pool.query(
@@ -195,7 +196,7 @@ describe("Booking Email Handler Integration", () => {
     if (!sent) throw new Error("sent is undefined");
     expect(sent.to).toBe("bob@example.com");
     expect(sent.text).not.toContain("Hi null");
-    expect(sent.text).toContain("Your booking has been confirmed.");
+    expect(sent.text).toContain("Your appointment is confirmed.");
     expect(sent.text).toContain(
       `http://localhost:5173/booking/manage#token=${rawToken}`,
     );
