@@ -16,6 +16,15 @@ export interface BookingEmailContext {
   serviceName: string;
 }
 
+export interface BookingReminderEmailData {
+  guestName: string | null;
+  guestEmail: string;
+  publicReference: string;
+  startAt: string;
+  durationMinutes: number;
+  priceAgorot: number | null;
+}
+
 function businessName(context?: BookingEmailContext) {
   return context?.organizationName || "Schedlane";
 }
@@ -215,6 +224,52 @@ export function renderBookingCancelledEmail(
       action: bookingUrl
         ? { label: "Book another appointment", url: bookingUrl }
         : undefined,
+    }),
+  };
+}
+
+export function renderBookingReminderEmail(
+  data: BookingReminderEmailData,
+  managementUrl: string | null,
+  context: BookingEmailContext,
+): RenderedEmail {
+  const dateTime = formatJerusalemDateTime(data.startAt);
+  const lines = [
+    ...greeting(data.guestName),
+    "Your appointment is tomorrow.",
+    "",
+    ...textContext(context),
+    `Appointment: ${dateTime} (Asia/Jerusalem)`,
+    `Duration: ${data.durationMinutes} min`,
+    ...(data.priceAgorot !== null ? [`Price: ${money(data.priceAgorot)}`] : []),
+    `Reference: ${data.publicReference}`,
+    ...(managementUrl
+      ? [
+          "",
+          "Manage booking:",
+          managementUrl,
+          "",
+          "Need to make a change? Use your secure booking link.",
+        ]
+      : []),
+  ];
+
+  return {
+    to: data.guestEmail,
+    subject: `Appointment reminder — ${businessName(context)}`,
+    text: lines.join("\n"),
+    html: bookingEmailShell({
+      title: "Appointment reminder",
+      organizationName: businessName(context),
+      greetingName: data.guestName,
+      intro: "Your appointment is tomorrow.",
+      content: `${appointmentCard({ context, dateTime, durationMinutes: data.durationMinutes, priceAgorot: data.priceAgorot })}${detailTable([detailRow("Reference", data.publicReference)])}`,
+      action: managementUrl
+        ? { label: "Manage booking", url: managementUrl }
+        : undefined,
+      footer: managementUrl
+        ? "Need to make a change? Use your secure booking link. Times are shown in Jerusalem time."
+        : "Times are shown in Jerusalem time.",
     }),
   };
 }

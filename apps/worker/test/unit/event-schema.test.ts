@@ -30,6 +30,7 @@ describe("booking event schema validation", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.event.eventType).toBe("booking.created");
+    if (result.event.eventType !== "booking.created") return;
     expect(result.event.eventId).toBe(validCreatedEvent.eventId);
     expect(result.event.payload.guestEmail).toBe("alice@example.com");
   });
@@ -60,6 +61,7 @@ describe("booking event schema validation", () => {
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
+    if (result.event.eventType !== "booking.created") return;
     expect(result.event.payload.source).toBe("public");
   });
 
@@ -102,6 +104,36 @@ describe("booking event schema validation", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.event.eventType).toBe("booking.cancelled");
+  });
+
+  it("parses a minimal booking.reminder_due event without adding snapshot data", () => {
+    const reminderId = "028f9d0c-1a2b-7c3d-8e4f-5a6b7c8d9e0f";
+    const result = parseBookingEventMessage(
+      JSON.stringify({
+        ...validCreatedEvent,
+        eventType: "booking.reminder_due",
+        payload: {
+          reminderId,
+          bookingId: validCreatedEvent.aggregateId,
+          scheduledForStartAt: "2026-10-05T12:00:00.000Z",
+        },
+      }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      event: {
+        eventId: validCreatedEvent.eventId,
+        aggregateType: "booking",
+        aggregateId: validCreatedEvent.aggregateId,
+        eventType: "booking.reminder_due",
+        occurredAt: validCreatedEvent.occurredAt,
+        payload: {
+          reminderId,
+          bookingId: validCreatedEvent.aggregateId,
+          scheduledForStartAt: "2026-10-05T12:00:00.000Z",
+        },
+      },
+    });
   });
 
   it("rejects malformed JSON with invalid_json", () => {

@@ -3,6 +3,7 @@ import { formatJerusalemDateTime } from "../../src/bookings/email/date-format.js
 import {
   renderBookingCancelledEmail,
   renderBookingCreatedEmail,
+  renderBookingReminderEmail,
   renderBookingRescheduledEmail,
 } from "../../src/bookings/email/templates.js";
 import type { ValidatedBookingEvent } from "../../src/bookings/event-schema.js";
@@ -13,6 +14,37 @@ describe("email-templates", () => {
     const formatted = formatJerusalemDateTime("2026-06-15T10:00:00.000Z");
     expect(formatted).toContain("Jun 15, 2026");
     expect(formatted).toContain("13:00");
+  });
+
+  it("renders an escaped HTML and plain-text appointment reminder", () => {
+    const email = renderBookingReminderEmail(
+      {
+        guestName: "Guest <name>",
+        guestEmail: "guest@example.test",
+        publicReference: "BK-REMINDER",
+        startAt: "2026-06-15T10:00:00.000Z",
+        durationMinutes: 45,
+        priceAgorot: 12345,
+      },
+      "https://example.test/manage#token=secret",
+      {
+        organizationName: "<script>alert(1)</script>",
+        organizationSlug: "test",
+        resourceName: "Room & One",
+        serviceName: "Service <One>",
+      },
+    );
+
+    expect(email.to).toBe("guest@example.test");
+    expect(email.subject).toContain("<script>alert(1)</script>");
+    expect(email.text).toContain("Your appointment is tomorrow.");
+    expect(email.text).toContain("Duration: 45 min");
+    expect(email.text).toContain("Reference: BK-REMINDER");
+    expect(email.text).toContain("https://example.test/manage#token=secret");
+    expect(email.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(email.html).toContain("Service &lt;One&gt;");
+    expect(email.html).toContain("Room &amp; One");
+    expect(email.html).not.toContain("<script>alert(1)</script>");
   });
 
   describe("renderBookingCreatedEmail", () => {

@@ -36,6 +36,12 @@ export type ValidatedBookingCancelledPayload = {
   cancelledBy: "management" | "guest";
 };
 
+export type ValidatedBookingReminderDuePayload = {
+  reminderId: string;
+  bookingId: string;
+  scheduledForStartAt: string;
+};
+
 export type ValidatedBookingCreatedEvent = {
   eventId: string;
   aggregateType: "booking";
@@ -63,10 +69,20 @@ export type ValidatedBookingCancelledEvent = {
   payload: ValidatedBookingCancelledPayload;
 };
 
+export type ValidatedBookingReminderDueEvent = {
+  eventId: string;
+  aggregateType: "booking";
+  aggregateId: string;
+  eventType: "booking.reminder_due";
+  occurredAt: string;
+  payload: ValidatedBookingReminderDuePayload;
+};
+
 export type ValidatedBookingEvent =
   | ValidatedBookingCreatedEvent
   | ValidatedBookingRescheduledEvent
-  | ValidatedBookingCancelledEvent;
+  | ValidatedBookingCancelledEvent
+  | ValidatedBookingReminderDueEvent;
 
 export type ParseBookingEventResult =
   | { ok: true; event: ValidatedBookingEvent }
@@ -155,6 +171,17 @@ function validateCancelledPayload(
   return true;
 }
 
+function validateReminderDuePayload(
+  payload: Record<string, unknown>,
+  aggregateId: string,
+): payload is ValidatedBookingReminderDuePayload {
+  return (
+    payload.bookingId === aggregateId &&
+    isNonEmptyString(payload.reminderId) &&
+    isValidIsoDate(payload.scheduledForStartAt)
+  );
+}
+
 export function parseBookingEventMessage(
   rawContent: Buffer | string,
 ): ParseBookingEventResult {
@@ -187,7 +214,7 @@ export function parseBookingEventMessage(
   }
 
   const rawPayload = record.payload as Record<string, unknown>;
-  const payload = {
+  const bookingSnapshotPayload = {
     ...rawPayload,
     source: rawPayload.source ?? "public",
   };
@@ -197,7 +224,7 @@ export function parseBookingEventMessage(
 
   switch (record.eventType) {
     case "booking.created": {
-      if (!validateCreatedPayload(payload, aggregateId)) {
+      if (!validateCreatedPayload(bookingSnapshotPayload, aggregateId)) {
         return { ok: false, deadLetterReason: "invalid_payload" };
       }
       return {
@@ -208,12 +235,12 @@ export function parseBookingEventMessage(
           aggregateId,
           eventType: "booking.created",
           occurredAt,
-          payload,
+          payload: bookingSnapshotPayload,
         },
       };
     }
     case "booking.rescheduled": {
-      if (!validateRescheduledPayload(payload, aggregateId)) {
+      if (!validateRescheduledPayload(bookingSnapshotPayload, aggregateId)) {
         return { ok: false, deadLetterReason: "invalid_payload" };
       }
       return {
@@ -224,12 +251,12 @@ export function parseBookingEventMessage(
           aggregateId,
           eventType: "booking.rescheduled",
           occurredAt,
-          payload,
+          payload: bookingSnapshotPayload,
         },
       };
     }
     case "booking.cancelled": {
-      if (!validateCancelledPayload(payload, aggregateId)) {
+      if (!validateCancelledPayload(bookingSnapshotPayload, aggregateId)) {
         return { ok: false, deadLetterReason: "invalid_payload" };
       }
       return {
@@ -240,7 +267,23 @@ export function parseBookingEventMessage(
           aggregateId,
           eventType: "booking.cancelled",
           occurredAt,
-          payload,
+          payload: bookingSnapshotPayload,
+        },
+      };
+    }
+    case "booking.reminder_due": {
+      if (!validateReminderDuePayload(rawPayload, aggregateId)) {
+        return { ok: false, deadLetterReason: "invalid_payload" };
+      }
+      return {
+        ok: true,
+        event: {
+          eventId,
+          aggregateType: "booking",
+          aggregateId,
+          eventType: "booking.reminder_due",
+          occurredAt,
+          payload: rawPayload,
         },
       };
     }
