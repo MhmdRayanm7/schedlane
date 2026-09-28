@@ -1,5 +1,6 @@
 import { CheckCircle2, Clock3, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { ApiError } from "@/shared/api/api-error";
 import { supportEmail } from "@/shared/api/config";
 import { Button } from "@/shared/components/ui/button";
@@ -181,6 +182,7 @@ export function OrganizationOnboarding() {
   const requestQuery = useMyOrganizationRequest();
   const organizationsQuery = useOrganizations();
   const [resubmitting, setResubmitting] = useState(false);
+  const existingOrganization = organizationsQuery.data?.items[0] ?? null;
 
   useEffect(() => {
     if (requestQuery.data?.request?.status === "approved") {
@@ -208,12 +210,16 @@ export function OrganizationOnboarding() {
   }
 
   const request = requestQuery.data.request;
-  if (!request || (request.status === "rejected" && resubmitting)) {
+  if (!request || (request.status !== "pending" && resubmitting)) {
     return (
       <section className={styles.requestCard}>
         <header className={styles.intro}>
           <p className={styles.eyebrow}>Curated onboarding</p>
-          <h1>Request your Schedlane workspace</h1>
+          <h1>
+            {existingOrganization
+              ? "Request another organization"
+              : "Request your Schedlane workspace"}
+          </h1>
           <p>
             Share a few details about your organization. Our team reviews every
             request so each workspace starts with the right foundation.
@@ -222,6 +228,14 @@ export function OrganizationOnboarding() {
         <RequestForm
           initialValues={request ? valuesFromRequest(request) : emptyForm}
         />
+        {existingOrganization ? (
+          <Link
+            className={styles.backLink}
+            to={`/app/${existingOrganization.id}/bookings`}
+          >
+            Back to {existingOrganization.name}
+          </Link>
+        ) : null}
       </section>
     );
   }
@@ -246,6 +260,14 @@ export function OrganizationOnboarding() {
             Need help? <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
           </p>
         ) : null}
+        {existingOrganization ? (
+          <Link
+            className={styles.backLink}
+            to={`/app/${existingOrganization.id}/bookings`}
+          >
+            Return to {existingOrganization.name}
+          </Link>
+        ) : null}
       </section>
     );
   }
@@ -265,6 +287,14 @@ export function OrganizationOnboarding() {
         <Button onClick={() => setResubmitting(true)}>
           Submit a new request
         </Button>
+        {existingOrganization ? (
+          <Link
+            className={styles.backLink}
+            to={`/app/${existingOrganization.id}/bookings`}
+          >
+            Return to {existingOrganization.name}
+          </Link>
+        ) : null}
         {supportEmail ? (
           <p className={styles.support}>
             Questions? <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
@@ -291,6 +321,19 @@ export function OrganizationOnboarding() {
       >
         <RefreshCw aria-hidden="true" className={styles.icon} /> Refresh access
       </Button>
+      {existingOrganization ? (
+        <>
+          <Button onClick={() => setResubmitting(true)} variant="outline">
+            Request another organization
+          </Button>
+          <Link
+            className={styles.backLink}
+            to={`/app/${existingOrganization.id}/bookings`}
+          >
+            Return to {existingOrganization.name}
+          </Link>
+        </>
+      ) : null}
     </section>
   );
 }

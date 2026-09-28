@@ -12,7 +12,11 @@ import { FormField } from "@/shared/components/ui/form-field";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
 import { useUnsavedChanges } from "@/shared/unsaved-changes/unsaved-changes";
-import { agorotToIls, ilsToAgorot } from "../lib/pricing";
+import {
+  agorotToIls,
+  ilsToAgorot,
+  isServicePriceInputValid,
+} from "../lib/pricing";
 import styles from "../services.module.css";
 import type { CreateServiceInput, Service, UpdateServiceInput } from "../types";
 
@@ -46,7 +50,6 @@ export function ServiceFormDialog({
   const parsedDuration = Number.parseInt(durationMinutes, 10);
   const parsedBuffer = Number.parseInt(bufferAfterMinutes, 10);
   const parsedPrice = ilsToAgorot(priceIls);
-  const numericPrice = Number(priceIls);
   const effectivePrice = priceIls.trim() ? parsedPrice : null;
   const priceRequired = pricingEnabled === true && !service?.deactivatedAt;
   const isDirty = Boolean(
@@ -56,9 +59,7 @@ export function ServiceFormDialog({
         effectivePrice !== service.priceAgorot ||
         parsedBuffer !== service.bufferAfterMinutes),
   );
-  const isPriceValid = priceIls.trim()
-    ? parsedPrice !== null && Number.isFinite(numericPrice) && numericPrice >= 0
-    : !priceRequired;
+  const isPriceValid = isServicePriceInputValid(priceIls, priceRequired);
   const isValid =
     pricingEnabled !== undefined &&
     Boolean(name.trim()) &&

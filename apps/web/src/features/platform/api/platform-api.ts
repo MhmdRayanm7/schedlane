@@ -1,6 +1,7 @@
 import type { PublicationRequestStatus } from "@/features/publication/types";
 import { apiClient } from "@/shared/api/client";
 import type {
+  CreatePlatformOrganizationInput,
   CursorPage,
   PlatformIdentity,
   PlatformOrganization,
@@ -56,6 +57,35 @@ export function getPlatformOrganizations(
     { signal },
   );
 }
+
+export const createPlatformOrganization = (
+  input: CreatePlatformOrganizationInput,
+) =>
+  apiClient<PlatformOrganization>("/api/platform/organizations", {
+    method: "POST",
+    body: input,
+  });
+
+export const suspendPlatformOrganization = (
+  organizationId: string,
+  reason: string,
+) =>
+  apiClient<{ id: string; suspendedAt: string }>(
+    `/api/platform/organizations/${organizationId}/suspend`,
+    { method: "POST", body: { reason } },
+  );
+
+export const unsuspendPlatformOrganization = (
+  organizationId: string,
+  internalNote?: string,
+) =>
+  apiClient<{ id: string; suspendedAt: null }>(
+    `/api/platform/organizations/${organizationId}/unsuspend`,
+    {
+      method: "POST",
+      body: internalNote ? { internalNote } : {},
+    },
+  );
 
 export function getPlatformPublicationRequests(
   status: PublicationRequestStatus,

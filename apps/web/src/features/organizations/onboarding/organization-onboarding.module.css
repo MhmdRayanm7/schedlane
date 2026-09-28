@@ -137,3 +137,14 @@
     max-width: 25rem;
   }
 }
+.backLink {
+  display: inline-flex;
+  margin-top: 1rem;
+  color: var(--color-primary, #0f766e);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}

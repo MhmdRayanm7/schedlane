@@ -8,6 +8,7 @@ import { organizationsQueryKey } from "@/features/organizations/hooks/use-organi
 import type { PublicationRequestStatus } from "@/features/publication/types";
 import {
   approvePlatformRequest,
+  createPlatformOrganization,
   getPlatformIdentity,
   getPlatformOrganizations,
   getPlatformPublicationRequest,
@@ -17,9 +18,11 @@ import {
   publishPlatformPublicationRequest,
   rejectPlatformPublicationRequest,
   rejectPlatformRequest,
+  suspendPlatformOrganization,
   unpublishPlatformOrganization,
+  unsuspendPlatformOrganization,
 } from "../api/platform-api";
-import type { RequestStatus } from "../types";
+import type { CreatePlatformOrganizationInput, RequestStatus } from "../types";
 
 export const platformIdentityQueryKey = ["platform", "me"] as const;
 export const platformRequestsQueryKey = ["platform", "requests"] as const;
@@ -89,6 +92,57 @@ export function usePlatformOrganizations() {
     queryFn: ({ pageParam, signal }) =>
       getPlatformOrganizations(pageParam, signal),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  });
+}
+
+function useInvalidateOrganizationDirectories() {
+  const queryClient = useQueryClient();
+  return async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: platformOrganizationsQueryKey,
+      }),
+      queryClient.invalidateQueries({ queryKey: organizationsQueryKey }),
+    ]);
+  };
+}
+
+export function useCreatePlatformOrganization() {
+  const invalidate = useInvalidateOrganizationDirectories();
+  return useMutation({
+    mutationFn: (input: CreatePlatformOrganizationInput) =>
+      createPlatformOrganization(input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSuspendOrganization() {
+  const invalidate = useInvalidateOrganizationDirectories();
+  return useMutation({
+    mutationFn: ({
+      organizationId,
+      reason,
+    }: {
+      organizationId: string;
+      reason: string;
+    }) => suspendPlatformOrganization(organizationId, reason),
+    onSuccess: invalidate,
+    onError: invalidate,
+  });
+}
+
+export function useUnsuspendOrganization() {
+  const invalidate = useInvalidateOrganizationDirectories();
+  return useMutation({
+    mutationFn: ({
+      organizationId,
+      internalNote,
+    }: {
+      organizationId: string;
+      internalNote?: string;
+    }) => unsuspendPlatformOrganization(organizationId, internalNote),
+    onSuccess: invalidate,
+    onError: invalidate,
   });
 }
 

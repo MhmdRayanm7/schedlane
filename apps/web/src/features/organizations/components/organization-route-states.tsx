@@ -51,6 +51,14 @@ function ApplicationFrame({ children }: { children: ReactNode }) {
   );
 }
 
+export function OrganizationRequestRoute() {
+  return (
+    <ApplicationFrame>
+      <OrganizationOnboarding />
+    </ApplicationFrame>
+  );
+}
+
 function LoadingOrganizations() {
   return (
     <ApplicationFrame>
@@ -149,6 +157,12 @@ export function OrganizationResolver() {
             </Link>
           ))}
         </div>
+        <Link
+          className={styles.requestOrganizationLink}
+          to="/app/request-organization"
+        >
+          Request another organization
+        </Link>
       </section>
     </ApplicationFrame>
   );

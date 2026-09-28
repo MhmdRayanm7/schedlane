@@ -33,6 +33,13 @@ export type PlatformOrganization = {
   createdAt: string;
 };
 
+export type CreatePlatformOrganizationInput = {
+  organizationName: string;
+  ownerEmail: string;
+  customerMessage?: string;
+  internalNote?: string;
+};
+
 export type PlatformPublicationRequest = {
   id: string;
   organizationId: string;

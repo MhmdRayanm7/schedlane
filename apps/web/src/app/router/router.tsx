@@ -11,6 +11,7 @@ import {
 import { BookingsPage } from "@/features/bookings/bookings-page";
 import {
   OrganizationAccessGate,
+  OrganizationRequestRoute,
   OrganizationResolver,
 } from "@/features/organizations/components/organization-route-states";
 import { PlatformAccessGate } from "@/features/platform/platform-access-gate";
@@ -62,6 +63,14 @@ export const router = createBrowserRouter([
             element: (
               <UnsavedChangesProvider>
                 <OrganizationResolver />
+              </UnsavedChangesProvider>
+            ),
+          },
+          {
+            path: "request-organization",
+            element: (
+              <UnsavedChangesProvider>
+                <OrganizationRequestRoute />
               </UnsavedChangesProvider>
             ),
           },

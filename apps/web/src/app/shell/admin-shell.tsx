@@ -235,6 +235,15 @@ function Sidebar({
                 ) : null}
               </DropdownMenuItem>
             ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() =>
+                requestChange(() => navigate("/app/request-organization"))
+              }
+            >
+              <PackageOpen aria-hidden="true" className={styles.icon} />
+              Request another organization
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -313,11 +322,12 @@ function Sidebar({
 export function AdminShell() {
   const organizationAccess = useOutletContext<OrganizationAccessContext>();
   const location = useLocation();
+  const routeKey = `${location.pathname}${location.search}${location.hash}`;
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   useEffect(() => {
-    setMobileNavigationOpen(false);
-  }, [location.hash, location.pathname, location.search]);
+    if (routeKey) setMobileNavigationOpen(false);
+  }, [routeKey]);
 
   useEffect(() => {
     if (!mobileNavigationOpen) return;

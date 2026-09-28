@@ -166,3 +166,14 @@
     padding-inline: var(--space-8);
   }
 }
+.requestOrganizationLink {
+  display: inline-flex;
+  margin-top: 1.25rem;
+  color: var(--color-primary, #0f766e);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.requestOrganizationLink:hover {
+  text-decoration: underline;
+}

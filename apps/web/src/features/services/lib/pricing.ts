@@ -26,6 +26,17 @@ export function agorotToIls(agorot: number | null | undefined): string {
   return ils % 1 === 0 ? ils.toString() : ils.toFixed(2);
 }
 
+export function isServicePriceInputValid(
+  value: string,
+  required: boolean,
+): boolean {
+  if (!value.trim()) return !required;
+  const numeric = Number(value);
+  return (
+    ilsToAgorot(value) !== null && Number.isFinite(numeric) && numeric >= 0
+  );
+}
+
 /**
  * Formats integer agorot as Israeli Shekel currency symbol (₪).
  */
