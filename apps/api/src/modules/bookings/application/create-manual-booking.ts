@@ -29,6 +29,7 @@ import {
   type GuestManagementCapability,
   runWithGuestManagementCapability,
 } from "./guest-management-capability.js";
+import { syncBookingReminderInTransaction } from "./reminders.js";
 
 export type CreateManualBookingInput = {
   userId: string;
@@ -187,6 +188,16 @@ async function createManualBookingInTransaction(
     guestManagementTokenHash: capability?.tokenHash ?? null,
     guestManagementTokenEncrypted: capability?.encryptedToken ?? null,
   });
+  await syncBookingReminderInTransaction(
+    trx,
+    {
+      id: booking.id,
+      status: booking.status,
+      guestEmail: booking.guestEmail,
+      startAt: new Date(booking.startAt),
+    },
+    now,
+  );
   await insertOutboxEventInTransaction(trx, {
     aggregateType: "booking",
     aggregateId: booking.id,

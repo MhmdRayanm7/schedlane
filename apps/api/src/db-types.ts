@@ -18,6 +18,12 @@ export type StaffTeamVisibility = "team" | "self";
 
 export type BookingStatus = "confirmed" | "cancelled" | "no_show";
 export type BookingSource = "public" | "manual";
+export type BookingReminderStatus =
+  | "pending"
+  | "dispatched"
+  | "sent"
+  | "cancelled"
+  | "skipped";
 
 export interface PlatformAdminTable {
   user_id: string;
@@ -236,6 +242,20 @@ export interface BookingTable {
   updated_at: Generated<Date>;
 }
 
+export interface BookingReminderTable {
+  id: Generated<string>;
+  booking_id: string;
+  scheduled_for_start_at: Date;
+  due_at: Date;
+  status: Generated<BookingReminderStatus>;
+  created_at: Generated<Date>;
+  dispatched_at: Date | null;
+  sent_at: Date | null;
+  cancelled_at: Date | null;
+  skipped_at: Date | null;
+  skip_reason: string | null;
+}
+
 export interface OutboxEventTable {
   id: Generated<string>;
   aggregate_type: string;
@@ -277,6 +297,7 @@ export interface Database {
   resource_date_override_interval: ResourceDateOverrideIntervalTable;
   resource_time_block: ResourceTimeBlockTable;
   booking: BookingTable;
+  booking_reminder: BookingReminderTable;
   outbox_event: OutboxEventTable;
   consumer_receipt: ConsumerReceiptTable;
 }

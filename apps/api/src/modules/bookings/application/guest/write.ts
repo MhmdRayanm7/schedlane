@@ -26,6 +26,10 @@ import {
   MAX_SERIALIZATION_ATTEMPTS,
   runWithSerializationRetry as runSerializableOperation,
 } from "../../persistence/serializable-retry.js";
+import {
+  cancelPendingBookingReminderInTransaction,
+  syncBookingReminderInTransaction,
+} from "../reminders.js";
 
 export type CancelGuestManagedBookingResult =
   | {
@@ -148,6 +152,16 @@ async function updateGuestBookingContactInTransaction(
       "updated_at",
     ])
     .executeTakeFirstOrThrow();
+  await syncBookingReminderInTransaction(
+    trx,
+    {
+      id: booking.id,
+      status: booking.status,
+      guestEmail: row.guest_email,
+      startAt: booking.start_at,
+    },
+    now,
+  );
   return {
     ok: true,
     booking: {
@@ -265,6 +279,7 @@ async function cancelGuestBookingInTransaction(
     .executeTakeFirstOrThrow();
   if (row.status !== "cancelled" || !row.cancelled_at)
     throw new Error("Guest cancellation did not persist as cancelled");
+  await cancelPendingBookingReminderInTransaction(trx, booking.id, now);
   await insertOutboxEventInTransaction(trx, {
     aggregateType: "booking",
     aggregateId: booking.id,

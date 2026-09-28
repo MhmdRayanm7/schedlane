@@ -23,6 +23,10 @@ import {
   MAX_SERIALIZATION_ATTEMPTS,
   runWithSerializationRetry as runSerializableOperation,
 } from "../persistence/serializable-retry.js";
+import {
+  cancelPendingBookingReminderInTransaction,
+  syncBookingReminderInTransaction,
+} from "./reminders.js";
 
 const BOOKING_CONFLICT_CONSTRAINT = "booking_confirmed_resource_occupancy_excl";
 
@@ -209,6 +213,11 @@ async function rescheduleInTransaction(
     booking.duration_minutes,
     booking.buffer_after_minutes,
   );
+  const appointmentChanged =
+    booking.resource_id !== targetResource.id ||
+    booking.start_at.getTime() !== input.startAt.getTime();
+  if (appointmentChanged)
+    await cancelPendingBookingReminderInTransaction(trx, booking.id, now);
   const row = await trx
     .updateTable("booking")
     .set({
@@ -239,6 +248,17 @@ async function rescheduleInTransaction(
       "updated_at",
     ])
     .executeTakeFirstOrThrow();
+  await syncBookingReminderInTransaction(
+    trx,
+    {
+      id: row.id,
+      status: row.status,
+      guestEmail: row.guest_email,
+      startAt: row.start_at,
+    },
+    now,
+    { appointmentChanged },
+  );
   await insertOutboxEventInTransaction(trx, {
     aggregateType: "booking",
     aggregateId: row.id,

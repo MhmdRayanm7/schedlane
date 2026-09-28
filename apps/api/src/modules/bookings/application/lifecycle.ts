@@ -22,6 +22,10 @@ import {
   MAX_SERIALIZATION_ATTEMPTS,
   runWithSerializationRetry,
 } from "../persistence/serializable-retry.js";
+import {
+  cancelPendingBookingReminderInTransaction,
+  syncBookingReminderInTransaction,
+} from "./reminders.js";
 
 const BOOKING_CONFLICT_CONSTRAINT = "booking_confirmed_resource_occupancy_excl";
 
@@ -234,6 +238,11 @@ export async function cancelManagementBooking(
           .where("organization_id", "=", input.organizationId)
           .returning(lifecycleReturning)
           .executeTakeFirstOrThrow();
+        await cancelPendingBookingReminderInTransaction(
+          trx,
+          access.booking.id,
+          currentTime,
+        );
         await insertOutboxEventInTransaction(trx, {
           aggregateType: "booking",
           aggregateId: access.booking.id,
@@ -293,6 +302,11 @@ export async function markManagementBookingNoShow(
           .where("organization_id", "=", input.organizationId)
           .returning(lifecycleReturning)
           .executeTakeFirstOrThrow();
+        await cancelPendingBookingReminderInTransaction(
+          trx,
+          access.booking.id,
+          currentTime,
+        );
         return { ok: true, booking: toLifecycleDto(row) };
       }),
   );
@@ -330,6 +344,16 @@ export async function revertManagementBookingNoShow(
             .where("organization_id", "=", input.organizationId)
             .returning(lifecycleReturning)
             .executeTakeFirstOrThrow();
+          await syncBookingReminderInTransaction(
+            trx,
+            {
+              id: access.booking.id,
+              status: "confirmed",
+              guestEmail: access.booking.guestEmail,
+              startAt: access.booking.startAt,
+            },
+            currentTime,
+          );
           return { ok: true, booking: toLifecycleDto(row) };
         }),
     );

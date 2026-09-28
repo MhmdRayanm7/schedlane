@@ -20,6 +20,7 @@ import {
   runConfirmedBookingWriteWithRetries,
 } from "../persistence/confirmed-booking-write.js";
 import { runWithGuestManagementCapability } from "./guest-management-capability.js";
+import { syncBookingReminderInTransaction } from "./reminders.js";
 
 export type CreatePublicBookingInput = {
   organizationSlug: string;
@@ -153,6 +154,16 @@ async function executePublicBookingTransaction(
         guestManagementTokenHash,
         guestManagementTokenEncrypted,
       });
+      await syncBookingReminderInTransaction(
+        trx,
+        {
+          id: booking.id,
+          status: booking.status,
+          guestEmail: booking.guestEmail,
+          startAt: new Date(booking.startAt),
+        },
+        now,
+      );
       await insertOutboxEventInTransaction(trx, {
         aggregateType: "booking",
         aggregateId: booking.id,
