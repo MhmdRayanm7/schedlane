@@ -12,6 +12,10 @@ type UnpublishedPayload = PublicationRecipientPayload & {
   unpublicationId: string;
   reason: string;
 };
+type ManuallyProvisionedPayload = PublicationRecipientPayload & {
+  customerMessage: string | null;
+};
+type SuspendedPayload = PublicationRecipientPayload & { reason: string };
 
 type PublicationRequestEvent<TType extends string, TPayload> = {
   eventId: string;
@@ -41,7 +45,13 @@ export type ValidatedPublicationEvent =
       "organization.publication_rejected",
       RejectedPayload
     >
-  | OrganizationEvent<"organization.unpublished", UnpublishedPayload>;
+  | OrganizationEvent<"organization.unpublished", UnpublishedPayload>
+  | OrganizationEvent<
+      "organization.manually_provisioned",
+      ManuallyProvisionedPayload
+    >
+  | OrganizationEvent<"organization.suspended", SuspendedPayload>
+  | OrganizationEvent<"organization.unsuspended", PublicationRecipientPayload>;
 
 export type ParsePublicationEventResult =
   | { ok: true; event: ValidatedPublicationEvent }
@@ -109,6 +119,30 @@ export function parsePublicationEventMessage(
         payload.organizationId !== envelope.aggregateId ||
         !string(payload.unpublicationId) ||
         !string(payload.reason)
+      )
+        return { ok: false, deadLetterReason: "invalid_payload" };
+      break;
+    case "organization.manually_provisioned":
+      if (
+        envelope.aggregateType !== "organization" ||
+        payload.organizationId !== envelope.aggregateId ||
+        (payload.customerMessage !== null &&
+          typeof payload.customerMessage !== "string")
+      )
+        return { ok: false, deadLetterReason: "invalid_payload" };
+      break;
+    case "organization.suspended":
+      if (
+        envelope.aggregateType !== "organization" ||
+        payload.organizationId !== envelope.aggregateId ||
+        !string(payload.reason)
+      )
+        return { ok: false, deadLetterReason: "invalid_payload" };
+      break;
+    case "organization.unsuspended":
+      if (
+        envelope.aggregateType !== "organization" ||
+        payload.organizationId !== envelope.aggregateId
       )
         return { ok: false, deadLetterReason: "invalid_payload" };
       break;

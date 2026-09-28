@@ -27,3 +27,9 @@ export function brandedEmailShell(
 export function supportLine(supportEmail?: string) {
   return supportEmail ? `Questions? Contact us at ${supportEmail}.` : null;
 }
+
+export function supportHtml(supportEmail?: string) {
+  if (!supportEmail) return null;
+  const email = escapeHtml(supportEmail);
+  return `Questions? Contact us at <a href="mailto:${email}" style="color:#0F766E">${email}</a>.`;
+}

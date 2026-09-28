@@ -6,10 +6,13 @@ import type { PublicationEventHandler } from "../consumer.js";
 import {
   type RenderedEmail,
   renderInternalPublicationRequestEmail,
+  renderManuallyProvisionedEmail,
   renderPublicationRejectedEmail,
   renderPublicationRequestedEmail,
   renderPublishedEmail,
+  renderSuspendedEmail,
   renderUnpublishedEmail,
+  renderUnsuspendedEmail,
 } from "./templates.js";
 
 export const PUBLICATION_EMAIL_CONSUMER_NAME = "publication-email-v1";
@@ -38,12 +41,13 @@ export function createPublicationEmailHandler(
   options: HandlerOptions,
 ): PublicationEventHandler {
   return async (event) => {
-    if (
-      (event.eventType === "organization.unpublished" &&
-        event.aggregateId !== event.payload.organizationId) ||
-      (event.eventType !== "organization.unpublished" &&
-        event.aggregateId !== event.payload.requestId)
-    )
+    const aggregateMatches =
+      event.eventType === "organization.publication_requested" ||
+      event.eventType === "organization.publication_rejected" ||
+      event.eventType === "organization.published"
+        ? event.aggregateId === event.payload.requestId
+        : event.aggregateId === event.payload.organizationId;
+    if (!aggregateMatches)
       throw new PermanentEventError("aggregate_id_mismatch");
 
     await processWithIdempotency({
@@ -110,6 +114,35 @@ export function createPublicationEmailHandler(
             await send(
               options.emailService,
               renderUnpublishedEmail(event, settingsUrl, options.supportEmail),
+              `${key}/recipient`,
+            );
+            return { outcome: "recipient_email_sent" };
+          case "organization.manually_provisioned":
+            await send(
+              options.emailService,
+              renderManuallyProvisionedEmail(
+                event,
+                url(options.appBaseUrl, "/app"),
+                options.supportEmail,
+              ),
+              `${key}/recipient`,
+            );
+            return { outcome: "recipient_email_sent" };
+          case "organization.suspended":
+            await send(
+              options.emailService,
+              renderSuspendedEmail(event, options.supportEmail),
+              `${key}/recipient`,
+            );
+            return { outcome: "recipient_email_sent" };
+          case "organization.unsuspended":
+            await send(
+              options.emailService,
+              renderUnsuspendedEmail(
+                event,
+                url(options.appBaseUrl, "/app"),
+                options.supportEmail,
+              ),
               `${key}/recipient`,
             );
             return { outcome: "recipient_email_sent" };

@@ -1,6 +1,7 @@
 import {
   brandedEmailShell,
   escapeHtml,
+  supportHtml,
   supportLine,
 } from "../../email/branded-template.js";
 import type { ValidatedOrganizationRequestEvent } from "../event-schema.js";
@@ -32,9 +33,7 @@ export function renderRequestReceivedEmail(
     `Hi ${escapeHtml(event.payload.applicantName)},`,
     `We received your request for <strong>${escapeHtml(event.payload.organizationName)}</strong>.`,
     "Our team will review the information you shared. Submitting a request does not guarantee approval, and we'll let you know when a decision is made.",
-    ...(supportLine(supportEmail)
-      ? [escapeHtml(supportLine(supportEmail) as string)]
-      : []),
+    ...(supportHtml(supportEmail) ? [supportHtml(supportEmail) as string] : []),
   ];
   return {
     to: event.payload.applicantEmail,
@@ -101,8 +100,8 @@ export function renderRequestApprovedEmail(
         `Hi ${escapeHtml(event.payload.applicantName)},`,
         `Your <strong>${escapeHtml(event.payload.organizationName)}</strong> workspace has been created.`,
         "You are now its Owner and can configure your services, resources, schedule, and team. Your workspace is not public yet.",
-        ...(supportLine(supportEmail)
-          ? [escapeHtml(supportLine(supportEmail) as string)]
+        ...(supportHtml(supportEmail)
+          ? [supportHtml(supportEmail) as string]
           : []),
       ],
       appUrl ? { label: "Open Schedlane", url: appUrl } : undefined,
@@ -139,8 +138,8 @@ export function renderRequestRejectedEmail(
         `We weren't able to approve your request for <strong>${escapeHtml(event.payload.organizationName)}</strong>.`,
         `<strong>Reason:</strong> ${escapeHtml(event.payload.rejectionReason)}`,
         "You may update the information and submit a new request.",
-        ...(supportLine(supportEmail)
-          ? [escapeHtml(supportLine(supportEmail) as string)]
+        ...(supportHtml(supportEmail)
+          ? [supportHtml(supportEmail) as string]
           : []),
       ],
       appUrl ? { label: "Return to Schedlane", url: appUrl } : undefined,

@@ -43,6 +43,30 @@ describe("publication event schema", () => {
         }),
       ).ok,
     ).toBe(true);
+
+    for (const lifecycle of [
+      {
+        eventType: "organization.manually_provisioned",
+        extra: { customerMessage: null },
+      },
+      {
+        eventType: "organization.suspended",
+        extra: { reason: "Account review" },
+      },
+      { eventType: "organization.unsuspended", extra: {} },
+    ]) {
+      expect(
+        parsePublicationEventMessage(
+          JSON.stringify({
+            ...event,
+            aggregateType: "organization",
+            aggregateId: organizationId,
+            eventType: lifecycle.eventType,
+            payload: { ...event.payload, ...lifecycle.extra },
+          }),
+        ).ok,
+      ).toBe(true);
+    }
   });
 
   it("rejects aggregate mismatches, missing reasons, and unsupported events", () => {
