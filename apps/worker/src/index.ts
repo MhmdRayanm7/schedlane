@@ -4,6 +4,7 @@ import { ConsoleTransactionalEmailService } from "./bookings/email/console-email
 import type { TransactionalEmailService } from "./bookings/email/email-service.js";
 import { createBookingEmailHandler } from "./bookings/email/handler.js";
 import { ResendTransactionalEmailService } from "./bookings/email/resend-email-service.js";
+import { runBookingReminderScheduler } from "./bookings/reminders/scheduler.js";
 import { config } from "./config.js";
 import { RabbitMqOutboxPublisher } from "./messaging/rabbitmq-publisher.js";
 import { runOrganizationRequestConsumer } from "./organization-requests/consumer.js";
@@ -67,6 +68,12 @@ const publicationEventHandler = createPublicationEmailHandler({
 
 try {
   await Promise.all([
+    runBookingReminderScheduler({
+      pool,
+      batchSize: config.BOOKING_REMINDER_BATCH_SIZE,
+      pollIntervalMs: config.BOOKING_REMINDER_POLL_INTERVAL_MS,
+      signal: shutdown.signal,
+    }),
     runOutboxDispatcher({
       pool,
       connectPublisher: () =>

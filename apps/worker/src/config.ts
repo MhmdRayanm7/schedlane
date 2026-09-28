@@ -7,6 +7,11 @@ const configSchema = Type.Object({
   RABBITMQ_URL: Type.String({ minLength: 1 }),
   OUTBOX_BATCH_SIZE: Type.Integer({ default: 25, minimum: 1 }),
   OUTBOX_POLL_INTERVAL_MS: Type.Integer({ default: 1000, minimum: 10 }),
+  BOOKING_REMINDER_BATCH_SIZE: Type.Integer({ default: 25, minimum: 1 }),
+  BOOKING_REMINDER_POLL_INTERVAL_MS: Type.Integer({
+    default: 60_000,
+    minimum: 1000,
+  }),
   RABBITMQ_RECONNECT_DELAY_MS: Type.Integer({ default: 1000, minimum: 10 }),
   BOOKING_EVENT_PREFETCH: Type.Integer({ default: 5, minimum: 1 }),
   EVENT_RETRY_DELAY_MS: Type.Optional(Type.Integer({ minimum: 100 })),
