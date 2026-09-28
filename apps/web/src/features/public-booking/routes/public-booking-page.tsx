@@ -212,7 +212,7 @@ export function PublicBookingPage() {
   const stepIndex = visibleSteps.indexOf(currentStep);
   const service = context?.services.find((item) => item.id === serviceId);
   const resource = service?.resources.find((item) => item.id === resourceId);
-  const selectedDate = date || context?.bookingWindow.firstDate || "";
+  const selectedDate = date;
   const availabilityQuery = useQuery({
     queryKey: publicBookingKeys.availability(
       slug,
@@ -241,18 +241,16 @@ export function PublicBookingPage() {
   });
 
   useEffect(() => {
-    if (context && !date) setDate(context.bookingWindow.firstDate);
-  }, [context, date]);
-  useEffect(() => {
     if (!context) return;
     const initial = initialBookingSelection(context.services);
     if (initial.serviceId && !serviceId) setServiceId(initial.serviceId);
     if (initial.resourceId && !resourceId) setResourceId(initial.resourceId);
   }, [context, resourceId, serviceId]);
   useEffect(() => {
+    if (!context || visibleSteps.length === 0) return;
     if (currentStep !== step) setStep(currentStep);
     headingRef.current?.focus({ preventScroll: true });
-  }, [currentStep, step]);
+  }, [context, currentStep, step, visibleSteps.length]);
   useEffect(() => {
     if (
       time !== null &&
@@ -466,12 +464,12 @@ export function PublicBookingPage() {
       : currentStep === "resource"
         ? Boolean(resource)
         : currentStep === "dateTime"
-          ? time !== null
+          ? Boolean(selectedDate) && time !== null
           : true;
   const dateOptions = upcomingDates(
     context.bookingWindow.firstDate,
     context.bookingWindow.lastDate,
-    selectedDate,
+    selectedDate || context.bookingWindow.firstDate,
   );
   return (
     <PublicFrame organization={context.organization.name}>
@@ -555,7 +553,11 @@ export function PublicBookingPage() {
               <div className={styles.dateTime}>
                 <div className={styles.dateHeading}>
                   <h3>Choose a date</h3>
-                  <span>{formatLocalDate(selectedDate)}</span>
+                  <span>
+                    {selectedDate
+                      ? formatLocalDate(selectedDate)
+                      : "Choose a date"}
+                  </span>
                 </div>
                 <div className={styles.dateStrip}>
                   {dateOptions.map((item) => (
