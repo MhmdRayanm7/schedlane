@@ -1,14 +1,24 @@
+import type { Transaction } from "kysely";
 import { db } from "../../../db.js";
+import type { Database } from "../../../db-types.js";
+import { insertOutboxEventInTransaction } from "../../../outbox/persistence.js";
+import {
+  type OrganizationSuspendedPayload,
+  type OrganizationUnsuspendedPayload,
+  organizationLifecycleEventTypes,
+} from "../domain/lifecycle-events.js";
 
 type SuspendOrganizationInput = {
   userId: string;
   organizationId: string;
+  reason: string;
 };
 
 type SuspendOrganizationFailure =
   | "platform_admin_required"
   | "organization_not_found"
-  | "already_suspended";
+  | "already_suspended"
+  | "invalid_reason";
 
 export type SuspendOrganizationResult =
   | {
@@ -26,7 +36,23 @@ export type SuspendOrganizationResult =
 type UnsuspendOrganizationInput = {
   userId: string;
   organizationId: string;
+  internalNote?: string | undefined;
 };
+
+async function primaryOwner(
+  trx: Transaction<Database>,
+  organizationId: string,
+) {
+  return trx
+    .selectFrom("membership")
+    .innerJoin("user", "user.id", "membership.user_id")
+    .select(["user.name", "user.email"])
+    .where("membership.organization_id", "=", organizationId)
+    .where("membership.role", "=", "owner")
+    .orderBy("membership.created_at", "asc")
+    .orderBy("membership.id", "asc")
+    .executeTakeFirst();
+}
 
 type UnsuspendOrganizationFailure =
   | "platform_admin_required"
@@ -64,10 +90,15 @@ export async function suspendOrganization(
       };
     }
 
+    const reason = input.reason.trim();
+    if (reason.length === 0 || reason.length > 500) {
+      return { ok: false, reason: "invalid_reason" };
+    }
+
     // Suspension is a platform-level lifecycle transition, so it owns the organization lock.
     const organization = await trx
       .selectFrom("organization")
-      .select(["id", "suspended_at"])
+      .select(["id", "name", "slug", "suspended_at"])
       .where("id", "=", input.organizationId)
       .forUpdate()
       .executeTakeFirst();
@@ -96,6 +127,39 @@ export async function suspendOrganization(
       })
       .where("id", "=", organization.id)
       .executeTakeFirstOrThrow();
+
+    await trx
+      .insertInto("organization_lifecycle_event")
+      .values({
+        organization_id: organization.id,
+        action: "suspended",
+        actor_user_id: input.userId,
+        reason,
+        internal_note: null,
+        occurred_at: suspendedAt,
+      })
+      .execute();
+
+    const owner = await primaryOwner(trx, organization.id);
+    if (owner) {
+      await insertOutboxEventInTransaction<
+        typeof organizationLifecycleEventTypes.suspended,
+        OrganizationSuspendedPayload
+      >(trx, {
+        aggregateType: "organization",
+        aggregateId: organization.id,
+        eventType: organizationLifecycleEventTypes.suspended,
+        payload: {
+          organizationId: organization.id,
+          organizationName: organization.name,
+          organizationSlug: organization.slug,
+          recipientName: owner.name,
+          recipientEmail: owner.email,
+          reason,
+        },
+        occurredAt: suspendedAt,
+      });
+    }
 
     return {
       ok: true,
@@ -127,7 +191,7 @@ export async function unsuspendOrganization(
 
     const organization = await trx
       .selectFrom("organization")
-      .select(["id", "suspended_at"])
+      .select(["id", "name", "slug", "suspended_at"])
       .where("id", "=", input.organizationId)
       .forUpdate()
       .executeTakeFirst();
@@ -156,6 +220,38 @@ export async function unsuspendOrganization(
       })
       .where("id", "=", organization.id)
       .executeTakeFirstOrThrow();
+
+    await trx
+      .insertInto("organization_lifecycle_event")
+      .values({
+        organization_id: organization.id,
+        action: "unsuspended",
+        actor_user_id: input.userId,
+        reason: null,
+        internal_note: input.internalNote?.trim() || null,
+        occurred_at: updatedAt,
+      })
+      .execute();
+
+    const owner = await primaryOwner(trx, organization.id);
+    if (owner) {
+      await insertOutboxEventInTransaction<
+        typeof organizationLifecycleEventTypes.unsuspended,
+        OrganizationUnsuspendedPayload
+      >(trx, {
+        aggregateType: "organization",
+        aggregateId: organization.id,
+        eventType: organizationLifecycleEventTypes.unsuspended,
+        payload: {
+          organizationId: organization.id,
+          organizationName: organization.name,
+          organizationSlug: organization.slug,
+          recipientName: owner.name,
+          recipientEmail: owner.email,
+        },
+        occurredAt: updatedAt,
+      });
+    }
 
     return {
       ok: true,

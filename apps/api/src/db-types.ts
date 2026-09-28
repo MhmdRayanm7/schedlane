@@ -9,6 +9,11 @@ export type OrganizationPublicationRequestStatus =
   | "approved"
   | "rejected";
 
+export type OrganizationLifecycleAction =
+  | "manually_provisioned"
+  | "suspended"
+  | "unsuspended";
+
 export type StaffTeamVisibility = "team" | "self";
 
 export type BookingStatus = "confirmed" | "cancelled" | "no_show";
@@ -71,6 +76,16 @@ export interface OrganizationUnpublicationTable {
   unpublished_by_user_id: string;
   reason: string;
   unpublished_at: Generated<Date>;
+}
+
+export interface OrganizationLifecycleEventTable {
+  id: Generated<string>;
+  organization_id: string;
+  action: OrganizationLifecycleAction;
+  actor_user_id: string;
+  reason: string | null;
+  internal_note: string | null;
+  occurred_at: Generated<Date>;
 }
 
 export interface MembershipTable {
@@ -247,6 +262,7 @@ export interface Database {
   organization_request: OrganizationRequestTable;
   organization_publication_request: OrganizationPublicationRequestTable;
   organization_unpublication: OrganizationUnpublicationTable;
+  organization_lifecycle_event: OrganizationLifecycleEventTable;
   membership: MembershipTable;
   organization_invitation: OrganizationInvitationTable;
   resource: ResourceTable;

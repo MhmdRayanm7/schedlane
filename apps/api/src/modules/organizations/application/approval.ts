@@ -4,6 +4,7 @@ import {
   type OrganizationRequestApprovedPayload,
   organizationRequestEventTypes,
 } from "../domain/request-events.js";
+import { provisionOrganizationInTransaction } from "./provisioning.js";
 
 type ApproveOrganizationRequestInput = {
   requestId: string;
@@ -77,15 +78,11 @@ export async function approveOrganizationRequest(
       };
     }
 
-    const organization = await trx
-      .insertInto("organization")
-      .values({
-        name: request.name,
-        slug: input.slug,
-      })
-      .onConflict((conflict) => conflict.column("slug").doNothing())
-      .returning(["id", "slug", "name", "created_at"])
-      .executeTakeFirst();
+    const organization = await provisionOrganizationInTransaction(trx, {
+      name: request.name,
+      ownerUserId: request.requested_by_user_id,
+      slug: input.slug,
+    });
 
     if (!organization) {
       return {
@@ -93,15 +90,6 @@ export async function approveOrganizationRequest(
         reason: "slug_taken",
       };
     }
-
-    await trx
-      .insertInto("membership")
-      .values({
-        organization_id: organization.id,
-        user_id: request.requested_by_user_id,
-        role: "owner",
-      })
-      .execute();
 
     const decidedAt = new Date();
 

@@ -165,6 +165,7 @@ describe("organization / membership / invitation / resource foundation", () => {
             await suspendOrganization({
               organizationId: organization.id,
               userId: admin.id,
+              reason: "Test suspension",
             })
           ).ok,
         ).toBe(true);

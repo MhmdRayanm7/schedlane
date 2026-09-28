@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import Type from "typebox";
 import { approveOrganizationRequest } from "../application/approval.js";
+import { manuallyProvisionOrganization } from "../application/manual-provisioning.js";
 import {
   getPlatformAdminIdentity,
   listPlatformOrganizations,
@@ -89,6 +90,48 @@ const publicationReasonBody = Type.Object(
       maxLength: 500,
       pattern: ".*\\S.*",
     }),
+  },
+  { additionalProperties: Type.Never() },
+);
+
+const manualProvisionBody = Type.Object(
+  {
+    organizationName: Type.String({
+      minLength: 1,
+      maxLength: 120,
+      pattern: ".*\\S.*",
+    }),
+    ownerEmail: Type.String({
+      minLength: 3,
+      maxLength: 320,
+      pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+    }),
+    customerMessage: Type.Optional(
+      Type.String({ minLength: 1, maxLength: 2000, pattern: ".*\\S.*" }),
+    ),
+    internalNote: Type.Optional(
+      Type.String({ minLength: 1, maxLength: 2000, pattern: ".*\\S.*" }),
+    ),
+  },
+  { additionalProperties: Type.Never() },
+);
+
+const suspendOrganizationBody = Type.Object(
+  {
+    reason: Type.String({
+      minLength: 1,
+      maxLength: 500,
+      pattern: ".*\\S.*",
+    }),
+  },
+  { additionalProperties: Type.Never() },
+);
+
+const unsuspendOrganizationBody = Type.Object(
+  {
+    internalNote: Type.Optional(
+      Type.String({ minLength: 1, maxLength: 2000, pattern: ".*\\S.*" }),
+    ),
   },
   { additionalProperties: Type.Never() },
 );
@@ -376,6 +419,43 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
   );
 
   app.post(
+    "/api/platform/organizations",
+    { schema: { body: manualProvisionBody } },
+    async (request, reply) => {
+      const result = await manuallyProvisionOrganization({
+        userId: request.verifiedUser.id,
+        organizationName: request.body.organizationName,
+        ownerEmail: request.body.ownerEmail,
+        customerMessage: request.body.customerMessage,
+        internalNote: request.body.internalNote,
+      });
+      if (!result.ok) {
+        switch (result.reason) {
+          case "platform_admin_required":
+            return reply.code(403).send({
+              code: "PLATFORM_ADMIN_REQUIRED",
+              message: "Platform administrator access required",
+              requestId: request.id,
+            });
+          case "owner_not_found":
+            return reply.code(404).send({
+              code: "OWNER_ACCOUNT_NOT_FOUND",
+              message: "No verified Schedlane account exists for this email",
+              requestId: request.id,
+            });
+          case "slug_unavailable":
+            return reply.code(409).send({
+              code: "ORGANIZATION_SLUG_UNAVAILABLE",
+              message: "A unique organization address could not be created",
+              requestId: request.id,
+            });
+        }
+      }
+      return reply.code(201).send(result.organization);
+    },
+  );
+
+  app.post(
     "/api/platform/organization-requests/:requestId/approve",
     {
       schema: {
@@ -479,6 +559,7 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
     {
       schema: {
         params: organizationParamsSchema,
+        body: suspendOrganizationBody,
       },
     },
     async (request, reply) => {
@@ -487,6 +568,7 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
       const result = await suspendOrganization({
         userId: user.id,
         organizationId: request.params.organizationId,
+        reason: request.body.reason,
       });
 
       if (!result.ok) {
@@ -511,6 +593,12 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
               message: "Organization is already suspended",
               requestId: request.id,
             });
+          case "invalid_reason":
+            return reply.code(400).send({
+              code: "SUSPENSION_REASON_REQUIRED",
+              message: "A suspension reason is required",
+              requestId: request.id,
+            });
         }
       }
 
@@ -523,6 +611,7 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
     {
       schema: {
         params: organizationParamsSchema,
+        body: unsuspendOrganizationBody,
       },
     },
     async (request, reply) => {
@@ -531,6 +620,7 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
       const result = await unsuspendOrganization({
         userId: user.id,
         organizationId: request.params.organizationId,
+        internalNote: request.body.internalNote,
       });
 
       if (!result.ok) {

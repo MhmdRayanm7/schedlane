@@ -227,6 +227,245 @@ describe("Platform organization requests", () => {
   );
 });
 
+describe("Platform organization lifecycle", () => {
+  it("approves an additional organization without replacing prior memberships", async () => {
+    const f = await fixture();
+    const applicantId = await createUser("Multi organization owner");
+    const existing = await db
+      .insertInto("organization")
+      .values({ name: "Existing workspace", slug: `existing-${randomUUID()}` })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+    await db
+      .insertInto("membership")
+      .values({
+        organization_id: existing.id,
+        user_id: applicantId,
+        role: "manager",
+      })
+      .execute();
+    const submitted = await app.inject({
+      method: "POST",
+      url: "/api/organization-requests",
+      headers: { "x-test-user": applicantId },
+      payload: { ...validRequest, name: "Second workspace" },
+    });
+    const approved = await app.inject({
+      method: "POST",
+      url: `/api/platform/organization-requests/${submitted.json().id}/approve`,
+      headers: { "x-test-user": f.adminId },
+      payload: { slug: `second-${randomUUID()}` },
+    });
+
+    expect(approved.statusCode).toBe(200);
+    expect(approved.json().organization.publishedAt).toBeNull();
+    expect(
+      await db
+        .selectFrom("membership")
+        .select(["organization_id", "role"])
+        .where("user_id", "=", applicantId)
+        .orderBy("organization_id")
+        .execute(),
+    ).toEqual(
+      expect.arrayContaining([
+        { organization_id: existing.id, role: "manager" },
+        {
+          organization_id: approved.json().organization.id,
+          role: "owner",
+        },
+      ]),
+    );
+
+    const nextRequest = await app.inject({
+      method: "POST",
+      url: "/api/organization-requests",
+      headers: { "x-test-user": applicantId },
+      payload: { ...validRequest, name: "Third workspace" },
+    });
+    expect(nextRequest.statusCode).toBe(201);
+  });
+
+  it("atomically provisions an unpublished organization for a verified existing user", async () => {
+    const f = await fixture();
+    const ownerId = await createUser("Manual owner");
+    const owner = await db
+      .selectFrom("user")
+      .select("email")
+      .where("id", "=", ownerId)
+      .executeTakeFirstOrThrow();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/platform/organizations",
+      headers: { "x-test-user": f.adminId },
+      payload: {
+        organizationName: "Manual Studio",
+        ownerEmail: owner.email.toUpperCase(),
+        customerMessage: "Welcome to your new workspace.",
+        internalNote: "Created after a phone conversation.",
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      name: "Manual Studio",
+      slug: "manual-studio",
+      publishedAt: null,
+      owner: { id: ownerId },
+    });
+    const organizationId = response.json().id;
+    expect(
+      await db
+        .selectFrom("membership")
+        .select("role")
+        .where("organization_id", "=", organizationId)
+        .where("user_id", "=", ownerId)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ role: "owner" });
+    expect(
+      await db
+        .selectFrom("organization_lifecycle_event")
+        .select(["action", "actor_user_id", "internal_note"])
+        .where("organization_id", "=", organizationId)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({
+      action: "manually_provisioned",
+      actor_user_id: f.adminId,
+      internal_note: "Created after a phone conversation.",
+    });
+    const event = await db
+      .selectFrom("outbox_event")
+      .select(["event_type", "payload"])
+      .where("aggregate_id", "=", organizationId)
+      .executeTakeFirstOrThrow();
+    expect(event.event_type).toBe("organization.manually_provisioned");
+    expect(event.payload).toMatchObject({
+      customerMessage: "Welcome to your new workspace.",
+    });
+    expect(JSON.stringify(event.payload)).not.toContain("phone conversation");
+  });
+
+  it("rejects unknown or unverified owners and non-platform callers", async () => {
+    const f = await fixture();
+    const ordinaryUserId = await createUser("Ordinary user");
+    const payload = {
+      organizationName: "Manual Studio",
+      ownerEmail: "missing@example.test",
+    };
+    const forbidden = await app.inject({
+      method: "POST",
+      url: "/api/platform/organizations",
+      headers: { "x-test-user": ordinaryUserId },
+      payload,
+    });
+    expect(forbidden.statusCode).toBe(403);
+
+    const missing = await app.inject({
+      method: "POST",
+      url: "/api/platform/organizations",
+      headers: { "x-test-user": f.adminId },
+      payload,
+    });
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json().code).toBe("OWNER_ACCOUNT_NOT_FOUND");
+  });
+
+  it("requires a reason and audits suspend and unsuspend without changing publication settings", async () => {
+    const f = await fixture();
+    const ownerId = await createUser("Lifecycle owner");
+    const organization = await db
+      .insertInto("organization")
+      .values({
+        name: "Lifecycle Studio",
+        slug: `lifecycle-${randomUUID()}`,
+        published_at: new Date("2026-09-29T08:00:00.000Z"),
+        public_booking_paused: true,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    await db
+      .insertInto("membership")
+      .values({
+        organization_id: organization.id,
+        user_id: ownerId,
+        role: "owner",
+      })
+      .execute();
+
+    const empty = await app.inject({
+      method: "POST",
+      url: `/api/platform/organizations/${organization.id}/suspend`,
+      headers: { "x-test-user": f.adminId },
+      payload: { reason: "" },
+    });
+    expect(empty.statusCode).toBe(400);
+
+    const suspended = await app.inject({
+      method: "POST",
+      url: `/api/platform/organizations/${organization.id}/suspend`,
+      headers: { "x-test-user": f.adminId },
+      payload: { reason: "Account review is required." },
+    });
+    expect(suspended.statusCode).toBe(200);
+    const duplicate = await app.inject({
+      method: "POST",
+      url: `/api/platform/organizations/${organization.id}/suspend`,
+      headers: { "x-test-user": f.adminId },
+      payload: { reason: "Again" },
+    });
+    expect(duplicate.statusCode).toBe(409);
+
+    const unsuspended = await app.inject({
+      method: "POST",
+      url: `/api/platform/organizations/${organization.id}/unsuspend`,
+      headers: { "x-test-user": f.adminId },
+      payload: { internalNote: "Review completed." },
+    });
+    expect(unsuspended.statusCode).toBe(200);
+    expect(
+      await db
+        .selectFrom("organization")
+        .select(["published_at", "public_booking_paused", "suspended_at"])
+        .where("id", "=", organization.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({
+      published_at: organization.published_at,
+      public_booking_paused: true,
+      suspended_at: null,
+    });
+    expect(
+      await db
+        .selectFrom("organization_lifecycle_event")
+        .select(["action", "reason", "internal_note"])
+        .where("organization_id", "=", organization.id)
+        .orderBy("occurred_at", "asc")
+        .execute(),
+    ).toEqual([
+      {
+        action: "suspended",
+        reason: "Account review is required.",
+        internal_note: null,
+      },
+      {
+        action: "unsuspended",
+        reason: null,
+        internal_note: "Review completed.",
+      },
+    ]);
+    expect(
+      await db
+        .selectFrom("outbox_event")
+        .select("event_type")
+        .where("aggregate_id", "=", organization.id)
+        .orderBy("occurred_at", "asc")
+        .execute(),
+    ).toEqual([
+      { event_type: "organization.suspended" },
+      { event_type: "organization.unsuspended" },
+    ]);
+  });
+});
+
 describe("Organization request onboarding", () => {
   it("persists a valid request and emits its submitted event", async () => {
     const userId = await createUser();
@@ -283,21 +522,22 @@ describe("Organization request onboarding", () => {
 
   it("blocks a second pending request", async () => {
     const userId = await createUser();
-    const first = await app.inject({
-      method: "POST",
-      url: "/api/organization-requests",
-      headers: { "x-test-user": userId },
-      payload: validRequest,
-    });
-    const second = await app.inject({
-      method: "POST",
-      url: "/api/organization-requests",
-      headers: { "x-test-user": userId },
-      payload: validRequest,
-    });
-    expect(first.statusCode).toBe(201);
-    expect(second.statusCode).toBe(409);
-    expect(second.json().code).toBe("ORGANIZATION_REQUEST_PENDING");
+    const responses = await Promise.all(
+      ["First", "Second"].map((suffix) =>
+        app.inject({
+          method: "POST",
+          url: "/api/organization-requests",
+          headers: { "x-test-user": userId },
+          payload: { ...validRequest, name: `${validRequest.name} ${suffix}` },
+        }),
+      ),
+    );
+    expect(responses.map((response) => response.statusCode).sort()).toEqual([
+      201, 409,
+    ]);
+    expect(
+      responses.find((response) => response.statusCode === 409)?.json().code,
+    ).toBe("ORGANIZATION_REQUEST_PENDING");
   });
 
   it("allows a new row after rejection and returns only the applicant's latest status", async () => {

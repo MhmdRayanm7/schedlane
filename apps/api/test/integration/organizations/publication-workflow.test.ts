@@ -429,6 +429,7 @@ describe("Platform publication decisions", () => {
       await suspendOrganization({
         userId: admin.id,
         organizationId: f.organization.id,
+        reason: "Test suspension",
       }),
     ).toMatchObject({ ok: true });
     expect(
