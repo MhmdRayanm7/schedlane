@@ -172,6 +172,20 @@ describe("Service updates", () => {
     expect(await f.read()).toMatchObject({ price_agorot: 0 });
   });
 
+  it("allows an active Service to keep a null price when pricing is disabled", async () => {
+    const f = await fixture();
+    const response = await f.patch({
+      name: "Still unpriced",
+      priceAgorot: null,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(await f.read()).toMatchObject({
+      name: "Still unpriced",
+      price_agorot: null,
+      deactivated_at: null,
+    });
+  });
+
   it("rejects explicit null with pricing enabled and accepts a non-null price", async () => {
     const f = await fixture(true);
     const before = await f.read();

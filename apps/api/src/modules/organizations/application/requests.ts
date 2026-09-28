@@ -28,7 +28,7 @@ export type CreateOrganizationRequestResult =
         createdAt: string;
       };
     }
-  | { ok: false; reason: "membership_exists" | "pending_request_exists" };
+  | { ok: false; reason: "pending_request_exists" };
 
 function optionalTrimmed(value: string | undefined): string | null {
   const trimmed = value?.trim();
@@ -50,14 +50,6 @@ export async function createOrganizationRequest(
       .where("id", "=", input.requestedByUserId)
       .forUpdate()
       .executeTakeFirstOrThrow();
-
-    const membership = await trx
-      .selectFrom("membership")
-      .select("id")
-      .where("user_id", "=", applicant.id)
-      .executeTakeFirst();
-
-    if (membership) return { ok: false, reason: "membership_exists" };
 
     const pendingRequest = await trx
       .selectFrom("organization_request")

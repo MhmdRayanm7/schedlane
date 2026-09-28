@@ -349,31 +349,45 @@ describe("Organization request onboarding", () => {
     });
   });
 
-  it("blocks onboarding for a user with an organization membership", async () => {
-    const userId = await createUser();
-    const organization = await db
-      .insertInto("organization")
-      .values({ name: "Existing", slug: `existing-${randomUUID()}` })
-      .returning("id")
-      .executeTakeFirstOrThrow();
-    await db
-      .insertInto("membership")
-      .values({
-        organization_id: organization.id,
-        user_id: userId,
-        role: "staff",
-      })
-      .execute();
+  it.each(["owner", "manager", "staff"] as const)(
+    "allows a user with an existing %s membership to request another organization",
+    async (role) => {
+      const userId = await createUser();
+      const organization = await db
+        .insertInto("organization")
+        .values({ name: "Existing", slug: `existing-${randomUUID()}` })
+        .returning("id")
+        .executeTakeFirstOrThrow();
+      await db
+        .insertInto("membership")
+        .values({
+          organization_id: organization.id,
+          user_id: userId,
+          role,
+        })
+        .execute();
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/organization-requests",
-      headers: { "x-test-user": userId },
-      payload: validRequest,
-    });
-    expect(response.statusCode).toBe(409);
-    expect(response.json().code).toBe("ORGANIZATION_MEMBERSHIP_EXISTS");
-  });
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/organization-requests",
+        headers: { "x-test-user": userId },
+        payload: validRequest,
+      });
+      expect(response.statusCode).toBe(201);
+      expect(response.json()).toMatchObject({
+        name: validRequest.name,
+        status: "pending",
+      });
+      expect(
+        await db
+          .selectFrom("membership")
+          .select("role")
+          .where("organization_id", "=", organization.id)
+          .where("user_id", "=", userId)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ role });
+    },
+  );
 });
 
 describe("Platform review and organization directory", () => {

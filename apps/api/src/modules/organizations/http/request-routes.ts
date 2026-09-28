@@ -55,14 +55,6 @@ export const requestRoutes: FastifyPluginAsyncTypebox = async (app) => {
       });
 
       if (!organizationRequest.ok) {
-        if (organizationRequest.reason === "membership_exists") {
-          return reply.code(409).send({
-            code: "ORGANIZATION_MEMBERSHIP_EXISTS",
-            message: "You already belong to an organization",
-            requestId: request.id,
-          });
-        }
-
         return reply.code(409).send({
           code: "ORGANIZATION_REQUEST_PENDING",
           message: "You already have a pending organization request",
