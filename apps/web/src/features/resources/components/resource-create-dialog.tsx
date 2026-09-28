@@ -100,7 +100,11 @@ export function ResourceCreateDialog({
             </InlineAlert>
           ) : null}
 
-          <FormField htmlFor="resource-name" label="Name">
+          <FormField
+            htmlFor="resource-name"
+            label="Resource name"
+            helperText="A person, room, station, or other bookable resource."
+          >
             <Input
               id="resource-name"
               type="text"
@@ -108,7 +112,7 @@ export function ResourceCreateDialog({
               disabled={isReadOnly || isPending}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Chair 1, Room 102, or Barber"
+              placeholder="Resource name"
               maxLength={120}
             />
           </FormField>

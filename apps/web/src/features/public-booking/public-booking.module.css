@@ -652,6 +652,17 @@
   border-radius: 0.65rem;
   background: #fff;
 }
+.terminalCard {
+  max-width: 36rem;
+}
+.terminalDescription {
+  margin: 1.25rem 0 0;
+  color: #66706e;
+  line-height: 1.55;
+}
+.bookAgain {
+  margin-top: 1.5rem;
+}
 .manageCard h2,
 .linkSection h2,
 .cancelSection h2 {

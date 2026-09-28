@@ -190,6 +190,7 @@ describe("guest Booking management", () => {
       publicReference: f.booking.public_reference,
       status: "confirmed",
       organizationName: "Live organization",
+      organizationSlug: f.organization.slug,
       resourceName: "Live resource",
       serviceName: "Live service",
       startAt: startAt.toISOString(),

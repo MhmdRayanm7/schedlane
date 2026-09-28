@@ -41,6 +41,7 @@ export type ManagedBooking = {
   publicReference: string;
   status: "confirmed" | "cancelled" | "no_show";
   organizationName: string;
+  organizationSlug: string;
   resourceName: string;
   serviceName: string;
   startAt: string;

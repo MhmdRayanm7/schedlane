@@ -1,9 +1,14 @@
-import { RefreshCw } from "lucide-react";
+import { LogOut, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, Navigate, Outlet, useLocation, useParams } from "react-router";
+import { useSignOut } from "@/features/auth/hooks/use-sign-out";
+import { usePlatformIdentity } from "@/features/platform/hooks/use-platform";
+import { ApiError } from "@/shared/api/api-error";
+import { authClient } from "@/shared/auth/auth-client";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
 import { Button } from "@/shared/components/ui/button";
 import { useOrganizations } from "../hooks/use-organizations";
+import { shouldEnterPlatform } from "../lib/entry-route";
 import { OrganizationOnboarding } from "../onboarding/organization-onboarding";
 import type { Organization } from "../types";
 import styles from "./organization-route-states.module.css";
@@ -16,9 +21,31 @@ export type OrganizationAccessContext = {
 };
 
 function ApplicationFrame({ children }: { children: ReactNode }) {
+  const { data: session } = authClient.useSession();
+  const signOut = useSignOut();
   return (
     <main className={styles.frame}>
-      <BrandLockup />
+      <header className={styles.frameHeader}>
+        <BrandLockup />
+        {session ? (
+          <div className={styles.accountControl}>
+            <span>{session.user.email}</span>
+            <Button
+              disabled={signOut.isPending}
+              onClick={() => void signOut.signOut()}
+              size="sm"
+              variant="ghost"
+            >
+              <LogOut aria-hidden="true" className={styles.icon} /> Sign out
+            </Button>
+          </div>
+        ) : null}
+      </header>
+      {signOut.error ? (
+        <p className={styles.signOutError} role="alert">
+          Sign out failed. Try again.
+        </p>
+      ) : null}
       <div className={styles.content}>{children}</div>
     </main>
   );
@@ -64,6 +91,7 @@ function roleLabel(role: Organization["role"]) {
 
 export function OrganizationResolver() {
   const organizationsQuery = useOrganizations();
+  const platformIdentity = usePlatformIdentity();
 
   if (organizationsQuery.isPending) return <LoadingOrganizations />;
   if (organizationsQuery.isError) {
@@ -75,6 +103,18 @@ export function OrganizationResolver() {
   const organizations = organizationsQuery.data.items;
 
   if (organizations.length === 0) {
+    if (platformIdentity.isPending) return <LoadingOrganizations />;
+    if (shouldEnterPlatform(organizations.length, platformIdentity.isSuccess)) {
+      return <Navigate replace to="/platform/requests" />;
+    }
+    if (
+      platformIdentity.error instanceof ApiError &&
+      platformIdentity.error.status !== 403
+    ) {
+      return (
+        <OrganizationsError retry={() => void platformIdentity.refetch()} />
+      );
+    }
     return (
       <ApplicationFrame>
         <OrganizationOnboarding />

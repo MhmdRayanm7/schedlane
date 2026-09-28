@@ -20,6 +20,18 @@ import {
   publicBookingKeys,
 } from "../api/public-booking-api";
 import {
+  type BookingStep,
+  bookingStepDescriptions,
+  bookingStepLabels,
+  type GuestField,
+  type GuestFieldErrors,
+  guestFieldForApiError,
+  initialBookingSelection,
+  selectionAfterServiceChange,
+  validateGuestDetails,
+  visibleBookingSteps,
+} from "../lib/booking-flow";
+import {
   formatLocalDate,
   formatPrice,
   formatTime,
@@ -28,13 +40,6 @@ import {
 import styles from "../public-booking.module.css";
 import type { GuestDetails, PublicService } from "../types";
 
-const steps = [
-  "Service",
-  "Resource",
-  "Date & time",
-  "Your details",
-  "Review",
-] as const;
 const emptyDetails: GuestDetails = {
   guestName: "",
   guestPhone: "",
@@ -179,7 +184,10 @@ export function PublicBookingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const [step, setStep] = useState(0);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const [step, setStep] = useState<BookingStep>("service");
   const [serviceId, setServiceId] = useState("");
   const [resourceId, setResourceId] = useState("");
   const [date, setDate] = useState("");
@@ -187,6 +195,7 @@ export function PublicBookingPage() {
   const [details, setDetails] = useState<GuestDetails>(emptyDetails);
   const [message, setMessage] = useState("");
   const [nextMessage, setNextMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<GuestFieldErrors>({});
 
   const contextQuery = useQuery({
     queryKey: publicBookingKeys.context(slug),
@@ -194,6 +203,13 @@ export function PublicBookingPage() {
     retry: false,
   });
   const context = contextQuery.data;
+  const visibleSteps = context
+    ? visibleBookingSteps(context.services, serviceId)
+    : [];
+  const currentStep = visibleSteps.includes(step)
+    ? step
+    : (visibleSteps[0] ?? "dateTime");
+  const stepIndex = visibleSteps.indexOf(currentStep);
   const service = context?.services.find((item) => item.id === serviceId);
   const resource = service?.resources.find((item) => item.id === resourceId);
   const selectedDate = date || context?.bookingWindow.firstDate || "";
@@ -228,8 +244,15 @@ export function PublicBookingPage() {
     if (context && !date) setDate(context.bookingWindow.firstDate);
   }, [context, date]);
   useEffect(() => {
-    if (steps[step]) headingRef.current?.focus({ preventScroll: true });
-  }, [step]);
+    if (!context) return;
+    const initial = initialBookingSelection(context.services);
+    if (initial.serviceId && !serviceId) setServiceId(initial.serviceId);
+    if (initial.resourceId && !resourceId) setResourceId(initial.resourceId);
+  }, [context, resourceId, serviceId]);
+  useEffect(() => {
+    if (currentStep !== step) setStep(currentStep);
+    headingRef.current?.focus({ preventScroll: true });
+  }, [currentStep, step]);
   useEffect(() => {
     if (
       time !== null &&
@@ -241,10 +264,13 @@ export function PublicBookingPage() {
 
   const chooseService = (id: string) => {
     if (id === serviceId) return;
-    const nextService = context?.services.find((item) => item.id === id);
-    setServiceId(id);
-    if (!nextService?.resources.some((item) => item.id === resourceId))
-      setResourceId("");
+    const selection = selectionAfterServiceChange(
+      context?.services ?? [],
+      id,
+      resourceId,
+    );
+    setServiceId(selection.serviceId);
+    setResourceId(selection.resourceId);
     setTime(null);
     setMessage("");
     setNextMessage("");
@@ -269,7 +295,38 @@ export function PublicBookingPage() {
   };
   const advance = () => {
     setMessage("");
-    setStep((current) => Math.min(current + 1, 4));
+    setStep(
+      visibleSteps[Math.min(stepIndex + 1, visibleSteps.length - 1)] ??
+        currentStep,
+    );
+  };
+
+  const focusGuestField = (field: GuestField) => {
+    const refs = {
+      guestName: nameRef,
+      guestPhone: phoneRef,
+      guestEmail: emailRef,
+    };
+    window.setTimeout(() => refs[field].current?.focus(), 0);
+  };
+
+  const validateDetailsAndAdvance = () => {
+    const errors = validateGuestDetails(details);
+    setFieldErrors(errors);
+    const firstInvalid = (
+      ["guestName", "guestPhone", "guestEmail"] as const
+    ).find((field) => errors[field]);
+    if (firstInvalid) {
+      focusGuestField(firstInvalid);
+      return;
+    }
+    setDetails((current) => ({
+      ...current,
+      guestName: current.guestName.trim(),
+      guestPhone: current.guestPhone.trim(),
+      guestEmail: current.guestEmail.trim(),
+    }));
+    advance();
   };
 
   async function confirm() {
@@ -286,12 +343,18 @@ export function PublicBookingPage() {
       const booking = await createMutation.mutateAsync();
       navigate(
         `/booking/manage#token=${encodeURIComponent(booking.managementToken)}`,
-        { replace: true, state: { justBooked: true } },
+        {
+          replace: true,
+          state: {
+            justBooked: true,
+            confirmationEmail: details.guestEmail.trim() || null,
+          },
+        },
       );
     } catch (error) {
       if (error instanceof ApiError && error.code === "SLOT_UNAVAILABLE") {
         setTime(null);
-        setStep(2);
+        setStep("dateTime");
         await availabilityQuery.refetch();
         setMessage("That time was just booked. Choose another available time.");
         return;
@@ -309,13 +372,20 @@ export function PublicBookingPage() {
         if (!validService) {
           setServiceId("");
           setResourceId("");
-          setStep(0);
+          setStep(
+            visibleBookingSteps(updated?.services ?? [], "")[0] ?? "dateTime",
+          );
         } else if (
           !validService.resources.some((item) => item.id === resourceId)
         ) {
-          setResourceId("");
-          setStep(1);
-        } else setStep(2);
+          const selection = selectionAfterServiceChange(
+            updated?.services ?? [],
+            validService.id,
+            "",
+          );
+          setResourceId(selection.resourceId);
+          setStep(selection.resourceId ? "dateTime" : "resource");
+        } else setStep("dateTime");
         if (
           updated &&
           (selectedDate < updated.bookingWindow.firstDate ||
@@ -326,11 +396,24 @@ export function PublicBookingPage() {
         setMessage("Booking options changed. Please check your selection.");
         return;
       }
-      setMessage(
-        error instanceof ApiError && error.code === "INVALID_GUEST_PHONE"
-          ? "Please check your phone number and try again."
-          : "We couldn’t confirm your booking. Please try again.",
-      );
+      if (error instanceof ApiError) {
+        const field = guestFieldForApiError(error.code);
+        if (field) {
+          setFieldErrors((current) => ({
+            ...current,
+            [field]:
+              field === "guestName"
+                ? "Enter your name."
+                : field === "guestPhone"
+                  ? "Enter a valid Israeli phone number."
+                  : "Enter a valid email address.",
+          }));
+          setStep("details");
+          focusGuestField(field);
+          return;
+        }
+      }
+      setMessage("We couldn’t confirm your booking. Please try again.");
     }
   }
 
@@ -378,11 +461,11 @@ export function PublicBookingPage() {
     );
 
   const canContinue =
-    step === 0
+    currentStep === "service"
       ? Boolean(service)
-      : step === 1
+      : currentStep === "resource"
         ? Boolean(resource)
-        : step === 2
+        : currentStep === "dateTime"
           ? time !== null
           : true;
   const dateOptions = upcomingDates(
@@ -404,59 +487,46 @@ export function PublicBookingPage() {
           <p>Choose a time that works for you.</p>
         </div>
         <nav className={styles.progress} aria-label="Booking steps">
-          {steps.map((label, index) => (
+          {visibleSteps.map((visibleStep, index) => (
             <button
-              key={label}
+              key={visibleStep}
               type="button"
-              className={`${styles.progressStep} ${index === step ? styles.progressCurrent : ""}`}
-              aria-current={index === step ? "step" : undefined}
-              disabled={
-                index > step ||
-                (index === 1 && !service) ||
-                (index === 2 && !resource) ||
-                (index === 3 && time === null)
-              }
+              className={`${styles.progressStep} ${visibleStep === currentStep ? styles.progressCurrent : ""}`}
+              aria-current={visibleStep === currentStep ? "step" : undefined}
+              disabled={index > stepIndex}
               onClick={() => {
                 setMessage("");
-                setStep(index);
+                setStep(visibleStep);
               }}
             >
               <span>
-                {index < step ? (
+                {index < stepIndex ? (
                   <Check size={13} aria-hidden="true" />
                 ) : (
                   index + 1
                 )}
               </span>
-              <span>{label}</span>
+              <span>{bookingStepLabels[visibleStep]}</span>
             </button>
           ))}
         </nav>
         <div className={styles.layout}>
           <section className={styles.panel} aria-live="off">
             <div className={styles.stepHeader}>
-              <span className={styles.stepCounter}>STEP {step + 1} OF 5</span>
+              <span className={styles.stepCounter}>
+                STEP {stepIndex + 1} OF {visibleSteps.length}
+              </span>
               <h2 tabIndex={-1} ref={headingRef}>
-                {steps[step]}
+                {bookingStepLabels[currentStep]}
               </h2>
-              <p>
-                {
-                  [
-                    "What would you like to book?",
-                    "Choose who or what you’re booking with.",
-                    "Find a date and a time that suits you.",
-                    "How can we reach you about this booking?",
-                    "Check everything before confirming your booking.",
-                  ][step]
-                }
-              </p>
+              <p>{bookingStepDescriptions[currentStep]}</p>
             </div>
             {message ? (
               <p role="alert" className={styles.errorMessage}>
                 {message}
               </p>
             ) : null}
-            {step === 0 ? (
+            {currentStep === "service" ? (
               <div className={styles.choices}>
                 {context.services.map((item) => (
                   <ChoiceRow
@@ -469,7 +539,7 @@ export function PublicBookingPage() {
                 ))}
               </div>
             ) : null}
-            {step === 1 ? (
+            {currentStep === "resource" ? (
               <div className={styles.choices}>
                 {service?.resources.map((item) => (
                   <ChoiceRow
@@ -481,7 +551,7 @@ export function PublicBookingPage() {
                 ))}
               </div>
             ) : null}
-            {step === 2 ? (
+            {currentStep === "dateTime" ? (
               <div className={styles.dateTime}>
                 <div className={styles.dateHeading}>
                   <h3>Choose a date</h3>
@@ -601,52 +671,96 @@ export function PublicBookingPage() {
                 ) : null}
               </div>
             ) : null}
-            {step === 3 ? (
+            {currentStep === "details" ? (
               <form
                 id="guest-details"
                 className={styles.form}
                 onSubmit={(event) => {
                   event.preventDefault();
-                  if (event.currentTarget.reportValidity()) advance();
+                  validateDetailsAndAdvance();
                 }}
               >
-                <FormField htmlFor="guest-name" label="Name">
+                <FormField
+                  htmlFor="guest-name"
+                  label="Name"
+                  error={fieldErrors.guestName}
+                >
                   <Input
                     id="guest-name"
+                    ref={nameRef}
                     autoComplete="name"
                     required
                     maxLength={120}
-                    value={details.guestName}
-                    onChange={(event) =>
-                      setDetails({ ...details, guestName: event.target.value })
+                    aria-invalid={Boolean(fieldErrors.guestName)}
+                    aria-describedby={
+                      fieldErrors.guestName ? "guest-name-error" : undefined
                     }
+                    value={details.guestName}
+                    onChange={(event) => {
+                      setDetails({ ...details, guestName: event.target.value });
+                      setFieldErrors((current) => ({
+                        ...current,
+                        guestName: undefined,
+                      }));
+                    }}
                   />
                 </FormField>
                 <FormField
                   htmlFor="guest-phone"
                   label="Phone"
                   helperText="For example, 050-123-4567"
+                  error={fieldErrors.guestPhone}
                 >
                   <Input
                     id="guest-phone"
+                    ref={phoneRef}
                     type="tel"
                     autoComplete="tel"
                     required
-                    value={details.guestPhone}
-                    onChange={(event) =>
-                      setDetails({ ...details, guestPhone: event.target.value })
+                    aria-invalid={Boolean(fieldErrors.guestPhone)}
+                    aria-describedby={
+                      fieldErrors.guestPhone
+                        ? "guest-phone-error"
+                        : "guest-phone-helper"
                     }
+                    value={details.guestPhone}
+                    onChange={(event) => {
+                      setDetails({
+                        ...details,
+                        guestPhone: event.target.value,
+                      });
+                      setFieldErrors((current) => ({
+                        ...current,
+                        guestPhone: undefined,
+                      }));
+                    }}
                   />
                 </FormField>
-                <FormField htmlFor="guest-email" label="Email (optional)">
+                <FormField
+                  htmlFor="guest-email"
+                  label="Email (optional)"
+                  error={fieldErrors.guestEmail}
+                >
                   <Input
                     id="guest-email"
+                    ref={emailRef}
                     type="email"
                     autoComplete="email"
-                    value={details.guestEmail}
-                    onChange={(event) =>
-                      setDetails({ ...details, guestEmail: event.target.value })
+                    aria-invalid={Boolean(fieldErrors.guestEmail)}
+                    aria-describedby={
+                      fieldErrors.guestEmail ? "guest-email-error" : undefined
                     }
+                    value={details.guestEmail}
+                    onChange={(event) => {
+                      setDetails({
+                        ...details,
+                        guestEmail: event.target.value,
+                      });
+                      setFieldErrors((current) => ({
+                        ...current,
+                        guestEmail: undefined,
+                      }));
+                    }}
                   />
                 </FormField>
                 <FormField
@@ -669,12 +783,15 @@ export function PublicBookingPage() {
                 </FormField>
               </form>
             ) : null}
-            {step === 4 ? (
+            {currentStep === "review" ? (
               <div className={styles.review}>
                 <div>
                   <div className={styles.reviewHeading}>
                     <h3>Appointment</h3>
-                    <button type="button" onClick={() => setStep(0)}>
+                    <button
+                      type="button"
+                      onClick={() => setStep(visibleSteps[0] ?? "dateTime")}
+                    >
                       Edit
                     </button>
                   </div>
@@ -695,7 +812,7 @@ export function PublicBookingPage() {
                   <button
                     type="button"
                     className={styles.textAction}
-                    onClick={() => setStep(2)}
+                    onClick={() => setStep("dateTime")}
                   >
                     Change date or time
                   </button>
@@ -703,7 +820,7 @@ export function PublicBookingPage() {
                 <div>
                   <div className={styles.reviewHeading}>
                     <h3>Your details</h3>
-                    <button type="button" onClick={() => setStep(3)}>
+                    <button type="button" onClick={() => setStep("details")}>
                       Edit
                     </button>
                   </div>
@@ -727,12 +844,12 @@ export function PublicBookingPage() {
               </div>
             ) : null}
             <div className={styles.actions}>
-              {step > 0 ? (
+              {stepIndex > 0 ? (
                 <Button
                   variant="ghost"
                   onClick={() => {
                     setMessage("");
-                    setStep(step - 1);
+                    setStep(visibleSteps[stepIndex - 1] ?? currentStep);
                   }}
                 >
                   <ArrowLeft size={16} aria-hidden="true" /> Back
@@ -740,11 +857,11 @@ export function PublicBookingPage() {
               ) : (
                 <span />
               )}
-              {step === 3 ? (
+              {currentStep === "details" ? (
                 <Button form="guest-details" type="submit">
                   Continue <ArrowRight size={16} aria-hidden="true" />
                 </Button>
-              ) : step === 4 ? (
+              ) : currentStep === "review" ? (
                 <Button
                   onClick={() => {
                     void confirm();

@@ -203,7 +203,7 @@ export function ServiceFormDialog({
             </InlineAlert>
           ) : null}
 
-          <FormField htmlFor="service-name" label="Name">
+          <FormField htmlFor="service-name" label="Service name">
             <Input
               id="service-name"
               type="text"
@@ -214,7 +214,7 @@ export function ServiceFormDialog({
                 setErrorMessage(null);
                 setName(e.target.value);
               }}
-              placeholder="e.g. Standard Haircut"
+              placeholder="Service name"
               maxLength={120}
             />
           </FormField>

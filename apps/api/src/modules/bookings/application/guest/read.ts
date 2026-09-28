@@ -12,6 +12,7 @@ export type GuestManagedBooking = {
   publicReference: string;
   status: BookingStatus;
   organizationName: string;
+  organizationSlug: string;
   resourceName: string;
   serviceName: string;
   startAt: string;
@@ -37,6 +38,7 @@ type GuestBookingRow = {
   public_reference: string;
   status: BookingStatus;
   organization_name: string;
+  organization_slug: string;
   resource_name: string;
   service_name: string;
   start_at: Date;
@@ -66,6 +68,7 @@ function toGuestManagedBooking(
     publicReference: row.public_reference,
     status: row.status,
     organizationName: row.organization_name,
+    organizationSlug: row.organization_slug,
     resourceName: row.resource_name,
     serviceName: row.service_name,
     startAt: row.start_at.toISOString(),
@@ -103,6 +106,7 @@ function guestBookingQuery(trx: Transaction<Database>) {
       "booking.public_reference",
       "booking.status",
       "organization.name as organization_name",
+      "organization.slug as organization_slug",
       "resource.name as resource_name",
       "service.name as service_name",
       "booking.start_at",

@@ -1,5 +1,4 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
   CalendarDays,
@@ -22,6 +21,7 @@ import {
   useNavigate,
   useOutletContext,
 } from "react-router";
+import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
 import type { Organization } from "@/features/organizations/types";
 import { authClient } from "@/shared/auth/auth-client";
@@ -148,9 +148,8 @@ function Sidebar({
 }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { data: session, refetch: refetchSession } = authClient.useSession();
-  const [signOutError, setSignOutError] = useState(false);
+  const { data: session } = authClient.useSession();
+  const signOut = useSignOut();
   const { requestChange } = useUnsavedChangesGuard();
   const isStaff = currentOrganization.role === "staff";
   const visiblePrimaryNavigation = primaryNavigation.filter(
@@ -177,23 +176,6 @@ function Sidebar({
         : "bookings";
 
     requestChange(() => navigate(`/app/${organization.id}/${section}`));
-  }
-
-  async function signOut() {
-    setSignOutError(false);
-    try {
-      const result = await authClient.signOut();
-      if (result.error) {
-        setSignOutError(true);
-        return;
-      }
-
-      await refetchSession();
-      queryClient.clear();
-      navigate("/login", { replace: true, state: { signedOut: true } });
-    } catch {
-      setSignOutError(true);
-    }
   }
 
   return (
@@ -310,7 +292,7 @@ function Sidebar({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onSelect={() => requestChange(() => void signOut())}
+                onSelect={() => requestChange(() => void signOut.signOut())}
               >
                 <LogOut aria-hidden="true" className={styles.icon} />
                 Sign out
@@ -318,7 +300,7 @@ function Sidebar({
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
-        {signOutError ? (
+        {signOut.error ? (
           <p className={styles.signOutError} role="alert">
             Sign out failed. Try again.
           </p>

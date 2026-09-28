@@ -22,9 +22,13 @@ export function FormField({
         {label}
       </label>
       {children}
-      {helperText ? <p className={styles.helper}>{helperText}</p> : null}
+      {helperText ? (
+        <p className={styles.helper} id={`${htmlFor}-helper`}>
+          {helperText}
+        </p>
+      ) : null}
       {error ? (
-        <p role="alert" className={styles.error}>
+        <p role="alert" className={styles.error} id={`${htmlFor}-error`}>
           {error}
         </p>
       ) : null}

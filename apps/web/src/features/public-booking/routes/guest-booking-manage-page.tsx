@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Check, Clipboard } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { ApiError } from "@/shared/api/api-error";
 import { FormSaveStatus } from "@/shared/components/form-save-status";
 import { Button } from "@/shared/components/ui/button";
@@ -21,6 +21,7 @@ import {
   updateManagedContact,
 } from "../api/public-booking-api";
 import { formatDeadline, formatInstant, formatPrice } from "../lib/format";
+import { managedBookingPresentation } from "../lib/managed-booking-state";
 import styles from "../public-booking.module.css";
 import type { ManagedBooking } from "../types";
 import { BookingState, PublicFrame } from "./public-booking-page";
@@ -314,6 +315,7 @@ function CancelBookingDialog({
 
 export function GuestBookingManagePage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [token, setToken] = useState(readToken);
   const [ready, setReady] = useState(false);
@@ -355,6 +357,9 @@ export function GuestBookingManagePage() {
   const justBooked = Boolean(
     (location.state as { justBooked?: boolean } | null)?.justBooked,
   );
+  const confirmationEmail = (
+    location.state as { confirmationEmail?: string | null } | null
+  )?.confirmationEmail;
 
   async function copyLink() {
     try {
@@ -404,6 +409,66 @@ export function GuestBookingManagePage() {
       />
     );
 
+  const presentation = managedBookingPresentation(booking);
+  const terminal = presentation !== "active";
+
+  if (terminal) {
+    const title =
+      presentation === "cancelled" ? "Booking cancelled" : "Past appointment";
+    const description =
+      presentation === "cancelled"
+        ? "This appointment has been cancelled."
+        : "This appointment is in the past.";
+    return (
+      <PublicFrame organization={booking.organizationName}>
+        <main className={styles.manageMain}>
+          <div className={styles.manageLead}>
+            <span className={styles.eyebrow}>YOUR APPOINTMENT</span>
+            <div className={styles.statusMark}>
+              <CalendarDays size={25} aria-hidden="true" />
+            </div>
+            <h1>{title}</h1>
+            <p>{booking.organizationName}</p>
+            <span className={`${styles.statusBadge} ${styles.statusCancelled}`}>
+              {presentation === "cancelled" ? "Cancelled" : "Past"}
+            </span>
+          </div>
+          <section
+            className={`${styles.manageCard} ${styles.terminalCard}`}
+            aria-labelledby="terminal-appointment-title"
+          >
+            <h2 id="terminal-appointment-title">Appointment</h2>
+            <div className={styles.appointmentHeadline}>
+              <strong>{booking.serviceName}</strong>
+              <span>{formatInstant(booking.startAt)}</span>
+            </div>
+            <dl className={styles.manageDetails}>
+              <div>
+                <dt>With</dt>
+                <dd>{booking.resourceName}</dd>
+              </div>
+              <div>
+                <dt>Reference</dt>
+                <dd className={styles.reference}>{booking.publicReference}</dd>
+              </div>
+            </dl>
+            <p className={styles.terminalDescription}>{description}</p>
+            <Button
+              className={styles.bookAgain}
+              onClick={() =>
+                navigate(
+                  `/book/${encodeURIComponent(booking.organizationSlug)}`,
+                )
+              }
+            >
+              Book another appointment
+            </Button>
+          </section>
+        </main>
+      </PublicFrame>
+    );
+  }
+
   return (
     <PublicFrame organization={booking.organizationName}>
       <main className={styles.manageMain}>
@@ -439,6 +504,13 @@ export function GuestBookingManagePage() {
         {actionMessage ? (
           <p role="status" className={styles.manageMessage}>
             {actionMessage}
+          </p>
+        ) : null}
+        {justBooked ? (
+          <p role="status" className={styles.manageMessage}>
+            {confirmationEmail
+              ? `A confirmation will be sent to ${confirmationEmail}.`
+              : "Save the management link below. You won’t receive it by email."}
           </p>
         ) : null}
         <div className={styles.manageGrid}>

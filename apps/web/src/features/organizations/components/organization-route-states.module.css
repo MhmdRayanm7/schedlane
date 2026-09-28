@@ -3,6 +3,32 @@
   padding: var(--space-8) var(--space-5);
   background: var(--color-background);
 }
+.frameHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.accountControl {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.8125rem;
+}
+.accountControl > span {
+  max-width: min(18rem, 42vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.signOutError {
+  margin: var(--space-3) 0 0 auto;
+  color: var(--color-destructive);
+  font-size: 0.8125rem;
+  text-align: right;
+}
 .content {
   display: flex;
   align-items: center;

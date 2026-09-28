@@ -1,7 +1,6 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { Building2, ClipboardList, LogOut, Send } from "lucide-react";
-import { NavLink, Outlet, useNavigate, useOutletContext } from "react-router";
-import { authClient } from "@/shared/auth/auth-client";
+import { NavLink, Outlet, useOutletContext } from "react-router";
+import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/cn";
@@ -16,14 +15,7 @@ const navigation = [
 
 export function PlatformShell() {
   const identity = useOutletContext<PlatformIdentity>();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  async function signOut() {
-    await authClient.signOut();
-    queryClient.clear();
-    navigate("/login", { replace: true, state: { signedOut: true } });
-  }
+  const signOut = useSignOut();
 
   return (
     <div className={styles.shell}>
@@ -52,7 +44,8 @@ export function PlatformShell() {
           </div>
           <Button
             aria-label="Sign out"
-            onClick={signOut}
+            disabled={signOut.isPending}
+            onClick={() => void signOut.signOut()}
             size="icon"
             variant="ghost"
           >
