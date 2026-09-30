@@ -33,6 +33,7 @@ type ResourceDetailsSheetProps = {
   onOpenChange: (open: boolean) => void;
   onDeactivate: (resourceId: string) => Promise<void>;
   onReactivate: (resourceId: string) => Promise<void>;
+  onDelete: (resourceId: string) => Promise<void>;
   isReadOnly: boolean;
   isActionPending?: boolean;
 };
@@ -49,10 +50,12 @@ export function ResourceDetailsSheet({
   onOpenChange,
   onDeactivate,
   onReactivate,
+  onDelete,
   isReadOnly,
   isActionPending = false,
 }: ResourceDetailsSheetProps) {
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [selectedMembershipId, setSelectedMembershipId] = useState<string>("");
 
@@ -101,6 +104,27 @@ export function ResourceDetailsSheet({
       } else {
         setActionError("An unexpected error occurred.");
       }
+    }
+  }
+
+  async function handleDelete() {
+    if (!resource) return;
+    setActionError(null);
+    try {
+      await onDelete(resource.id);
+      setDeleteDialogOpen(false);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.code === "RESOURCE_HAS_BOOKING_HISTORY")
+          setActionError(
+            "This resource has booking history and can't be permanently deleted. Keep it inactive instead.",
+          );
+        else if (err.code === "RESOURCE_LINKED_TO_MEMBER")
+          setActionError(
+            "Unlink this resource from its team member before deleting it permanently.",
+          );
+        else setActionError(err.message);
+      } else setActionError("Failed to delete resource.");
     }
   }
 
@@ -171,7 +195,10 @@ export function ResourceDetailsSheet({
 
   return (
     <>
-      <Sheet open={open && !deactivateDialogOpen} onOpenChange={onOpenChange}>
+      <Sheet
+        open={open && !deactivateDialogOpen && !deleteDialogOpen}
+        onOpenChange={onOpenChange}
+      >
         <SheetContent>
           <SheetHeader>
             <div className={styles.statusLine}>
@@ -219,6 +246,19 @@ export function ResourceDetailsSheet({
                   Reactivate resource
                 </Button>
               )}
+              {!isActive ? (
+                <Button
+                  variant="destructiveOutline"
+                  size="sm"
+                  onClick={() => {
+                    setActionError(null);
+                    setDeleteDialogOpen(true);
+                  }}
+                  disabled={isActionPending}
+                >
+                  Delete permanently
+                </Button>
+              ) : null}
             </div>
           ) : null}
 
@@ -412,6 +452,37 @@ export function ResourceDetailsSheet({
               disabled={isActionPending}
             >
               {isActionPending ? "Deactivating…" : "Deactivate resource"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(next) => !isActionPending && setDeleteDialogOpen(next)}
+      >
+        <DialogContent aria-busy={isActionPending}>
+          <DialogTitle>Delete {resource.name} permanently?</DialogTitle>
+          <DialogDescription>
+            This can only be done because the resource has no booking history
+            and is not linked to a team member. This action cannot be undone.
+          </DialogDescription>
+          {actionError ? (
+            <InlineAlert as="p" variant="error" className={styles.sheetAlert}>
+              {actionError}
+            </InlineAlert>
+          ) : null}
+          <div className={styles.dialogActions}>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isActionPending}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isActionPending}
+            >
+              {isActionPending ? "Deleting…" : "Delete permanently"}
             </Button>
           </div>
         </DialogContent>

@@ -50,6 +50,16 @@ export function reactivateResource(
   );
 }
 
+export function deleteResource(
+  organizationId: string,
+  resourceId: string,
+): Promise<void> {
+  return apiClient<void>(
+    `/api/organizations/${organizationId}/resources/${resourceId}`,
+    { method: "DELETE" },
+  );
+}
+
 export function getResourceLinkCandidates(
   organizationId: string,
   resourceId: string,

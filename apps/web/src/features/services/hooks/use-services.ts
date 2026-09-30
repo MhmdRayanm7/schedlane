@@ -3,6 +3,7 @@ import {
   assignResourceToService,
   createService,
   deactivateService,
+  deleteService,
   getServiceResources,
   getServices,
   reactivateService,
@@ -81,6 +82,17 @@ export function useReactivateService(organizationId: string) {
         queryKey: servicesQueryKey(organizationId),
       });
     },
+  });
+}
+
+export function useDeleteService(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (serviceId: string) => deleteService(organizationId, serviceId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["organizations", organizationId],
+      }),
   });
 }
 

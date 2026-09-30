@@ -24,6 +24,7 @@ import {
   resolveBookingsUrlState,
   sundayStart,
 } from "./lib/booking-date-range";
+import type { BookingStatusFilter } from "./types";
 
 export function BookingsPage() {
   const { currentOrganization } = useOutletContext<OrganizationAccessContext>();
@@ -32,6 +33,7 @@ export function BookingsPage() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [creationMessage, setCreationMessage] = useState("");
+  const [status, setStatus] = useState<BookingStatusFilter>("confirmed");
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
     null,
   );
@@ -47,6 +49,7 @@ export function BookingsPage() {
     organizationId: organizationId ?? "",
     fromDate: range.fromDate,
     toDate: range.toDate,
+    status,
   });
   const dateLabel = bookingRangeLabel(date, view, today);
   const isCurrentRange =
@@ -111,6 +114,8 @@ export function BookingsPage() {
           updateSearch(formatLocalDate(date), nextView)
         }
         view={view}
+        status={status}
+        onStatusChange={setStatus}
       />
       <section aria-label={`${view === "day" ? "Day" : "Week"} bookings`}>
         {bookingsQuery.isPending ? <BookingsLoadingState /> : null}
@@ -120,6 +125,7 @@ export function BookingsPage() {
         {bookingsQuery.data && view === "day" ? (
           <BookingsDayView
             bookings={bookingsQuery.data.bookings}
+            emptyTitle={emptyBookingTitle(status, "day")}
             onSelectBooking={(id) => {
               setSelectedBookingId(id);
               setDetailsOpen(true);
@@ -130,6 +136,7 @@ export function BookingsPage() {
         {bookingsQuery.data && view === "week" ? (
           <BookingsWeekView
             bookings={bookingsQuery.data.bookings}
+            emptyTitle={emptyBookingTitle(status, "week")}
             date={date}
             onSelectBooking={(id) => {
               setSelectedBookingId(id);
@@ -168,4 +175,11 @@ export function BookingsPage() {
       />
     </div>
   );
+}
+
+function emptyBookingTitle(status: BookingStatusFilter, view: BookingsView) {
+  const period = view === "day" ? "day" : "week";
+  if (status === "all") return `No bookings for this ${period}.`;
+  const label = status === "no_show" ? "no-show" : status;
+  return `No ${label} bookings for this ${period}.`;
 }

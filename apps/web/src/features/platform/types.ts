@@ -1,4 +1,9 @@
 export type PlatformIdentity = { id: string; name: string; email: string };
+export type PlatformOrganizationLifecycle =
+  | "active"
+  | "suspended"
+  | "archived"
+  | "all";
 export type RequestStatus = "pending" | "approved" | "rejected";
 
 export type PlatformRequest = {

@@ -1,15 +1,17 @@
 import { Plus, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useOutletContext, useParams } from "react-router";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
 import { ResourceCreateDialog } from "./components/resource-create-dialog";
 import { ResourceDetailsSheet } from "./components/resource-details-sheet";
 import { ResourceList } from "./components/resource-list";
 import {
   useCreateResource,
   useDeactivateResource,
+  useDeleteResource,
   useReactivateResource,
   useResources,
 } from "./hooks/use-resources";
@@ -99,6 +101,11 @@ export function ResourcesPage() {
   const createResourceMutation = useCreateResource(organizationId);
   const deactivateResourceMutation = useDeactivateResource(organizationId);
   const reactivateResourceMutation = useReactivateResource(organizationId);
+  const deleteResourceMutation = useDeleteResource(organizationId);
+  const [lifecycle, setLifecycle] = useState<"active" | "inactive" | "all">(
+    "active",
+  );
+  const [search, setSearch] = useState("");
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -107,6 +114,20 @@ export function ResourcesPage() {
   );
 
   const resources = resourcesQuery.data?.items ?? [];
+  const visibleResources = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase();
+    return resources.filter((resource) => {
+      const lifecycleMatches =
+        lifecycle === "all" ||
+        (lifecycle === "active"
+          ? !resource.deactivatedAt
+          : Boolean(resource.deactivatedAt));
+      return (
+        lifecycleMatches &&
+        (!term || resource.name.toLocaleLowerCase().includes(term))
+      );
+    });
+  }, [lifecycle, resources, search]);
   const selectedResource =
     resources.find((r) => r.id === selectedResourceId) ?? null;
 
@@ -120,6 +141,12 @@ export function ResourcesPage() {
 
   async function handleReactivate(resourceId: string) {
     await reactivateResourceMutation.mutateAsync(resourceId);
+  }
+
+  async function handleDelete(resourceId: string) {
+    await deleteResourceMutation.mutateAsync(resourceId);
+    setDetailsOpen(false);
+    setSelectedResourceId(null);
   }
 
   return (
@@ -137,6 +164,35 @@ export function ResourcesPage() {
         }
       />
 
+      <div className={styles.listFilters}>
+        <label htmlFor="resource-lifecycle-filter">
+          <span>Lifecycle</span>
+          <select
+            aria-label="Resource lifecycle"
+            id="resource-lifecycle-filter"
+            value={lifecycle}
+            onChange={(event) =>
+              setLifecycle(event.target.value as typeof lifecycle)
+            }
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="all">All</option>
+          </select>
+        </label>
+        <label htmlFor="resource-search">
+          <span>Search</span>
+          <Input
+            aria-label="Search resources"
+            id="resource-search"
+            type="search"
+            placeholder="Resource name"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
+      </div>
+
       <section aria-label="Resources list">
         {resourcesQuery.isPending ? <ResourcesSkeleton /> : null}
 
@@ -144,16 +200,28 @@ export function ResourcesPage() {
           <ResourcesErrorState retry={() => void resourcesQuery.refetch()} />
         ) : null}
 
-        {resourcesQuery.data && resources.length === 0 ? (
-          <ResourcesEmptyState
-            isReadOnly={isReadOnly}
-            onNewResource={() => setCreateDialogOpen(true)}
-          />
+        {resourcesQuery.data && visibleResources.length === 0 ? (
+          resources.length > 0 ? (
+            <div className={`${styles.state} ${styles.emptyState}`}>
+              <h2 className={styles.stateTitle}>
+                {search.trim()
+                  ? "No resources match your search."
+                  : lifecycle === "inactive"
+                    ? "No inactive resources."
+                    : "No active resources."}
+              </h2>
+            </div>
+          ) : (
+            <ResourcesEmptyState
+              isReadOnly={isReadOnly}
+              onNewResource={() => setCreateDialogOpen(true)}
+            />
+          )
         ) : null}
 
-        {resourcesQuery.data && resources.length > 0 ? (
+        {resourcesQuery.data && visibleResources.length > 0 ? (
           <ResourceList
-            resources={resources}
+            resources={visibleResources}
             onSelectResource={(resource) => {
               setSelectedResourceId(resource.id);
               setDetailsOpen(true);
@@ -170,10 +238,12 @@ export function ResourcesPage() {
         onOpenChange={setDetailsOpen}
         onDeactivate={handleDeactivate}
         onReactivate={handleReactivate}
+        onDelete={handleDelete}
         isReadOnly={isReadOnly}
         isActionPending={
           deactivateResourceMutation.isPending ||
-          reactivateResourceMutation.isPending
+          reactivateResourceMutation.isPending ||
+          deleteResourceMutation.isPending
         }
       />
 

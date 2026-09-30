@@ -1,4 +1,5 @@
 export type BookingStatus = "confirmed" | "cancelled" | "no_show";
+export type BookingStatusFilter = BookingStatus | "all";
 export type BookingSource = "public" | "manual";
 
 export type ManagementBooking = {

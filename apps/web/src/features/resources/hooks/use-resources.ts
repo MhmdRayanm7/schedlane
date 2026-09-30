@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createResource,
   deactivateResource,
+  deleteResource,
   getResourceLinkCandidates,
   getResources,
   linkResourceToMember,
@@ -74,6 +75,18 @@ export function useReactivateResource(organizationId: string) {
         queryKey: resourcesQueryKey(organizationId),
       });
     },
+  });
+}
+
+export function useDeleteResource(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (resourceId: string) =>
+      deleteResource(organizationId, resourceId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["organizations", organizationId],
+      }),
   });
 }
 

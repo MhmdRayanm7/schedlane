@@ -16,6 +16,7 @@ type BookingsWeekViewProps = {
   onSelectBooking: (bookingId: string) => void;
   selectedBookingId?: string | null;
   today: DateTime;
+  emptyTitle?: string;
 };
 
 function WeekBooking({
@@ -54,11 +55,12 @@ export function BookingsWeekView({
   onSelectBooking,
   selectedBookingId,
   today,
+  emptyTitle = "No bookings for this week.",
 }: BookingsWeekViewProps) {
   if (bookings.length === 0) {
     return (
       <div className={styles.emptyState}>
-        <h2 className={styles.emptyTitle}>No bookings for this week.</h2>
+        <h2 className={styles.emptyTitle}>{emptyTitle}</h2>
         <p className={styles.emptyDescription}>
           Appointments will appear here when customers book.
         </p>

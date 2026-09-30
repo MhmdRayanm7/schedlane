@@ -264,6 +264,26 @@
   padding: 4rem var(--space-4);
   text-align: center;
 }
+.directoryFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: end;
+}
+.directoryFilters label {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+}
+.directoryFilters select {
+  height: 2.5rem;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
 .queryState p,
 .empty p {
   color: var(--color-muted-foreground);

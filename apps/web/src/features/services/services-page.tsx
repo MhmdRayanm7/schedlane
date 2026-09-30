@@ -1,17 +1,19 @@
 import { Plus, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useOutletContext, useParams } from "react-router";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
 import { useOrganizationSettings } from "@/features/settings/hooks/use-organization-settings";
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
+import { Input } from "@/shared/components/ui/input";
 import { ServiceDetailsSheet } from "./components/service-details-sheet";
 import { ServiceFormDialog } from "./components/service-form-dialog";
 import { ServiceList } from "./components/service-list";
 import {
   useCreateService,
   useDeactivateService,
+  useDeleteService,
   useReactivateService,
   useServices,
   useUpdateService,
@@ -107,6 +109,11 @@ export function ServicesPage() {
   const updateServiceMutation = useUpdateService(organizationId);
   const deactivateServiceMutation = useDeactivateService(organizationId);
   const reactivateServiceMutation = useReactivateService(organizationId);
+  const deleteServiceMutation = useDeleteService(organizationId);
+  const [lifecycle, setLifecycle] = useState<"active" | "inactive" | "all">(
+    "active",
+  );
+  const [search, setSearch] = useState("");
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);
@@ -116,6 +123,20 @@ export function ServicesPage() {
   const [editingService, setEditingService] = useState<Service | null>(null);
 
   const services = servicesQuery.data?.items ?? [];
+  const visibleServices = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase();
+    return services.filter((service) => {
+      const lifecycleMatches =
+        lifecycle === "all" ||
+        (lifecycle === "active"
+          ? !service.deactivatedAt
+          : Boolean(service.deactivatedAt));
+      return (
+        lifecycleMatches &&
+        (!term || service.name.toLocaleLowerCase().includes(term))
+      );
+    });
+  }, [lifecycle, search, services]);
   const selectedService =
     services.find((s) => s.id === selectedServiceId) ?? null;
 
@@ -144,6 +165,12 @@ export function ServicesPage() {
 
   async function handleReactivate(serviceId: string) {
     await reactivateServiceMutation.mutateAsync(serviceId);
+  }
+
+  async function handleDelete(serviceId: string) {
+    await deleteServiceMutation.mutateAsync(serviceId);
+    setDetailsOpen(false);
+    setSelectedServiceId(null);
   }
 
   return (
@@ -185,6 +212,35 @@ export function ServicesPage() {
         </InlineAlert>
       ) : null}
 
+      <div className={styles.listFilters}>
+        <label htmlFor="service-lifecycle-filter">
+          <span>Lifecycle</span>
+          <select
+            aria-label="Service lifecycle"
+            id="service-lifecycle-filter"
+            value={lifecycle}
+            onChange={(event) =>
+              setLifecycle(event.target.value as typeof lifecycle)
+            }
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="all">All</option>
+          </select>
+        </label>
+        <label htmlFor="service-search">
+          <span>Search</span>
+          <Input
+            aria-label="Search services"
+            id="service-search"
+            type="search"
+            placeholder="Service name"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
+      </div>
+
       <section aria-label="Services list">
         {servicesQuery.isPending ? <ServicesSkeleton /> : null}
 
@@ -192,20 +248,32 @@ export function ServicesPage() {
           <ServicesErrorState retry={() => void servicesQuery.refetch()} />
         ) : null}
 
-        {servicesQuery.data && services.length === 0 ? (
-          <ServicesEmptyState
-            canCreate={pricingPolicyReady}
-            isReadOnly={isReadOnly}
-            onNewService={() => {
-              setEditingService(null);
-              setFormDialogOpen(true);
-            }}
-          />
+        {servicesQuery.data && visibleServices.length === 0 ? (
+          services.length > 0 ? (
+            <div className={`${styles.state} ${styles.emptyState}`}>
+              <h2 className={styles.stateTitle}>
+                {search.trim()
+                  ? "No services match your search."
+                  : lifecycle === "inactive"
+                    ? "No inactive services."
+                    : "No active services."}
+              </h2>
+            </div>
+          ) : (
+            <ServicesEmptyState
+              canCreate={pricingPolicyReady}
+              isReadOnly={isReadOnly}
+              onNewService={() => {
+                setEditingService(null);
+                setFormDialogOpen(true);
+              }}
+            />
+          )
         ) : null}
 
-        {servicesQuery.data && services.length > 0 ? (
+        {servicesQuery.data && visibleServices.length > 0 ? (
           <ServiceList
-            services={services}
+            services={visibleServices}
             onSelectService={(service) => {
               setSelectedServiceId(service.id);
               setDetailsOpen(true);
@@ -227,11 +295,13 @@ export function ServicesPage() {
         }}
         onDeactivate={handleDeactivate}
         onReactivate={handleReactivate}
+        onDelete={handleDelete}
         isReadOnly={isReadOnly}
         canEditDetails={pricingPolicyReady}
         isActionPending={
           deactivateServiceMutation.isPending ||
-          reactivateServiceMutation.isPending
+          reactivateServiceMutation.isPending ||
+          deleteServiceMutation.isPending
         }
       />
 

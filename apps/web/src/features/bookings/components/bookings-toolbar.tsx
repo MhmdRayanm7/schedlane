@@ -6,6 +6,7 @@ import { cn } from "@/shared/lib/cn";
 import { formatLocalDate } from "@/shared/lib/date-time";
 import styles from "../bookings.module.css";
 import type { BookingsView } from "../lib/booking-date-range";
+import type { BookingStatusFilter } from "../types";
 
 type BookingsToolbarProps = {
   date: DateTime;
@@ -17,6 +18,8 @@ type BookingsToolbarProps = {
   onToday: () => void;
   onViewChange: (view: BookingsView) => void;
   view: BookingsView;
+  status: BookingStatusFilter;
+  onStatusChange: (status: BookingStatusFilter) => void;
 };
 
 export function BookingsToolbar({
@@ -29,6 +32,8 @@ export function BookingsToolbar({
   onToday,
   onViewChange,
   view,
+  status,
+  onStatusChange,
 }: BookingsToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -76,20 +81,38 @@ export function BookingsToolbar({
         </label>
       </div>
 
-      <fieldset aria-label="Calendar view" className={styles.viewSwitch}>
-        <legend className={styles.visuallyHidden}>Calendar view</legend>
-        {(["day", "week"] as const).map((option) => (
-          <button
-            aria-pressed={view === option}
-            className={styles.viewOption}
-            key={option}
-            onClick={() => onViewChange(option)}
-            type="button"
+      <div className={styles.toolbarFilters}>
+        <label className={styles.statusFilter} htmlFor="booking-status-filter">
+          <span>Status</span>
+          <select
+            aria-label="Booking status"
+            id="booking-status-filter"
+            value={status}
+            onChange={(event) =>
+              onStatusChange(event.target.value as BookingStatusFilter)
+            }
           >
-            {option}
-          </button>
-        ))}
-      </fieldset>
+            <option value="confirmed">Confirmed</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="no_show">No-show</option>
+            <option value="all">All</option>
+          </select>
+        </label>
+        <fieldset aria-label="Calendar view" className={styles.viewSwitch}>
+          <legend className={styles.visuallyHidden}>Calendar view</legend>
+          {(["day", "week"] as const).map((option) => (
+            <button
+              aria-pressed={view === option}
+              className={styles.viewOption}
+              key={option}
+              onClick={() => onViewChange(option)}
+              type="button"
+            >
+              {option}
+            </button>
+          ))}
+        </fieldset>
+      </div>
     </div>
   );
 }

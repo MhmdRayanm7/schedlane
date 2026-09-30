@@ -5,6 +5,7 @@ import type {
   CursorPage,
   PlatformIdentity,
   PlatformOrganization,
+  PlatformOrganizationLifecycle,
   PlatformPublicationRequest,
   PlatformPublicationRequestDetail,
   PlatformRequest,
@@ -47,10 +48,14 @@ export const rejectPlatformRequest = (id: string, reason: string) =>
   });
 
 export function getPlatformOrganizations(
+  lifecycle: PlatformOrganizationLifecycle,
+  search: string,
   cursor?: string,
   signal?: AbortSignal,
 ) {
   const query = new URLSearchParams({ limit: "30" });
+  query.set("lifecycle", lifecycle);
+  if (search.trim()) query.set("search", search.trim());
   if (cursor) query.set("cursor", cursor);
   return apiClient<CursorPage<PlatformOrganization>>(
     `/api/platform/organizations?${query}`,

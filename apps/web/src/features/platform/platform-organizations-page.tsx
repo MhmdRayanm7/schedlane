@@ -1,5 +1,5 @@
 import { Plus, RefreshCw } from "lucide-react";
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { ApiError } from "@/shared/api/api-error";
 import { Button } from "@/shared/components/ui/button";
@@ -22,7 +22,10 @@ import {
 } from "./hooks/use-platform";
 import styles from "./platform.module.css";
 import { platformOrganizationActions } from "./platform-organization-actions";
-import type { PlatformOrganization } from "./types";
+import type {
+  PlatformOrganization,
+  PlatformOrganizationLifecycle,
+} from "./types";
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
@@ -46,7 +49,18 @@ function State({
 }
 
 export function PlatformOrganizationsPage() {
-  const query = usePlatformOrganizations();
+  const [lifecycle, setLifecycle] =
+    useState<PlatformOrganizationLifecycle>("active");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timeout = window.setTimeout(
+      () => setDebouncedSearch(search.trim()),
+      300,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+  const query = usePlatformOrganizations(lifecycle, debouncedSearch);
   const navigate = useNavigate();
   const [unpublishTarget, setUnpublishTarget] =
     useState<PlatformOrganization | null>(null);
@@ -78,6 +92,35 @@ export function PlatformOrganizationsPage() {
       {successMessage ? (
         <InlineAlert variant="success">{successMessage}</InlineAlert>
       ) : null}
+      <div className={styles.directoryFilters}>
+        <label htmlFor="platform-lifecycle-filter">
+          <span>Lifecycle</span>
+          <select
+            aria-label="Organization lifecycle"
+            id="platform-lifecycle-filter"
+            value={lifecycle}
+            onChange={(event) =>
+              setLifecycle(event.target.value as PlatformOrganizationLifecycle)
+            }
+          >
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="archived">Archived</option>
+            <option value="all">All</option>
+          </select>
+        </label>
+        <label htmlFor="platform-organization-search">
+          <span>Search</span>
+          <Input
+            aria-label="Search organizations"
+            id="platform-organization-search"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Name, slug, or owner email"
+            type="search"
+            value={search}
+          />
+        </label>
+      </div>
       {query.isPending ? (
         <p className={styles.queryState}>Loading organizations…</p>
       ) : null}
@@ -91,8 +134,8 @@ export function PlatformOrganizationsPage() {
       ) : null}
       {!query.isPending && !query.isError && items.length === 0 ? (
         <div className={styles.empty}>
-          <h2>No organizations yet</h2>
-          <p>Approved workspace requests will appear here.</p>
+          <h2>No organizations found</h2>
+          <p>Try another lifecycle or search.</p>
         </div>
       ) : null}
       {items.length > 0 ? (

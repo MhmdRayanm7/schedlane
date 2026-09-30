@@ -22,7 +22,11 @@ import {
   unpublishPlatformOrganization,
   unsuspendPlatformOrganization,
 } from "../api/platform-api";
-import type { CreatePlatformOrganizationInput, RequestStatus } from "../types";
+import type {
+  CreatePlatformOrganizationInput,
+  PlatformOrganizationLifecycle,
+  RequestStatus,
+} from "../types";
 
 export const platformIdentityQueryKey = ["platform", "me"] as const;
 export const platformRequestsQueryKey = ["platform", "requests"] as const;
@@ -85,12 +89,15 @@ export function usePlatformDecision() {
   return { approve, reject };
 }
 
-export function usePlatformOrganizations() {
+export function usePlatformOrganizations(
+  lifecycle: PlatformOrganizationLifecycle = "active",
+  search = "",
+) {
   return useInfiniteQuery({
-    queryKey: platformOrganizationsQueryKey,
+    queryKey: [...platformOrganizationsQueryKey, { lifecycle, search }],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam, signal }) =>
-      getPlatformOrganizations(pageParam, signal),
+      getPlatformOrganizations(lifecycle, search, pageParam, signal),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 }

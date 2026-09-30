@@ -11,17 +11,19 @@ type BookingsDayViewProps = {
   bookings: ManagementBooking[];
   onSelectBooking: (bookingId: string) => void;
   selectedBookingId?: string | null;
+  emptyTitle?: string;
 };
 
 export function BookingsDayView({
   bookings,
   onSelectBooking,
   selectedBookingId,
+  emptyTitle = "No bookings for this day.",
 }: BookingsDayViewProps) {
   if (bookings.length === 0) {
     return (
       <div className={styles.emptyState}>
-        <h2 className={styles.emptyTitle}>No bookings for this day.</h2>
+        <h2 className={styles.emptyTitle}>{emptyTitle}</h2>
         <p className={styles.emptyDescription}>
           Appointments will appear here when customers book.
         </p>

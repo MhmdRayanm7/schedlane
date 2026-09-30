@@ -29,6 +29,7 @@ type ServiceDetailsSheetProps = {
   onEdit: (service: Service) => void;
   onDeactivate: (serviceId: string) => Promise<void>;
   onReactivate: (serviceId: string) => Promise<void>;
+  onDelete: (serviceId: string) => Promise<void>;
   isReadOnly: boolean;
   canEditDetails?: boolean;
   isActionPending?: boolean;
@@ -42,11 +43,13 @@ export function ServiceDetailsSheet({
   onEdit,
   onDeactivate,
   onReactivate,
+  onDelete,
   isReadOnly,
   canEditDetails = true,
   isActionPending = false,
 }: ServiceDetailsSheetProps) {
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -86,9 +89,34 @@ export function ServiceDetailsSheet({
     }
   }
 
+  async function handleDelete() {
+    if (!service) return;
+    setActionError(null);
+    try {
+      await onDelete(service.id);
+      setDeleteDialogOpen(false);
+    } catch (err) {
+      if (
+        err instanceof ApiError &&
+        err.code === "SERVICE_HAS_BOOKING_HISTORY"
+      ) {
+        setActionError(
+          "This service has booking history and can't be permanently deleted. Keep it inactive instead.",
+        );
+      } else {
+        setActionError(
+          err instanceof ApiError ? err.message : "Failed to delete service.",
+        );
+      }
+    }
+  }
+
   return (
     <>
-      <Sheet open={open && !deactivateDialogOpen} onOpenChange={onOpenChange}>
+      <Sheet
+        open={open && !deactivateDialogOpen && !deleteDialogOpen}
+        onOpenChange={onOpenChange}
+      >
         <SheetContent>
           <SheetHeader>
             <div className={styles.statusLine}>
@@ -172,6 +200,19 @@ export function ServiceDetailsSheet({
                   Reactivate
                 </Button>
               )}
+              {!isActive ? (
+                <Button
+                  variant="destructiveOutline"
+                  size="sm"
+                  onClick={() => {
+                    setActionError(null);
+                    setDeleteDialogOpen(true);
+                  }}
+                  disabled={isActionPending}
+                >
+                  Delete permanently
+                </Button>
+              ) : null}
             </div>
           ) : null}
 
@@ -216,6 +257,37 @@ export function ServiceDetailsSheet({
               disabled={isActionPending}
             >
               {isActionPending ? "Deactivating…" : "Deactivate service"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(next) => !isActionPending && setDeleteDialogOpen(next)}
+      >
+        <DialogContent aria-busy={isActionPending}>
+          <DialogTitle>Delete {service.name} permanently?</DialogTitle>
+          <DialogDescription>
+            This can only be done because the service has no booking history.
+            This action cannot be undone.
+          </DialogDescription>
+          {actionError ? (
+            <InlineAlert as="p" variant="error" className={styles.sheetAlert}>
+              {actionError}
+            </InlineAlert>
+          ) : null}
+          <div className={styles.dialogActions}>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isActionPending}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isActionPending}
+            >
+              {isActionPending ? "Deleting…" : "Delete permanently"}
             </Button>
           </div>
         </DialogContent>

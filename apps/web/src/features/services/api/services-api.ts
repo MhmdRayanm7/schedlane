@@ -64,6 +64,16 @@ export function reactivateService(
   );
 }
 
+export function deleteService(
+  organizationId: string,
+  serviceId: string,
+): Promise<void> {
+  return apiClient<void>(
+    `/api/organizations/${organizationId}/services/${serviceId}`,
+    { method: "DELETE" },
+  );
+}
+
 export function getServiceResources(
   organizationId: string,
   serviceId: string,
