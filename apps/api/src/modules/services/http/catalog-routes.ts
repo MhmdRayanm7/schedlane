@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import { sendOrganizationWriteStateError } from "../../organizations/http/errors.js";
 import { createService, updateService } from "../application/create-update.js";
+import { deleteService } from "../application/delete.js";
 import {
   deactivateService,
   reactivateService,
@@ -14,6 +15,56 @@ import {
 } from "./schemas.js";
 
 export const catalogRoutes: FastifyPluginAsyncTypebox = async (app) => {
+  app.delete(
+    "/api/organizations/:organizationId/services/:serviceId",
+    { schema: { params: serviceParams } },
+    async (request, reply) => {
+      const result = await deleteService({
+        userId: request.verifiedUser.id,
+        ...request.params,
+      });
+      if (!result.ok) {
+        if (result.reason === "organization_not_found")
+          return reply.code(404).send({
+            code: "ORGANIZATION_NOT_FOUND",
+            message: "Organization not found",
+            requestId: request.id,
+          });
+        if (result.reason === "service_not_found")
+          return reply.code(404).send({
+            code: "SERVICE_NOT_FOUND",
+            message: "Service not found",
+            requestId: request.id,
+          });
+        if (result.reason === "insufficient_role")
+          return reply.code(403).send({
+            code: "SERVICE_MANAGEMENT_NOT_ALLOWED",
+            message: "Your organization role does not allow Service management",
+            requestId: request.id,
+          });
+        if (result.reason === "service_must_be_inactive")
+          return reply.code(409).send({
+            code: "SERVICE_MUST_BE_INACTIVE",
+            message: "Deactivate this service before deleting it permanently",
+            requestId: request.id,
+          });
+        if (result.reason === "service_has_booking_history")
+          return reply.code(409).send({
+            code: "SERVICE_HAS_BOOKING_HISTORY",
+            message:
+              "This service has booking history and can't be permanently deleted. Keep it inactive instead.",
+            requestId: request.id,
+          });
+        return sendOrganizationWriteStateError(
+          reply,
+          request.id,
+          result.reason,
+        );
+      }
+      return reply.code(204).send();
+    },
+  );
+
   app.get(
     "/api/organizations/:organizationId/services",
     {
