@@ -279,6 +279,24 @@ describe("management Booking queries", () => {
     });
   });
 
+  it.each(["confirmed", "cancelled", "no_show"] as const)(
+    "filters the date range and Staff Resource scope to %s Bookings",
+    async (status) => {
+      const f = await fixture("staff");
+      const matching = await addBooking(f, { status });
+      await addBooking(f, {
+        status: status === "confirmed" ? "cancelled" : "confirmed",
+        startAt: new Date("2026-10-05T07:00:00.000Z"),
+      });
+      await addBooking(f, {
+        resourceId: f.otherResource.id,
+        status,
+        startAt: new Date("2026-10-05T08:00:00.000Z"),
+      });
+      expect(bookingIds(await f.list({ status }))).toEqual([matching.id]);
+    },
+  );
+
   it("returns live names with historical snapshots for deactivated entities", async () => {
     const f = await fixture();
     const booking = await addBooking(f, {

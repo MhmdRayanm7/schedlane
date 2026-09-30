@@ -825,4 +825,66 @@ describe("Platform review and organization directory", () => {
       ids.reverse(),
     );
   });
+
+  it("filters the directory by exclusive lifecycle and searches name, slug, and owner email", async () => {
+    const f = await fixture();
+    const ownerId = await createUser("Directory owner");
+    const owner = await db
+      .selectFrom("user")
+      .select("email")
+      .where("id", "=", ownerId)
+      .executeTakeFirstOrThrow();
+    for (const [name, state] of [
+      ["Active Needle", "active"],
+      ["Suspended Needle", "suspended"],
+      ["Archived Needle", "archived"],
+    ] as const) {
+      const organization = await db
+        .insertInto("organization")
+        .values({
+          name,
+          slug: `${state}-needle-${randomUUID()}`,
+          suspended_at: state === "suspended" ? new Date() : null,
+          archived_at: state === "archived" ? new Date() : null,
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow();
+      await db
+        .insertInto("membership")
+        .values({
+          organization_id: organization.id,
+          user_id: ownerId,
+          role: "owner",
+        })
+        .execute();
+    }
+
+    for (const [lifecycle, expectedName] of [
+      ["active", "Active Needle"],
+      ["suspended", "Suspended Needle"],
+      ["archived", "Archived Needle"],
+    ] as const) {
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/platform/organizations?lifecycle=${lifecycle}&search=needle`,
+        headers: { "x-test-user": f.adminId },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().items).toEqual([
+        expect.objectContaining({ name: expectedName }),
+      ]);
+    }
+    const byOwner = await app.inject({
+      method: "GET",
+      url: `/api/platform/organizations?lifecycle=all&search=${encodeURIComponent(owner.email)}`,
+      headers: { "x-test-user": f.adminId },
+    });
+    expect(byOwner.json().items).toHaveLength(3);
+    const invalid = await app.inject({
+      method: "GET",
+      url: "/api/platform/organizations?lifecycle=deleted",
+      headers: { "x-test-user": f.adminId },
+    });
+    expect(invalid.statusCode).toBe(400);
+  });
 });

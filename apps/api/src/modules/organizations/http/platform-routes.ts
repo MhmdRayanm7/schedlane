@@ -49,6 +49,15 @@ const rejectOrganizationRequestBody = Type.Object({
 const listOrganizationsQuery = Type.Object({
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
   cursor: Type.Optional(Type.String({ minLength: 1 })),
+  lifecycle: Type.Optional(
+    Type.Union([
+      Type.Literal("active"),
+      Type.Literal("suspended"),
+      Type.Literal("archived"),
+      Type.Literal("all"),
+    ]),
+  ),
+  search: Type.Optional(Type.String({ maxLength: 200 })),
 });
 
 const listOrganizationRequestsQuery = Type.Object({
@@ -398,7 +407,11 @@ export const platformRoutes: FastifyPluginAsyncTypebox = async (app) => {
       const result = await listPlatformOrganizations({
         userId: request.verifiedUser.id,
         limit: request.query.limit ?? 20,
-        cursor: request.query.cursor,
+        ...(request.query.cursor ? { cursor: request.query.cursor } : {}),
+        ...(request.query.lifecycle
+          ? { lifecycle: request.query.lifecycle }
+          : {}),
+        ...(request.query.search ? { search: request.query.search } : {}),
       });
       if (!result.ok) {
         if (result.reason === "platform_admin_required") {

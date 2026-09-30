@@ -47,6 +47,13 @@ const bookingRangeQuerySchema = Type.Object(
   {
     fromDate: Type.String(),
     toDate: Type.String(),
+    status: Type.Optional(
+      Type.Union([
+        Type.Literal("confirmed"),
+        Type.Literal("cancelled"),
+        Type.Literal("no_show"),
+      ]),
+    ),
   },
   { additionalProperties: Type.Never() },
 );
@@ -333,6 +340,7 @@ export const bookingRoutes: FastifyPluginAsyncTypebox<
         organizationId: request.params.organizationId,
         fromDate: request.query.fromDate,
         toDate: request.query.toDate,
+        ...(request.query.status ? { status: request.query.status } : {}),
       });
       if (!result.ok) {
         if (result.reason === "invalid_date_range")

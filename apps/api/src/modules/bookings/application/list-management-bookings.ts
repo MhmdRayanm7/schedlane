@@ -10,6 +10,7 @@ export type ListManagementBookingsInput = {
   organizationId: string;
   fromDate: string;
   toDate: string;
+  status?: BookingStatus;
 };
 
 export type ManagementBooking = {
@@ -135,6 +136,9 @@ export async function listManagementBookings(
         .where("booking.start_at", "<", range.endExclusiveAt)
         .$if(scopedResourceId !== null, (query) =>
           query.where("booking.resource_id", "=", scopedResourceId),
+        )
+        .$if(input.status !== undefined, (query) =>
+          query.where("booking.status", "=", input.status as BookingStatus),
         )
         .orderBy("booking.start_at", "asc")
         .orderBy("booking.id", "asc")

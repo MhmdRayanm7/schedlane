@@ -19,6 +19,11 @@ export async function getPlatformAdminIdentity(userId: string) {
 }
 
 type OrganizationCursor = { createdAt: string; id: string };
+export type PlatformOrganizationLifecycle =
+  | "active"
+  | "suspended"
+  | "archived"
+  | "all";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CURSOR_TIMESTAMP_PATTERN =
@@ -49,6 +54,8 @@ export async function listPlatformOrganizations(input: {
   userId: string;
   limit: number;
   cursor?: string | undefined;
+  lifecycle?: PlatformOrganizationLifecycle;
+  search?: string;
 }) {
   const admin = await db
     .selectFrom("platform_admin")
@@ -101,6 +108,47 @@ export async function listPlatformOrganizations(input: {
     .orderBy("organization.created_at", "desc")
     .orderBy("organization.id", "desc")
     .limit(input.limit + 1);
+
+  const lifecycle = input.lifecycle ?? "active";
+  if (lifecycle === "active") {
+    query = query
+      .where("organization.archived_at", "is", null)
+      .where("organization.suspended_at", "is", null);
+  } else if (lifecycle === "suspended") {
+    query = query
+      .where("organization.archived_at", "is", null)
+      .where("organization.suspended_at", "is not", null);
+  } else if (lifecycle === "archived") {
+    query = query.where("organization.archived_at", "is not", null);
+  }
+
+  const search = input.search?.trim();
+  if (search) {
+    const pattern = `%${search}%`;
+    query = query.where((eb) =>
+      eb.or([
+        eb("organization.name", "ilike", pattern),
+        eb("organization.slug", "ilike", pattern),
+        eb.exists(
+          eb
+            .selectFrom("membership as search_membership")
+            .innerJoin(
+              "user as search_owner",
+              "search_owner.id",
+              "search_membership.user_id",
+            )
+            .select("search_membership.id")
+            .whereRef(
+              "search_membership.organization_id",
+              "=",
+              "organization.id",
+            )
+            .where("search_membership.role", "=", "owner")
+            .where("search_owner.email", "ilike", pattern),
+        ),
+      ]),
+    );
+  }
 
   if (cursor) {
     query = query.where(

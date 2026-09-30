@@ -202,6 +202,20 @@ describe("Booking management HTTP reads", () => {
     expect(invalidId.statusCode).toBe(400);
   });
 
+  it("strictly validates and forwards the Booking status filter", async () => {
+    const f = await fixture();
+    await f.addBooking();
+    const confirmed = await f.request({
+      fromDate,
+      toDate,
+      status: "confirmed",
+    });
+    expect(confirmed.statusCode).toBe(200);
+    expect(confirmed.json().bookings).toHaveLength(1);
+    const invalid = await f.request({ fromDate, toDate, status: "pending" });
+    expect(invalid.statusCode).toBe(400);
+  });
+
   it("returns historical Bookings for deactivated entities without internal identifiers", async () => {
     const f = await fixture();
     const booking = await f.addBooking();
