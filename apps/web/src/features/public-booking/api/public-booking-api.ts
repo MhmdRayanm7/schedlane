@@ -11,12 +11,14 @@ const base = (slug: string) =>
   `/api/public/organizations/${encodeURIComponent(slug)}`;
 
 export const publicBookingKeys = {
-  context: (slug: string) => ["public-booking", slug, "context"] as const,
+  context: (slug: string, share?: string) =>
+    ["public-booking", slug, "context", share ?? null] as const,
   availability: (
     slug: string,
     serviceId: string,
     resourceId: string,
     date: string,
+    share?: string,
   ) =>
     [
       "public-booking",
@@ -25,13 +27,21 @@ export const publicBookingKeys = {
       serviceId,
       resourceId,
       date,
+      share ?? null,
     ] as const,
 };
 
 export const guestBookingKey = ["guest-booking", "current"] as const;
 
-export function getBookingContext(slug: string, signal?: AbortSignal) {
-  return apiClient<BookingContext>(`${base(slug)}/booking-context`, { signal });
+export function getBookingContext(
+  slug: string,
+  share?: string,
+  signal?: AbortSignal,
+) {
+  const query = share === undefined ? "" : `?${new URLSearchParams({ share })}`;
+  return apiClient<BookingContext>(`${base(slug)}/booking-context${query}`, {
+    signal,
+  });
 }
 
 export function getPublicAvailability(
@@ -39,9 +49,11 @@ export function getPublicAvailability(
   serviceId: string,
   resourceId: string,
   date: string,
+  share?: string,
   signal?: AbortSignal,
 ) {
   const query = new URLSearchParams({ serviceId, resourceId, date });
+  if (share !== undefined) query.set("share", share);
   return apiClient<PublicAvailability>(`${base(slug)}/availability?${query}`, {
     signal,
   });
@@ -52,9 +64,11 @@ export function getNextAvailability(
   serviceId: string,
   resourceId: string,
   fromDate: string,
+  share?: string,
   signal?: AbortSignal,
 ) {
   const query = new URLSearchParams({ serviceId, resourceId, fromDate });
+  if (share !== undefined) query.set("share", share);
   return apiClient<{ availability: PublicAvailability | null }>(
     `${base(slug)}/availability/next?${query}`,
     { signal },
@@ -69,8 +83,10 @@ export function createGuestBooking(
     date: string;
     startMinute: number;
   } & GuestDetails,
+  share?: string,
 ) {
-  return apiClient<CreatedBooking>(`${base(slug)}/bookings`, {
+  const query = share === undefined ? "" : `?${new URLSearchParams({ share })}`;
+  return apiClient<CreatedBooking>(`${base(slug)}/bookings${query}`, {
     method: "POST",
     body: {
       ...input,

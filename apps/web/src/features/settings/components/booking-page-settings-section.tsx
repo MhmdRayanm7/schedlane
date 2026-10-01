@@ -18,6 +18,7 @@ import {
   useRequestPublication,
 } from "../hooks/use-organization-settings";
 import styles from "../settings.module.css";
+import { BookingShareLinks } from "./booking-share-links";
 
 const formatDateTime = (value: string) =>
   new Intl.DateTimeFormat(undefined, {
@@ -250,6 +251,13 @@ export function BookingPageSettingsSection({
             type="checkbox"
           />
         </label>
+
+        <BookingShareLinks
+          organizationId={organization.id}
+          slug={organization.slug}
+          isOwner={isOwner}
+          isReadOnly={isReadOnly}
+        />
 
         {statusQuery.isError ||
         readinessQuery.isError ||

@@ -4,16 +4,22 @@ import type { OrganizationsResponse } from "@/features/organizations/types";
 import { teamKeys } from "@/features/team/hooks/use-team";
 import {
   archiveOrganization,
+  createBookingShareLink,
+  getBookingShareLinks,
   getOrganizationSettings,
   getPublicationReadiness,
   getPublicationStatus,
   renameOrganization,
   requestPublication,
   restoreOrganization,
+  revokeBookingShareLink,
   updateOrganizationPricing,
   updateStaffTeamVisibility,
 } from "../api/settings-api";
-import type { StaffTeamVisibility } from "../types";
+import type {
+  CreateBookingShareLinkInput,
+  StaffTeamVisibility,
+} from "../types";
 
 export const organizationSettingsKeys = {
   detail: (organizationId: string) =>
@@ -26,6 +32,43 @@ export const publicationKeys = {
   status: (organizationId: string) =>
     ["organizations", organizationId, "publication-status"] as const,
 };
+
+export const bookingShareLinkKeys = {
+  list: (organizationId: string) =>
+    ["organizations", organizationId, "booking-share-links"] as const,
+};
+
+export function useBookingShareLinks(organizationId: string, enabled = true) {
+  return useQuery({
+    queryKey: bookingShareLinkKeys.list(organizationId),
+    queryFn: ({ signal }) => getBookingShareLinks(organizationId, signal),
+    enabled: Boolean(organizationId && enabled),
+  });
+}
+
+export function useCreateBookingShareLink(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateBookingShareLinkInput) =>
+      createBookingShareLink(organizationId, input),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: bookingShareLinkKeys.list(organizationId),
+      }),
+  });
+}
+
+export function useRevokeBookingShareLink(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (linkId: string) =>
+      revokeBookingShareLink(organizationId, linkId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: bookingShareLinkKeys.list(organizationId),
+      }),
+  });
+}
 
 export function useOrganizationSettings(organizationId: string) {
   return useQuery({

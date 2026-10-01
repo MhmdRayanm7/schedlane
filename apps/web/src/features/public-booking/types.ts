@@ -9,6 +9,7 @@ export type PublicService = {
 export type BookingContext = {
   organization: { name: string; slug: string; timezone: "Asia/Jerusalem" };
   bookingWindow: { firstDate: string; lastDate: string };
+  shareScope: { serviceId: string | null; resourceId: string | null } | null;
   services: PublicService[];
 };
 

@@ -4,7 +4,12 @@ import type {
   PublicationReadiness,
 } from "@/features/publication/types";
 import { apiClient } from "@/shared/api/client";
-import type { OrganizationSettings, StaffTeamVisibility } from "../types";
+import type {
+  BookingShareLink,
+  CreateBookingShareLinkInput,
+  OrganizationSettings,
+  StaffTeamVisibility,
+} from "../types";
 
 export function getOrganizationSettings(
   organizationId: string,
@@ -83,6 +88,33 @@ export function archiveOrganization(organizationId: string) {
 export function restoreOrganization(organizationId: string) {
   return apiClient<{ id: string; archivedAt: null }>(
     `/api/organizations/${organizationId}/restore`,
+    { method: "POST" },
+  );
+}
+
+export function getBookingShareLinks(
+  organizationId: string,
+  signal?: AbortSignal,
+) {
+  return apiClient<{ items: BookingShareLink[] }>(
+    `/api/organizations/${organizationId}/booking-share-links`,
+    { signal },
+  );
+}
+
+export function createBookingShareLink(
+  organizationId: string,
+  input: CreateBookingShareLinkInput,
+) {
+  return apiClient<BookingShareLink>(
+    `/api/organizations/${organizationId}/booking-share-links`,
+    { method: "POST", body: input },
+  );
+}
+
+export function revokeBookingShareLink(organizationId: string, linkId: string) {
+  return apiClient<BookingShareLink>(
+    `/api/organizations/${organizationId}/booking-share-links/${linkId}/revoke`,
     { method: "POST" },
   );
 }

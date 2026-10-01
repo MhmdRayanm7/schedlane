@@ -7,7 +7,7 @@ import {
   Clock3,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { ApiError } from "@/shared/api/api-error";
 import { Button } from "@/shared/components/ui/button";
 import { FormField } from "@/shared/components/ui/form-field";
@@ -181,6 +181,10 @@ function BookingSummary({
 
 export function PublicBookingPage() {
   const { slug = "" } = useParams();
+  const [searchParams] = useSearchParams();
+  const share = searchParams.has("share")
+    ? (searchParams.get("share") ?? "")
+    : undefined;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -196,10 +200,11 @@ export function PublicBookingPage() {
   const [message, setMessage] = useState("");
   const [nextMessage, setNextMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState<GuestFieldErrors>({});
+  const [shareUnavailable, setShareUnavailable] = useState(false);
 
   const contextQuery = useQuery({
-    queryKey: publicBookingKeys.context(slug),
-    queryFn: ({ signal }) => getBookingContext(slug, signal),
+    queryKey: publicBookingKeys.context(slug, share),
+    queryFn: ({ signal }) => getBookingContext(slug, share, signal),
     retry: false,
   });
   const context = contextQuery.data;
@@ -219,25 +224,37 @@ export function PublicBookingPage() {
       serviceId,
       resourceId,
       selectedDate,
+      share,
     ),
     queryFn: ({ signal }) =>
-      getPublicAvailability(slug, serviceId, resourceId, selectedDate, signal),
+      getPublicAvailability(
+        slug,
+        serviceId,
+        resourceId,
+        selectedDate,
+        share,
+        signal,
+      ),
     enabled: Boolean(service && resource && selectedDate),
     retry: false,
   });
   const nextMutation = useMutation({
     mutationFn: () =>
-      getNextAvailability(slug, serviceId, resourceId, selectedDate),
+      getNextAvailability(slug, serviceId, resourceId, selectedDate, share),
   });
   const createMutation = useMutation({
     mutationFn: () =>
-      createGuestBooking(slug, {
-        serviceId,
-        resourceId,
-        date: selectedDate,
-        startMinute: time ?? -1,
-        ...details,
-      }),
+      createGuestBooking(
+        slug,
+        {
+          serviceId,
+          resourceId,
+          date: selectedDate,
+          startMinute: time ?? -1,
+          ...details,
+        },
+        share,
+      ),
   });
 
   useEffect(() => {
@@ -362,6 +379,10 @@ export function PublicBookingPage() {
         (error.code === "PUBLIC_BOOKING_NOT_FOUND" ||
           error.code === "DATE_OUTSIDE_BOOKING_WINDOW")
       ) {
+        if (share !== undefined && error.code === "PUBLIC_BOOKING_NOT_FOUND") {
+          setShareUnavailable(true);
+          return;
+        }
         const refreshed = await contextQuery.refetch();
         const updated = refreshed.data;
         const validService = updated?.services.find(
@@ -425,19 +446,30 @@ export function PublicBookingPage() {
         </main>
       </PublicFrame>
     );
+  if (shareUnavailable)
+    return (
+      <BookingState
+        title="Booking link unavailable"
+        description="This booking link is no longer available."
+      />
+    );
   if (contextQuery.isError)
     return (
       <BookingState
         title={
           contextQuery.error instanceof ApiError &&
           contextQuery.error.status === 404
-            ? "Booking page unavailable"
+            ? share !== undefined
+              ? "Booking link unavailable"
+              : "Booking page unavailable"
             : "We couldn’t load this booking page"
         }
         description={
           contextQuery.error instanceof ApiError &&
           contextQuery.error.status === 404
-            ? "This booking page is not available right now."
+            ? share !== undefined
+              ? "This booking link is no longer available."
+              : "This booking page is not available right now."
             : "Please try again in a moment."
         }
         retry={
@@ -652,6 +684,7 @@ export function PublicBookingPage() {
                                 serviceId,
                                 resourceId,
                                 result.availability.date,
+                                share,
                               ),
                               result.availability,
                             );
