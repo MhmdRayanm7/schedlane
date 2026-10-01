@@ -24,6 +24,14 @@ import {
   down as downBooking,
   up as upBooking,
 } from "../../../src/migrations/0017_create_booking.js";
+import {
+  down as downBookingReminder,
+  up as upBookingReminder,
+} from "../../../src/migrations/0027_create_booking_reminder.js";
+import {
+  down as downBookingShareLink,
+  up as upBookingShareLink,
+} from "../../../src/migrations/0028_create_booking_share_link.js";
 import { deactivateResource } from "../../../src/modules/resources/application/lifecycle.js";
 import { deactivateService } from "../../../src/modules/services/application/lifecycle.js";
 import { assignResourceToService } from "../../../src/modules/services/application/resource-assignment.js";
@@ -412,6 +420,8 @@ describe("Resource-Service assignments", () => {
       // Migrations deliberately erase the application schema type as tables change.
       const migrationDb = trx as unknown as Kysely<unknown>;
       // Remove the later dependency before dropping the Resource composite key.
+      await downBookingShareLink(migrationDb);
+      await downBookingReminder(migrationDb);
       await downBooking(migrationDb);
       await downTimeBlocks(migrationDb);
       await downResourceDateOverrides(migrationDb);
@@ -444,6 +454,8 @@ describe("Resource-Service assignments", () => {
       await upResourceDateOverrides(migrationDb);
       await upTimeBlocks(migrationDb);
       await upBooking(migrationDb);
+      await upBookingReminder(migrationDb);
+      await upBookingShareLink(migrationDb);
       await trx
         .insertInto("resource_service")
         .values({

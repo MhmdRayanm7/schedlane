@@ -4,17 +4,33 @@ import Fastify from "fastify";
 import { sql } from "kysely";
 import { config } from "./config.js";
 import { db } from "./db.js";
+import { redactBookingShareTokenFromUrl } from "./http/redact-public-locator.js";
 import { registerAuthRoutes } from "./modules/auth/http/routes.js";
 import { availabilityRoutes } from "./modules/availability/http/management-routes.js";
 import { publicAvailabilityRoutes } from "./modules/availability/http/public-routes.js";
 import { bookingRoutes } from "./modules/bookings/http/management-routes.js";
 import { publicBookingRoutes } from "./modules/bookings/http/public-routes.js";
+import { bookingShareLinkRoutes } from "./modules/bookings/http/share-link-routes.js";
 import { organizationRoutes } from "./modules/organizations/http/index.js";
 import { resourceRoutes } from "./modules/resources/http/index.js";
 import { serviceRoutes } from "./modules/services/http/index.js";
 
 const app = Fastify({
-  logger: true,
+  logger: {
+    serializers: {
+      req(request) {
+        return {
+          method: request.method,
+          url: redactBookingShareTokenFromUrl(request.url),
+          host: request.host,
+          remoteAddress: request.ip,
+          ...(request.socket.remotePort !== undefined
+            ? { remotePort: request.socket.remotePort }
+            : {}),
+        };
+      },
+    },
+  },
 });
 
 await app.register(cors, {
@@ -34,6 +50,7 @@ await app.register(resourceRoutes);
 await app.register(serviceRoutes);
 await app.register(availabilityRoutes);
 await app.register(bookingRoutes);
+await app.register(bookingShareLinkRoutes);
 await app.register(publicAvailabilityRoutes);
 await app.register(publicBookingRoutes);
 

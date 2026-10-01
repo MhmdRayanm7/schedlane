@@ -14,6 +14,10 @@ import {
   up as upManualBookingMetadata,
 } from "../../../src/migrations/0025_add_manual_booking_metadata.js";
 import {
+  down as downBookingReminder,
+  up as upBookingReminder,
+} from "../../../src/migrations/0027_create_booking_reminder.js";
+import {
   createTestBooking,
   createTestOrganization,
   createTestResource,
@@ -367,6 +371,7 @@ describe("Booking persistence", () => {
     await insertBooking();
     await db.transaction().execute(async (trx) => {
       const migrationDb = trx as unknown as Kysely<unknown>;
+      await downBookingReminder(migrationDb);
       await downManualBookingMetadata(migrationDb);
       await downGuestManagement(migrationDb);
       await down(migrationDb);
@@ -378,6 +383,7 @@ describe("Booking persistence", () => {
       await upGuestManagement(migrationDb);
       await upEncryptedGuestManagementToken(migrationDb);
       await upManualBookingMetadata(migrationDb);
+      await upBookingReminder(migrationDb);
     });
     expect((await insertBooking()).status).toBe("confirmed");
   });

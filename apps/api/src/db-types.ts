@@ -256,6 +256,18 @@ export interface BookingReminderTable {
   skip_reason: string | null;
 }
 
+export interface BookingShareLinkTable {
+  id: Generated<string>;
+  organization_id: string;
+  token: string;
+  service_id: string | null;
+  resource_id: string | null;
+  created_by_user_id: string;
+  created_at: Generated<Date>;
+  revoked_at: Date | null;
+  revoked_by_user_id: string | null;
+}
+
 export interface OutboxEventTable {
   id: Generated<string>;
   aggregate_type: string;
@@ -298,6 +310,7 @@ export interface Database {
   resource_time_block: ResourceTimeBlockTable;
   booking: BookingTable;
   booking_reminder: BookingReminderTable;
+  booking_share_link: BookingShareLinkTable;
   outbox_event: OutboxEventTable;
   consumer_receipt: ConsumerReceiptTable;
 }
