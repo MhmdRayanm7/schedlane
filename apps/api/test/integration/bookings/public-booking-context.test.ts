@@ -168,6 +168,7 @@ describe("public Booking context", () => {
         timezone: "Asia/Jerusalem",
       },
       bookingWindow: { firstDate: "2026-10-05", lastDate: "2026-12-04" },
+      shareScope: null,
       services: [
         {
           id: firstService.id,

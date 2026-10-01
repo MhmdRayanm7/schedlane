@@ -2,6 +2,10 @@ import type { Transaction } from "kysely";
 import { DateTime } from "luxon";
 import { db } from "../../../db.js";
 import type { Database } from "../../../db-types.js";
+import {
+  resolvePublicBookingShareScopeInTransaction,
+  selectionAllowedByShareScope,
+} from "../../bookings/application/public-booking-share-scope.js";
 import { isLocalDate } from "../domain/local-date.js";
 import {
   filterStartsByPublicBookingWindow,
@@ -14,6 +18,7 @@ export type ResolvePublicResourceServiceAvailabilityInput = {
   resourceId: string;
   serviceId: string;
   date: string;
+  shareToken?: string;
 };
 
 export type ResolvePublicResourceServiceAvailabilityResult =
@@ -171,6 +176,12 @@ export async function resolvePublicResourceServiceAvailabilityInTransaction(
 ): Promise<ResolvePublicResourceServiceAvailabilityInTransactionResult> {
   const access = await loadPublicAccess(trx, input);
   if (!access.ok) return access;
+  const share = await resolvePublicBookingShareScopeInTransaction(trx, {
+    organizationId: access.organization.id,
+    ...(input.shareToken !== undefined ? { token: input.shareToken } : {}),
+  });
+  if (!share.ok || !selectionAllowedByShareScope(share.scope, input))
+    return { ok: false, reason: "public_availability_not_found" };
   return resolveForDate(trx, input, access.organization, now);
 }
 
@@ -189,6 +200,12 @@ export async function resolveNextPublicResourceServiceAvailability(
     .execute(async (trx) => {
       const access = await loadPublicAccess(trx, input);
       if (!access.ok) return access;
+      const share = await resolvePublicBookingShareScopeInTransaction(trx, {
+        organizationId: access.organization.id,
+        ...(input.shareToken !== undefined ? { token: input.shareToken } : {}),
+      });
+      if (!share.ok || !selectionAllowedByShareScope(share.scope, input))
+        return { ok: false, reason: "public_availability_not_found" };
       if (!isLocalDate(input.fromDate))
         return { ok: false, reason: "invalid_date" };
       const window = publicBookingDateWindow(

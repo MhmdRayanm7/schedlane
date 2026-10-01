@@ -22,11 +22,17 @@ const querySchema = Type.Object(
     resourceId: uuidSchema,
     serviceId: uuidSchema,
     date: Type.String(),
+    share: Type.Optional(Type.String()),
   },
   { additionalProperties: Type.Never() },
 );
 const nextQuerySchema = Type.Object(
-  { resourceId: uuidSchema, serviceId: uuidSchema, fromDate: Type.String() },
+  {
+    resourceId: uuidSchema,
+    serviceId: uuidSchema,
+    fromDate: Type.String(),
+    share: Type.Optional(Type.String()),
+  },
   { additionalProperties: Type.Never() },
 );
 
@@ -72,6 +78,9 @@ export const publicAvailabilityRoutes: FastifyPluginAsyncTypebox<
           resourceId: request.query.resourceId,
           serviceId: request.query.serviceId,
           date: request.query.date,
+          ...(request.query.share !== undefined
+            ? { shareToken: request.query.share }
+            : {}),
         },
         options.now?.() ?? new Date(),
       );
@@ -92,7 +101,15 @@ export const publicAvailabilityRoutes: FastifyPluginAsyncTypebox<
     { schema: { params: paramsSchema, querystring: nextQuerySchema } },
     async (request, reply) => {
       const result = await resolveNextPublicResourceServiceAvailability(
-        { organizationSlug: request.params.slug, ...request.query },
+        {
+          organizationSlug: request.params.slug,
+          resourceId: request.query.resourceId,
+          serviceId: request.query.serviceId,
+          fromDate: request.query.fromDate,
+          ...(request.query.share !== undefined
+            ? { shareToken: request.query.share }
+            : {}),
+        },
         options.now?.() ?? new Date(),
       );
       if (!result.ok)

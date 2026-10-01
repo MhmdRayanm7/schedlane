@@ -1,5 +1,7 @@
 import { db } from "../../../db.js";
 import { publicBookingDateWindow } from "../../availability/domain/public-booking-window.js";
+import type { BookingShareScope } from "./booking-share-links.js";
+import { resolvePublicBookingShareScopeInTransaction } from "./public-booking-share-scope.js";
 
 export type PublicBookingContext = {
   organization: {
@@ -8,6 +10,7 @@ export type PublicBookingContext = {
     timezone: "Asia/Jerusalem";
   };
   bookingWindow: { firstDate: string; lastDate: string };
+  shareScope: BookingShareScope | null;
   services: Array<{
     id: string;
     name: string;
@@ -57,6 +60,7 @@ export function projectPublicServices(
 export async function getPublicBookingContext(
   organizationSlug: string,
   now: Date = new Date(),
+  shareToken?: string,
 ): Promise<GetPublicBookingContextResult> {
   return db
     .transaction()
@@ -79,6 +83,16 @@ export async function getPublicBookingContext(
         .executeTakeFirst();
 
       if (!organization)
+        return { ok: false, reason: "public_booking_context_not_found" };
+
+      const resolvedShare = await resolvePublicBookingShareScopeInTransaction(
+        trx,
+        {
+          organizationId: organization.id,
+          ...(shareToken !== undefined ? { token: shareToken } : {}),
+        },
+      );
+      if (!resolvedShare.ok)
         return { ok: false, reason: "public_booking_context_not_found" };
 
       const rows = await trx
@@ -114,6 +128,16 @@ export async function getPublicBookingContext(
         .where("resource.organization_id", "=", organization.id)
         .where("service.deactivated_at", "is", null)
         .where("resource.deactivated_at", "is", null)
+        .$if(Boolean(resolvedShare.scope?.serviceId), (query) =>
+          query.where("service.id", "=", resolvedShare.scope?.serviceId ?? ""),
+        )
+        .$if(Boolean(resolvedShare.scope?.resourceId), (query) =>
+          query.where(
+            "resource.id",
+            "=",
+            resolvedShare.scope?.resourceId ?? "",
+          ),
+        )
         .orderBy("service.display_order", "asc")
         .orderBy("service.id", "asc")
         .orderBy("resource.name", "asc")
@@ -132,6 +156,7 @@ export async function getPublicBookingContext(
             now,
             organization.max_booking_horizon_days,
           ),
+          shareScope: resolvedShare.scope,
           services: projectPublicServices(
             rows.map((row) => ({
               ...row,

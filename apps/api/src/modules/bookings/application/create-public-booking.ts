@@ -20,10 +20,15 @@ import {
   runConfirmedBookingWriteWithRetries,
 } from "../persistence/confirmed-booking-write.js";
 import { runWithGuestManagementCapability } from "./guest-management-capability.js";
+import {
+  resolvePublicBookingShareScopeInTransaction,
+  selectionAllowedByShareScope,
+} from "./public-booking-share-scope.js";
 import { syncBookingReminderInTransaction } from "./reminders.js";
 
 export type CreatePublicBookingInput = {
   organizationSlug: string;
+  shareToken?: string;
   resourceId: string;
   serviceId: string;
   date: string;
@@ -123,6 +128,19 @@ async function executePublicBookingTransaction(
           now,
         );
       if (!availability.ok) return mapPublicAvailabilityFailure(availability);
+      const share = await resolvePublicBookingShareScopeInTransaction(trx, {
+        organizationId: availability.context.organizationId,
+        ...(input.shareToken !== undefined ? { token: input.shareToken } : {}),
+        lock: true,
+      });
+      if (
+        !share.ok ||
+        !selectionAllowedByShareScope(share.scope, {
+          serviceId: input.serviceId,
+          resourceId: input.resourceId,
+        })
+      )
+        return { ok: false, reason: "public_booking_not_found" };
       const startAt = localBookingStartToUtc(input.date, input.startMinute);
       if (!startAt) return { ok: false, reason: "invalid_start_time" };
       if (!availability.context.starts.includes(input.startMinute))

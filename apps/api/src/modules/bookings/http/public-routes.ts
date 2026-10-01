@@ -26,6 +26,10 @@ const paramsSchema = Type.Object(
   { slug: Type.String() },
   { additionalProperties: Type.Never() },
 );
+const shareQuerySchema = Type.Object(
+  { share: Type.Optional(Type.String()) },
+  { additionalProperties: Type.Never() },
+);
 const bodySchema = Type.Object(
   {
     resourceId: uuidSchema,
@@ -173,11 +177,12 @@ export const publicBookingRoutes: FastifyPluginAsyncTypebox<
 
   app.get(
     "/api/public/organizations/:slug/booking-context",
-    { schema: { params: paramsSchema } },
+    { schema: { params: paramsSchema, querystring: shareQuerySchema } },
     async (request, reply) => {
       const result = await getPublicBookingContext(
         request.params.slug,
         options.now?.() ?? new Date(),
+        request.query.share,
       );
       if (!result.ok)
         return reply.code(404).send({
@@ -191,11 +196,20 @@ export const publicBookingRoutes: FastifyPluginAsyncTypebox<
 
   app.post(
     "/api/public/organizations/:slug/bookings",
-    { schema: { params: paramsSchema, body: bodySchema } },
+    {
+      schema: {
+        params: paramsSchema,
+        querystring: shareQuerySchema,
+        body: bodySchema,
+      },
+    },
     async (request, reply) => {
       const result = await createPublicBooking(
         {
           organizationSlug: request.params.slug,
+          ...(request.query.share !== undefined
+            ? { shareToken: request.query.share }
+            : {}),
           ...request.body,
         },
         options.now?.() ?? new Date(),
