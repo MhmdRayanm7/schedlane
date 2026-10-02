@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from "react-router";
 import { ApiError } from "@/shared/api/api-error";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
-import { Button } from "@/shared/components/ui/button";
+import { QueryErrorState } from "@/shared/components/app-state-page";
 import { usePlatformIdentity } from "./hooks/use-platform";
 import styles from "./platform.module.css";
 
@@ -21,12 +21,11 @@ export function PlatformAccessGate() {
   if (identity.isError) {
     return (
       <main className={styles.gate}>
-        <BrandLockup />
-        <h1>We couldn't open Platform Admin</h1>
-        <p>Check your connection and try again.</p>
-        <Button onClick={() => void identity.refetch()} variant="outline">
-          Try again
-        </Button>
+        <QueryErrorState
+          error={identity.error}
+          onRetry={() => void identity.refetch()}
+          title="We couldn't open Platform Admin"
+        />
       </main>
     );
   }

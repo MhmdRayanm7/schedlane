@@ -3,6 +3,7 @@ import { CalendarDays, Check, Clipboard } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { ApiError } from "@/shared/api/api-error";
+import { queryErrorDescription } from "@/shared/components/app-state-page";
 import { FormSaveStatus } from "@/shared/components/form-save-status";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -402,7 +403,12 @@ export function GuestBookingManagePage() {
     return (
       <BookingState
         title="We couldn’t load your booking"
-        description="Please try again in a moment."
+        description={queryErrorDescription(bookingQuery.error)}
+        referenceId={
+          bookingQuery.error instanceof ApiError
+            ? bookingQuery.error.requestId
+            : undefined
+        }
         retry={() => {
           void bookingQuery.refetch();
         }}

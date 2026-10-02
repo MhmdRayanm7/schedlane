@@ -120,7 +120,10 @@ export function BookingsPage() {
       <section aria-label={`${view === "day" ? "Day" : "Week"} bookings`}>
         {bookingsQuery.isPending ? <BookingsLoadingState /> : null}
         {bookingsQuery.isError ? (
-          <BookingsErrorState retry={() => void bookingsQuery.refetch()} />
+          <BookingsErrorState
+            error={bookingsQuery.error}
+            retry={() => void bookingsQuery.refetch()}
+          />
         ) : null}
         {bookingsQuery.data && view === "day" ? (
           <BookingsDayView

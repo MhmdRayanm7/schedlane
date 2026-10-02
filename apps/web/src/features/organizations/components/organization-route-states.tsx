@@ -1,4 +1,4 @@
-import { LogOut, RefreshCw } from "lucide-react";
+import { LogOut } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, Navigate, Outlet, useLocation, useParams } from "react-router";
 import { useSignOut } from "@/features/auth/hooks/use-sign-out";
@@ -6,6 +6,7 @@ import { usePlatformIdentity } from "@/features/platform/hooks/use-platform";
 import { ApiError } from "@/shared/api/api-error";
 import { authClient } from "@/shared/auth/auth-client";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
+import { QueryErrorState } from "@/shared/components/app-state-page";
 import { Button } from "@/shared/components/ui/button";
 import { useOrganizations } from "../hooks/use-organizations";
 import { shouldEnterPlatform } from "../lib/entry-route";
@@ -13,7 +14,12 @@ import { OrganizationOnboarding } from "../onboarding/organization-onboarding";
 import type { Organization } from "../types";
 import styles from "./organization-route-states.module.css";
 
-const staffSections = new Set(["bookings", "team"]);
+const staffRestrictedSections = new Set([
+  "services",
+  "resources",
+  "schedule",
+  "settings",
+]);
 
 export type OrganizationAccessContext = {
   currentOrganization: Organization;
@@ -70,25 +76,20 @@ function LoadingOrganizations() {
   );
 }
 
-function OrganizationsError({ retry }: { retry: () => void }) {
+function OrganizationsError({
+  error,
+  retry,
+}: {
+  error: unknown;
+  retry: () => void;
+}) {
   return (
     <ApplicationFrame>
-      <section className={styles.messageCard}>
-        <h1 className={styles.messageTitle}>
-          We couldn't load your organizations
-        </h1>
-        <p className={styles.messageDescription}>
-          Check your connection and try again.
-        </p>
-        <Button
-          className={styles.messageAction}
-          onClick={retry}
-          variant="outline"
-        >
-          <RefreshCw aria-hidden="true" className={styles.icon} />
-          Try again
-        </Button>
-      </section>
+      <QueryErrorState
+        error={error}
+        onRetry={retry}
+        title="We couldn't load your organizations"
+      />
     </ApplicationFrame>
   );
 }
@@ -104,7 +105,10 @@ export function OrganizationResolver() {
   if (organizationsQuery.isPending) return <LoadingOrganizations />;
   if (organizationsQuery.isError) {
     return (
-      <OrganizationsError retry={() => void organizationsQuery.refetch()} />
+      <OrganizationsError
+        error={organizationsQuery.error}
+        retry={() => void organizationsQuery.refetch()}
+      />
     );
   }
 
@@ -120,7 +124,10 @@ export function OrganizationResolver() {
       platformIdentity.error.status !== 403
     ) {
       return (
-        <OrganizationsError retry={() => void platformIdentity.refetch()} />
+        <OrganizationsError
+          error={platformIdentity.error}
+          retry={() => void platformIdentity.refetch()}
+        />
       );
     }
     return (
@@ -176,7 +183,10 @@ export function OrganizationAccessGate() {
   if (organizationsQuery.isPending) return <LoadingOrganizations />;
   if (organizationsQuery.isError) {
     return (
-      <OrganizationsError retry={() => void organizationsQuery.refetch()} />
+      <OrganizationsError
+        error={organizationsQuery.error}
+        retry={() => void organizationsQuery.refetch()}
+      />
     );
   }
 
@@ -190,7 +200,7 @@ export function OrganizationAccessGate() {
   if (
     currentOrganization.role === "staff" &&
     section &&
-    !staffSections.has(section)
+    staffRestrictedSections.has(section)
   ) {
     return <Navigate replace to={`/app/${currentOrganization.id}/bookings`} />;
   }

@@ -1,4 +1,5 @@
 import { ApiError } from "./api-error";
+import { ApiNetworkError } from "./api-network-error";
 import { apiBaseUrl } from "./config";
 
 type ApiClientOptions = Omit<RequestInit, "body"> & {
@@ -38,16 +39,24 @@ export async function apiClient<T>(
   path: string,
   { body, headers, ...options }: ApiClientOptions = {},
 ): Promise<T> {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    ...options,
-    credentials: "include",
-    headers: {
-      Accept: "application/json",
-      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-      ...headers,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      ...options,
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...headers,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+    throw new ApiNetworkError();
+  }
 
   if (response.status === 204) return undefined as T;
 

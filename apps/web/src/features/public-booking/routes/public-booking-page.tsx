@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { ApiError } from "@/shared/api/api-error";
+import { queryErrorDescription } from "@/shared/components/app-state-page";
 import { Button } from "@/shared/components/ui/button";
 import { FormField } from "@/shared/components/ui/form-field";
 import { Input } from "@/shared/components/ui/input";
@@ -73,10 +74,12 @@ export function BookingState({
   title,
   description,
   retry,
+  referenceId,
 }: {
   title: string;
   description: string;
   retry?: () => void;
+  referenceId?: string;
 }) {
   return (
     <PublicFrame>
@@ -91,6 +94,7 @@ export function BookingState({
             Try again
           </Button>
         ) : null}
+        {referenceId ? <small>Reference: {referenceId}</small> : null}
       </main>
     </PublicFrame>
   );
@@ -470,7 +474,7 @@ export function PublicBookingPage() {
             ? share !== undefined
               ? "This booking link is no longer available."
               : "This booking page is not available right now."
-            : "Please try again in a moment."
+            : queryErrorDescription(contextQuery.error)
         }
         retry={
           contextQuery.error instanceof ApiError &&
@@ -479,6 +483,11 @@ export function PublicBookingPage() {
             : () => {
                 void contextQuery.refetch();
               }
+        }
+        referenceId={
+          contextQuery.error instanceof ApiError
+            ? contextQuery.error.requestId
+            : undefined
         }
       />
     );
