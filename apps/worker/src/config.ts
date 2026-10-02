@@ -1,8 +1,17 @@
 import { fileURLToPath } from "node:url";
 import { envSchema } from "env-schema";
 import Type from "typebox";
+import { assertWorkerConfig } from "./config-validation.js";
 
 const configSchema = Type.Object({
+  NODE_ENV: Type.Union(
+    [
+      Type.Literal("development"),
+      Type.Literal("test"),
+      Type.Literal("production"),
+    ],
+    { default: "development" },
+  ),
   DATABASE_URL: Type.String({ minLength: 1 }),
   RABBITMQ_URL: Type.String({ minLength: 1 }),
   OUTBOX_BATCH_SIZE: Type.Integer({ default: 25, minimum: 1 }),
@@ -48,3 +57,5 @@ export const config = envSchema<Config>({
   schema: configSchema,
   dotenv: { path: envPath },
 });
+
+assertWorkerConfig(config);

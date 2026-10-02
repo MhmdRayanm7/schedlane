@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { envSchema } from "env-schema";
 import Type from "typebox";
+import { assertApiConfig } from "./config-validation.js";
 
 const configSchema = Type.Object({
   NODE_ENV: Type.Union(
@@ -87,6 +88,8 @@ export const config = envSchema<Config>({
     path: envPath,
   },
 });
+
+assertApiConfig(config);
 
 const decodedKey = Buffer.from(
   config.GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY,
