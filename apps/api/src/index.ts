@@ -1,87 +1,28 @@
-import cors from "@fastify/cors";
-import rateLimit from "@fastify/rate-limit";
-import Fastify from "fastify";
-import { sql } from "kysely";
+import { buildApp } from "./app.js";
 import { config } from "./config.js";
-import { db } from "./db.js";
-import { redactBookingShareTokenFromUrl } from "./http/redact-public-locator.js";
-import { registerAuthRoutes } from "./modules/auth/http/routes.js";
-import { availabilityRoutes } from "./modules/availability/http/management-routes.js";
-import { publicAvailabilityRoutes } from "./modules/availability/http/public-routes.js";
-import { bookingRoutes } from "./modules/bookings/http/management-routes.js";
-import { publicBookingRoutes } from "./modules/bookings/http/public-routes.js";
-import { bookingShareLinkRoutes } from "./modules/bookings/http/share-link-routes.js";
-import { organizationRoutes } from "./modules/organizations/http/index.js";
-import { resourceRoutes } from "./modules/resources/http/index.js";
-import { serviceRoutes } from "./modules/services/http/index.js";
 
-const app = Fastify({
-  logger: {
-    serializers: {
-      req(request) {
-        return {
-          method: request.method,
-          url: redactBookingShareTokenFromUrl(request.url),
-          host: request.host,
-          remoteAddress: request.ip,
-          ...(request.socket.remotePort !== undefined
-            ? { remotePort: request.socket.remotePort }
-            : {}),
-        };
-      },
-    },
-  },
-});
+const app = await buildApp();
+let shutdownStarted = false;
 
-await app.register(cors, {
-  origin: config.WEB_ORIGIN,
-  credentials: true,
-  methods: ["GET", "HEAD", "PUT", "POST", "DELETE", "PATCH"],
-});
-
-await app.register(rateLimit, {
-  global: false,
-});
-
-registerAuthRoutes(app);
-
-await app.register(organizationRoutes);
-await app.register(resourceRoutes);
-await app.register(serviceRoutes);
-await app.register(availabilityRoutes);
-await app.register(bookingRoutes);
-await app.register(bookingShareLinkRoutes);
-await app.register(publicAvailabilityRoutes);
-await app.register(publicBookingRoutes);
-
-app.get("/health/live", async () => {
-  return {
-    status: "ok",
-  };
-});
-
-app.get("/health/ready", async (_request, reply) => {
+async function shutdown(signal: NodeJS.Signals) {
+  if (shutdownStarted) return;
+  shutdownStarted = true;
+  app.log.info({ signal }, "API shutdown requested");
   try {
-    await sql`select 1`.execute(db);
-
-    return {
-      status: "ok",
-    };
+    await app.close();
   } catch (error) {
-    app.log.error(
-      {
-        err: error,
-      },
-      "Database readiness check failed",
-    );
-
-    return reply.code(503).send({
-      status: "unavailable",
-    });
+    app.log.error({ err: error }, "API shutdown failed");
+    process.exitCode = 1;
   }
-});
+}
 
-await app.listen({
-  host: config.HOST,
-  port: config.PORT,
-});
+process.once("SIGINT", () => void shutdown("SIGINT"));
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+
+try {
+  await app.listen({ host: config.HOST, port: config.PORT });
+} catch (error) {
+  app.log.error({ err: error }, "API startup failed");
+  await app.close();
+  process.exitCode = 1;
+}

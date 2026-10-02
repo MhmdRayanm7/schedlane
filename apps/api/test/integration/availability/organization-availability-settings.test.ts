@@ -15,6 +15,7 @@ import {
   down as downGuestManagement,
   up as upGuestManagement,
 } from "../../../src/migrations/0019_add_guest_booking_management.js";
+import { updateOrganizationAvailabilitySettings } from "../../../src/modules/availability/application/organization-availability.js";
 import { availabilityRoutes } from "../../../src/modules/availability/http/management-routes.js";
 import {
   addTestMembership,
@@ -61,6 +62,19 @@ async function fixture() {
 }
 
 describe("Organization Availability settings", () => {
+  it("rejects an excessive horizon at the application boundary", async () => {
+    await expect(
+      updateOrganizationAvailabilitySettings({
+        userId: randomUUID(),
+        organizationId: randomUUID(),
+        maxBookingHorizonDays: 366,
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "invalid_availability_settings",
+    });
+  });
+
   it("uses database defaults and enforces nonnegative public booking settings", async () => {
     const organization = await createTestOrganization();
     expect(organization.slot_interval_minutes).toBe(15);
@@ -86,19 +100,22 @@ describe("Organization Availability settings", () => {
           .execute(),
       ).rejects.toMatchObject({ code: "23514" });
     }
-    await expect(
-      db
-        .updateTable("organization")
-        .set({
-          min_booking_notice_minutes: 23,
-          max_booking_horizon_days: 91,
-        })
-        .where("id", "=", organization.id)
-        .execute(),
-    ).resolves.toBeDefined();
+    for (const max_booking_horizon_days of [0, 60, 365]) {
+      await expect(
+        db
+          .updateTable("organization")
+          .set({
+            min_booking_notice_minutes: 23,
+            max_booking_horizon_days,
+          })
+          .where("id", "=", organization.id)
+          .execute(),
+      ).resolves.toBeDefined();
+    }
     for (const update of [
       { min_booking_notice_minutes: -1 },
       { max_booking_horizon_days: -1 },
+      { max_booking_horizon_days: 366 },
       { cancellation_cutoff_minutes: -1 },
     ]) {
       await expect(
@@ -351,6 +368,10 @@ describe("Organization Availability settings", () => {
     [{ minBookingNoticeMinutes: "30" }, 400],
     [{ minBookingNoticeMinutes: null }, 400],
     [{ maxBookingHorizonDays: -1 }, 400],
+    [{ maxBookingHorizonDays: 0 }, 200],
+    [{ maxBookingHorizonDays: 60 }, 200],
+    [{ maxBookingHorizonDays: 365 }, 200],
+    [{ maxBookingHorizonDays: 366 }, 400],
     [{ maxBookingHorizonDays: 1.5 }, 400],
     [{ maxBookingHorizonDays: "60" }, 400],
     [{ maxBookingHorizonDays: null }, 400],

@@ -2,6 +2,10 @@ import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import type { FastifyReply } from "fastify";
 import Type from "typebox";
 import { Check } from "typebox/value";
+import {
+  publicReadRateLimit,
+  publicWriteRateLimit,
+} from "../../../http/rate-limits.js";
 import { uuidSchema } from "../../../http/schemas.js";
 import { typeboxValidatorCompiler } from "../../../http/typebox-validator.js";
 import {
@@ -177,7 +181,10 @@ export const publicBookingRoutes: FastifyPluginAsyncTypebox<
 
   app.get(
     "/api/public/organizations/:slug/booking-context",
-    { schema: { params: paramsSchema, querystring: shareQuerySchema } },
+    {
+      schema: { params: paramsSchema, querystring: shareQuerySchema },
+      config: { rateLimit: publicReadRateLimit },
+    },
     async (request, reply) => {
       const result = await getPublicBookingContext(
         request.params.slug,
@@ -202,6 +209,7 @@ export const publicBookingRoutes: FastifyPluginAsyncTypebox<
         querystring: shareQuerySchema,
         body: bodySchema,
       },
+      config: { rateLimit: publicWriteRateLimit },
     },
     async (request, reply) => {
       const result = await createPublicBooking(
@@ -228,56 +236,70 @@ export const publicBookingRoutes: FastifyPluginAsyncTypebox<
     },
   );
 
-  app.get("/api/public/bookings/manage", async (request, reply) => {
-    const token = parseGuestManagementBearer(request.headers.authorization);
-    if (!token) return sendGuestBookingNotFound(reply, request.id);
-    const result = await getGuestManagedBooking(
-      token,
-      options.now?.() ?? new Date(),
-    );
-    if (!result.ok) return sendGuestBookingNotFound(reply, request.id);
-    return reply.code(200).send(result.booking);
-  });
-
-  app.patch("/api/public/bookings/manage/contact", async (request, reply) => {
-    const token = parseGuestManagementBearer(request.headers.authorization);
-    if (!token) return sendGuestBookingNotFound(reply, request.id);
-    if (!Check(guestContactBodySchema, request.body))
-      return reply.code(400).send({
-        code: "FST_ERR_VALIDATION",
-        message: "Invalid request",
-        requestId: request.id,
-      });
-    const result = await updateGuestManagedBookingContact(
-      { token, ...request.body },
-      options.now?.() ?? new Date(),
-    );
-    if (!result.ok)
-      return sendGuestContactError(reply, request.id, result.reason);
-    return reply.code(200).send(result.booking);
-  });
-
-  app.post("/api/public/bookings/manage/cancel", {}, async (request, reply) => {
-    const token = parseGuestManagementBearer(request.headers.authorization);
-    if (!token) return sendGuestBookingNotFound(reply, request.id);
-    if (
-      request.body !== undefined &&
-      !Check(guestCancelBodySchema, request.body)
-    )
-      return reply.code(400).send({
-        code: "FST_ERR_VALIDATION",
-        message: "Invalid request",
-        requestId: request.id,
-      });
-    const result = await cancelGuestManagedBooking(
-      {
+  app.get(
+    "/api/public/bookings/manage",
+    { config: { rateLimit: publicReadRateLimit } },
+    async (request, reply) => {
+      const token = parseGuestManagementBearer(request.headers.authorization);
+      if (!token) return sendGuestBookingNotFound(reply, request.id);
+      const result = await getGuestManagedBooking(
         token,
-        ...((request.body as { reason?: string | null } | undefined) ?? {}),
-      },
-      options.now?.() ?? new Date(),
-    );
-    if (!result.ok)
-      return sendGuestCancellationError(reply, request.id, result.reason);
-    return reply.code(200).send(result.booking);
-  });
+        options.now?.() ?? new Date(),
+      );
+      if (!result.ok) return sendGuestBookingNotFound(reply, request.id);
+      return reply.code(200).send(result.booking);
+    },
+  );
+
+  app.patch(
+    "/api/public/bookings/manage/contact",
+    {
+      config: { rateLimit: publicWriteRateLimit },
+    },
+    async (request, reply) => {
+      const token = parseGuestManagementBearer(request.headers.authorization);
+      if (!token) return sendGuestBookingNotFound(reply, request.id);
+      if (!Check(guestContactBodySchema, request.body))
+        return reply.code(400).send({
+          code: "FST_ERR_VALIDATION",
+          message: "Invalid request",
+          requestId: request.id,
+        });
+      const result = await updateGuestManagedBookingContact(
+        { token, ...request.body },
+        options.now?.() ?? new Date(),
+      );
+      if (!result.ok)
+        return sendGuestContactError(reply, request.id, result.reason);
+      return reply.code(200).send(result.booking);
+    },
+  );
+
+  app.post(
+    "/api/public/bookings/manage/cancel",
+    { config: { rateLimit: publicWriteRateLimit } },
+    async (request, reply) => {
+      const token = parseGuestManagementBearer(request.headers.authorization);
+      if (!token) return sendGuestBookingNotFound(reply, request.id);
+      if (
+        request.body !== undefined &&
+        !Check(guestCancelBodySchema, request.body)
+      )
+        return reply.code(400).send({
+          code: "FST_ERR_VALIDATION",
+          message: "Invalid request",
+          requestId: request.id,
+        });
+      const result = await cancelGuestManagedBooking(
+        {
+          token,
+          ...((request.body as { reason?: string | null } | undefined) ?? {}),
+        },
+        options.now?.() ?? new Date(),
+      );
+      if (!result.ok)
+        return sendGuestCancellationError(reply, request.id, result.reason);
+      return reply.code(200).send(result.booking);
+    },
+  );
 };

@@ -12,6 +12,12 @@ export const auth = betterAuth({
 
   trustedOrigins: [config.WEB_ORIGIN],
 
+  // Better Auth owns auth-specific IP throttling and its stricter sign-in and
+  // sign-up rules; keeping it here avoids double-limiting session navigation.
+  rateLimit: {
+    enabled: config.NODE_ENV === "production",
+  },
+
   emailVerification: {
     sendOnSignUp: true,
 

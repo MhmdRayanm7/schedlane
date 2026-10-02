@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { ApiError } from "@/shared/api/api-error";
 import { FormSaveStatus } from "@/shared/components/form-save-status";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -64,8 +65,12 @@ export function BookingRulesTab({
       "Time slot interval must be an integer between 1 and 1440 minutes.";
   } else if (Number.isNaN(parsedNotice) || parsedNotice < 0) {
     validationError = "Minimum booking notice must be a non-negative integer.";
-  } else if (Number.isNaN(parsedHorizon) || parsedHorizon < 0) {
-    validationError = "Booking horizon must be a non-negative integer.";
+  } else if (
+    Number.isNaN(parsedHorizon) ||
+    parsedHorizon < 0 ||
+    parsedHorizon > 365
+  ) {
+    validationError = "Booking horizon must be between 0 and 365 days.";
   } else if (Number.isNaN(parsedCutoff) || parsedCutoff < 0) {
     validationError = "Cancellation cutoff must be a non-negative integer.";
   }
@@ -162,10 +167,13 @@ export function BookingRulesTab({
       const updated = await updateSettingsMutation.mutateAsync(savedSettings);
       setPersistedSettings(updated);
       showSaveSuccess();
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to update booking rules.";
-      setSaveError(message);
+    } catch (error: unknown) {
+      setSaveError(
+        error instanceof ApiError &&
+          error.code === "INVALID_AVAILABILITY_SETTINGS"
+          ? "Booking horizon must be between 0 and 365 days."
+          : "We couldn't save the booking rules. Try again.",
+      );
     }
   };
 
@@ -250,7 +258,7 @@ export function BookingRulesTab({
             </label>
             <p className={styles.ruleDescription}>
               How far in advance customers can see open slots and book
-              appointments.
+              appointments, up to 365 days.
             </p>
           </div>
           <div className={styles.ruleControl}>
@@ -260,6 +268,7 @@ export function BookingRulesTab({
                 id="horizon-days"
                 type="number"
                 min={0}
+                max={365}
                 value={horizonDays}
                 disabled={isWritesDisabled}
                 onChange={(e) => {

@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import type { FastifyReply } from "fastify";
 import Type from "typebox";
+import { publicReadRateLimit } from "../../../http/rate-limits.js";
 import { uuidSchema } from "../../../http/schemas.js";
 import { typeboxValidatorCompiler } from "../../../http/typebox-validator.js";
 import {
@@ -70,7 +71,10 @@ export const publicAvailabilityRoutes: FastifyPluginAsyncTypebox<
 
   app.get(
     "/api/public/organizations/:slug/availability",
-    { schema: { params: paramsSchema, querystring: querySchema } },
+    {
+      schema: { params: paramsSchema, querystring: querySchema },
+      config: { rateLimit: publicReadRateLimit },
+    },
     async (request, reply) => {
       const result = await resolvePublicResourceServiceAvailability(
         {
@@ -98,7 +102,10 @@ export const publicAvailabilityRoutes: FastifyPluginAsyncTypebox<
 
   app.get(
     "/api/public/organizations/:slug/availability/next",
-    { schema: { params: paramsSchema, querystring: nextQuerySchema } },
+    {
+      schema: { params: paramsSchema, querystring: nextQuerySchema },
+      config: { rateLimit: publicReadRateLimit },
+    },
     async (request, reply) => {
       const result = await resolveNextPublicResourceServiceAvailability(
         {

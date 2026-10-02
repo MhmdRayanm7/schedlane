@@ -3,6 +3,7 @@ import {
   localBookingStartToUtc,
   SCHEDULING_TIMEZONE,
 } from "../../bookings/domain/time.js";
+import { isBookingHorizonDays } from "./booking-horizon.js";
 import { isLocalDate } from "./local-date.js";
 
 export type FilterStartsByPublicBookingWindowInput = {
@@ -20,11 +21,7 @@ export function publicBookingDateWindow(
   const today = DateTime.fromJSDate(now, { zone: SCHEDULING_TIMEZONE }).startOf(
     "day",
   );
-  if (
-    !today.isValid ||
-    !Number.isSafeInteger(maxBookingHorizonDays) ||
-    maxBookingHorizonDays < 0
-  )
+  if (!today.isValid || !isBookingHorizonDays(maxBookingHorizonDays))
     throw new Error(
       "Persisted public Booking settings violated domain invariants",
     );
@@ -58,8 +55,7 @@ export function filterStartsByPublicBookingWindow({
     !Number.isFinite(now.getTime()) ||
     !Number.isSafeInteger(minBookingNoticeMinutes) ||
     minBookingNoticeMinutes < 0 ||
-    !Number.isSafeInteger(maxBookingHorizonDays) ||
-    maxBookingHorizonDays < 0 ||
+    !isBookingHorizonDays(maxBookingHorizonDays) ||
     starts.some(
       (start) => !Number.isInteger(start) || start < 0 || start >= 24 * 60,
     )

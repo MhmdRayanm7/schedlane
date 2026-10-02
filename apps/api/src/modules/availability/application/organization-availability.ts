@@ -4,6 +4,7 @@ import {
   type OrganizationWriteStateFailure,
   requireWritableOrganization,
 } from "../../organizations/application/write-policy.js";
+import { isBookingHorizonDays } from "../domain/booking-horizon.js";
 import {
   normalizeWeeklyHours,
   type OrganizationWeeklyHours,
@@ -113,12 +114,19 @@ export type UpdateOrganizationAvailabilitySettingsResult =
       reason:
         | "organization_not_found"
         | "insufficient_role"
+        | "invalid_availability_settings"
         | OrganizationWriteStateFailure;
     };
 
 export async function updateOrganizationAvailabilitySettings(
   input: UpdateOrganizationAvailabilitySettingsInput,
 ): Promise<UpdateOrganizationAvailabilitySettingsResult> {
+  if (
+    input.maxBookingHorizonDays !== undefined &&
+    !isBookingHorizonDays(input.maxBookingHorizonDays)
+  ) {
+    return { ok: false, reason: "invalid_availability_settings" };
+  }
   return db.transaction().execute(async (trx) => {
     const membership = await trx
       .selectFrom("membership")

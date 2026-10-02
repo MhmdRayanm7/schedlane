@@ -43,6 +43,16 @@ const configSchema = Type.Object({
     minimum: 1,
   }),
 
+  PUBLIC_READ_RATE_LIMIT_MAX: Type.Integer({
+    default: 120,
+    minimum: 1,
+  }),
+
+  PUBLIC_WRITE_RATE_LIMIT_MAX: Type.Integer({
+    default: 30,
+    minimum: 1,
+  }),
+
   EMAIL_PROVIDER: Type.Union(
     [Type.Literal("console"), Type.Literal("resend")],
     {

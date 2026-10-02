@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { filterStartsByPublicBookingWindow } from "../../../src/modules/availability/domain/public-booking-window.js";
+import {
+  filterStartsByPublicBookingWindow,
+  publicBookingDateWindow,
+} from "../../../src/modules/availability/domain/public-booking-window.js";
 
 const base = {
   date: "2026-09-18",
@@ -10,6 +13,18 @@ const base = {
 } as const;
 
 describe("public Booking window", () => {
+  it.each([0, 60, 365])("accepts the V1 horizon boundary %i", (horizon) => {
+    expect(
+      publicBookingDateWindow(new Date("2026-10-05T05:00:00.000Z"), horizon),
+    ).toBeDefined();
+  });
+
+  it("rejects a horizon above the V1 maximum", () => {
+    expect(() =>
+      publicBookingDateWindow(new Date("2026-10-05T05:00:00.000Z"), 366),
+    ).toThrow("violated domain invariants");
+  });
+
   it("with notice zero removes past starts and retains future starts", () => {
     expect(filterStartsByPublicBookingWindow(base)).toEqual({
       ok: true,

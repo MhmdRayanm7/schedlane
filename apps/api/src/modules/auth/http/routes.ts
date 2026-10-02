@@ -25,6 +25,14 @@ export function registerAuthRoutes(app: FastifyInstance): void {
 
       const response = await auth.handler(authRequest);
 
+      if (response.status === 429) {
+        return reply.code(429).send({
+          code: "RATE_LIMITED",
+          message: "Too many requests. Please wait a moment and try again.",
+          requestId: request.id,
+        });
+      }
+
       reply.status(response.status);
 
       for (const [name, value] of response.headers) {

@@ -15,6 +15,7 @@ import {
   getResourceWeeklyHours,
   replaceResourceWeeklyHours,
 } from "../application/resource-weekly-hours.js";
+import { MAX_BOOKING_HORIZON_DAYS } from "../domain/booking-horizon.js";
 import { sendAvailabilityError } from "./errors.js";
 import { organizationDateOverrideRoutes } from "./organization-date-routes.js";
 import { resourceDateOverrideRoutes } from "./resource-date-routes.js";
@@ -64,7 +65,9 @@ const availabilitySettingsBody = Type.Object(
       Type.Integer({ minimum: 1, maximum: 1440 }),
     ),
     minBookingNoticeMinutes: Type.Optional(Type.Integer({ minimum: 0 })),
-    maxBookingHorizonDays: Type.Optional(Type.Integer({ minimum: 0 })),
+    maxBookingHorizonDays: Type.Optional(
+      Type.Integer({ minimum: 0, maximum: MAX_BOOKING_HORIZON_DAYS }),
+    ),
     publicBookingPaused: Type.Optional(Type.Boolean()),
     cancellationCutoffMinutes: Type.Optional(Type.Integer({ minimum: 0 })),
   },
