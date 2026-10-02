@@ -103,11 +103,13 @@ describe("development fixture seed and info integration", () => {
     const unlinkedStaffUserId = userMap.get(
       FIXTURE_USERS.barbersUnlinked.email,
     );
-    expect(unlinkedStaffUserId).toBeDefined();
+    if (!unlinkedStaffUserId) {
+      throw new Error("Expected the unlinked Staff fixture user");
+    }
     const unlinkedResources = await db
       .selectFrom("resource")
       .selectAll()
-      .where("user_id", "=", unlinkedStaffUserId!)
+      .where("user_id", "=", unlinkedStaffUserId)
       .execute();
     expect(unlinkedResources).toHaveLength(0);
 

@@ -50,9 +50,7 @@ function matchesScope(
 ) {
   if (!scope) return true;
   if (scope.ids?.includes(id)) return true;
-  return Boolean(
-    scope.tags?.some((tag) => registration.tags.includes(tag)),
-  );
+  return Boolean(scope.tags?.some((tag) => registration.tags.includes(tag)));
 }
 
 export function UnsavedChangesProvider({ children }: { children: ReactNode }) {
@@ -60,7 +58,9 @@ export function UnsavedChangesProvider({ children }: { children: ReactNode }) {
     () => new Map(),
   );
   const draftsRef = useRef(drafts);
-  const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
+  const [pendingChange, setPendingChange] = useState<PendingChange | null>(
+    null,
+  );
   const hasUnsavedChanges = [...drafts.values()].some((draft) => draft.dirty);
 
   const blocker = useBlocker(

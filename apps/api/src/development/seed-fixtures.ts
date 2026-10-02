@@ -141,8 +141,12 @@ export async function cleanupExistingFixtures(db: Kysely<Database>) {
 
   // 8. Auth sessions, accounts, and users
   if (fixtureUserIds.length > 0) {
-    await sql`delete from session where "userId" in (${sql.join(fixtureUserIds)})`.execute(db);
-    await sql`delete from account where "userId" in (${sql.join(fixtureUserIds)})`.execute(db);
+    await sql`delete from session where "userId" in (${sql.join(fixtureUserIds)})`.execute(
+      db,
+    );
+    await sql`delete from account where "userId" in (${sql.join(fixtureUserIds)})`.execute(
+      db,
+    );
     await db.deleteFrom("user").where("id", "in", fixtureUserIds).execute();
   }
 
@@ -239,7 +243,9 @@ export async function seedDevelopmentFixtures(options?: {
   }
 
   // Step 6: Seed Memberships
-  for (const userDef of Object.values(FIXTURE_USERS) as readonly FixtureUserDefinition[]) {
+  for (const userDef of Object.values(
+    FIXTURE_USERS,
+  ) as readonly FixtureUserDefinition[]) {
     if (!userDef.organizationSlug || !userDef.membershipRole) continue;
 
     const user = userByEmail.get(userDef.email.toLowerCase());

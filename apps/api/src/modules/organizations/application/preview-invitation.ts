@@ -60,11 +60,7 @@ export async function previewOrganizationInvitation(
       "inviter.id",
       "organization_invitation.invited_by_user_id",
     )
-    .leftJoin(
-      "resource",
-      "resource.id",
-      "organization_invitation.resource_id",
-    )
+    .leftJoin("resource", "resource.id", "organization_invitation.resource_id")
     .select([
       "organization_invitation.id",
       "organization_invitation.organization_id",

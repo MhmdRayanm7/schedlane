@@ -27,9 +27,7 @@ export function DiscardChangesDialog({
           changes will be lost.
         </DialogDescription>
         <div className={styles.actions}>
-          <Button onClick={onCancel}>
-            Keep editing
-          </Button>
+          <Button onClick={onCancel}>Keep editing</Button>
           <Button variant="destructiveOutline" onClick={onDiscard}>
             Discard changes
           </Button>
