@@ -6,6 +6,7 @@
       "persistent": true
     },
     "build": {
+      "env": ["VITE_API_URL", "VITE_SUPPORT_EMAIL"],
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },

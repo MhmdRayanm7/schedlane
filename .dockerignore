@@ -1,0 +1,13 @@
+.git
+**/node_modules
+**/dist
+**/.turbo
+**/coverage
+**/.env
+**/.env.*
+**/*.log
+.local-assets
+.idea
+.vscode
+**/test
+**/tests
