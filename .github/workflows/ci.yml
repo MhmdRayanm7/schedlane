@@ -45,6 +45,16 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://schedlane:schedlane@localhost:5432/schedlane
+          BETTER_AUTH_SECRET: schedlane-integration-test-secret-only
+          BETTER_AUTH_URL: http://localhost:3000
+          WEB_ORIGIN: http://localhost:5173
+          EMAIL_PROVIDER: console
+          GUEST_MANAGEMENT_TOKEN_ENCRYPTION_KEY: a2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2s=
+          RABBITMQ_URL: amqp://schedlane:schedlane@localhost:5672
+          PLATFORM_NOTIFICATION_EMAIL: schedlane.app@gmail.com
 
       - name: Build
         run: pnpm build
