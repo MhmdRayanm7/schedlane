@@ -23,7 +23,9 @@ export async function startWorkerTestInfrastructure() {
       .withPassword("integration-test-only")
       .withStartupTimeout(120_000)
       .start(),
-    new RabbitMQContainer("rabbitmq:4-management").start(),
+    new RabbitMQContainer("rabbitmq:4-management")
+      .withStartupTimeout(120_000)
+      .start(),
   ]);
   const pool = new Pool({ connectionString: postgres.getConnectionUri() });
   let rabbitConnection: ChannelModel | undefined;
