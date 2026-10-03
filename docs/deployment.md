@@ -63,7 +63,7 @@ root. Set `NODE_VERSION=24.15.0`, `PNPM_VERSION=11.24.0` and
 `SKIP_DEPENDENCY_INSTALL=true`. Build with:
 
 ```sh
-npm install --global pnpm@11.24.0 && pnpm install --frozen-lockfile && pnpm --filter @schedlane/web build
+pnpm install --frozen-lockfile && pnpm --filter @schedlane/web build
 ```
 
 Output directory: `apps/web/dist`. Set `VITE_API_URL` to the final Pages HTTPS
