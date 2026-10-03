@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { config } from "../../config.js";
 import { pool } from "../../db.js";
 import { emailService } from "../../email/index.js";
+import { renderVerificationEmail } from "./verification-email.js";
 
 export const auth = betterAuth({
   database: pool,
@@ -23,13 +24,9 @@ export const auth = betterAuth({
 
     sendVerificationEmail: async ({ user, url }) => {
       void emailService
-        .send({
-          to: user.email,
-          subject: "Verify your Schedlane email",
-          text: `Verify your email by opening this link:\n${url}`,
-        })
-        .catch((error) => {
-          console.error("Failed to send verification email", error);
+        .send(renderVerificationEmail(user.email, url))
+        .catch(() => {
+          console.error("Failed to send verification email");
         });
     },
   },

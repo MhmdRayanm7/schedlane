@@ -60,12 +60,12 @@ export function VerifyEmailPage() {
 
   return (
     <AuthLayout
-      description="Open the verification link we sent to your email before signing in."
+      description="If your account needs verification, check your inbox and spam folder for a verification link. If you already verified your email, you can sign in."
       title="Check your inbox"
     >
       {email ? (
         <p className={styles.recipient}>
-          We sent a verification link to{" "}
+          Check for a verification email at{" "}
           <span className={styles.recipientEmail}>{email}</span>.
         </p>
       ) : null}
@@ -79,8 +79,8 @@ export function VerifyEmailPage() {
 
       {wasSent ? (
         <InlineAlert as="p" variant="success" className={styles.alert}>
-          If an account exists for that email, a new verification link is on its
-          way.
+          If that account needs verification, we'll send a new link. Check your
+          inbox and spam folder.
         </InlineAlert>
       ) : null}
 

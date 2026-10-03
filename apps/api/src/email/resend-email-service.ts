@@ -21,10 +21,11 @@ export class ResendEmailService implements EmailService {
       to: input.to,
       subject: input.subject,
       text: input.text,
+      ...(input.html ? { html: input.html } : {}),
     });
 
     if (error) {
-      throw new Error(`Resend failed to send email: ${error.message}`);
+      throw new Error("Email delivery request failed");
     }
   }
 }
