@@ -1,5 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { ThemeProvider } from "@/shared/theme/theme-context";
 import { queryClient } from "./query-client";
 
 type AppProvidersProps = {
@@ -8,6 +9,8 @@ type AppProvidersProps = {
 
 export function AppProviders({ children }: AppProvidersProps) {
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </ThemeProvider>
   );
 }

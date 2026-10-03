@@ -6,6 +6,7 @@ import { useResources } from "@/features/resources/hooks/use-resources";
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
+import { usePageTitle } from "@/shared/lib/page-title";
 import { InvitationRevokeDialog } from "./components/invitation-revoke-dialog";
 import { InvitationsList } from "./components/invitations-list";
 import { InviteMemberDialog } from "./components/invite-member-dialog";
@@ -64,6 +65,7 @@ function InvitationsSkeleton() {
 }
 
 export function TeamPage() {
+  usePageTitle("Team");
   const { currentOrganization } = useOutletContext<OrganizationAccessContext>();
   const organizationId = currentOrganization.id;
   const viewerRole = currentOrganization.role;

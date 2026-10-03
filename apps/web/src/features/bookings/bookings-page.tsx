@@ -5,6 +5,7 @@ import type { OrganizationAccessContext } from "@/features/organizations/compone
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
 import { formatLocalDate, schedulingToday } from "@/shared/lib/date-time";
+import { usePageTitle } from "@/shared/lib/page-title";
 import styles from "./bookings.module.css";
 import { BookingDetailsSheet } from "./components/booking-details-sheet";
 import { BookingsDayView } from "./components/bookings-day-view";
@@ -27,6 +28,7 @@ import {
 import type { BookingStatusFilter } from "./types";
 
 export function BookingsPage() {
+  usePageTitle("Bookings");
   const { currentOrganization } = useOutletContext<OrganizationAccessContext>();
   const { organizationId } = useParams<{ organizationId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();

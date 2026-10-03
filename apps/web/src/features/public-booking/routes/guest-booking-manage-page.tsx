@@ -14,6 +14,7 @@ import {
 } from "@/shared/components/ui/dialog";
 import { FormField } from "@/shared/components/ui/form-field";
 import { Input } from "@/shared/components/ui/input";
+import { usePageTitle } from "@/shared/lib/page-title";
 import { useUnsavedChanges } from "@/shared/unsaved-changes/unsaved-changes";
 import {
   cancelManagedBooking,
@@ -355,6 +356,11 @@ export function GuestBookingManagePage() {
     refetchOnMount: "always",
   });
   const booking = bookingQuery.data;
+  usePageTitle(
+    booking?.organizationName
+      ? `${booking.organizationName} — Manage Booking`
+      : "Manage Booking",
+  );
   const justBooked = Boolean(
     (location.state as { justBooked?: boolean } | null)?.justBooked,
   );

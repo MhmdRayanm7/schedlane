@@ -5,6 +5,7 @@ import type { OrganizationAccessContext } from "@/features/organizations/compone
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { usePageTitle } from "@/shared/lib/page-title";
 import { ResourceCreateDialog } from "./components/resource-create-dialog";
 import { ResourceDetailsSheet } from "./components/resource-details-sheet";
 import { ResourceList } from "./components/resource-list";
@@ -90,6 +91,7 @@ function ResourcesEmptyState({
 }
 
 export function ResourcesPage() {
+  usePageTitle("Resources");
   const { currentOrganization } = useOutletContext<OrganizationAccessContext>();
   const { organizationId = "" } = useParams<{ organizationId: string }>();
 

@@ -20,6 +20,7 @@ import {
   SheetTitle,
 } from "@/shared/components/ui/sheet";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { usePageTitle } from "@/shared/lib/page-title";
 import {
   usePlatformPublication,
   usePlatformPublicationDecision,
@@ -297,6 +298,7 @@ function PublicationDetails({
 }
 
 export function PlatformPublicationsPage() {
+  usePageTitle("Publications");
   const [status, setStatus] = useState<PublicationRequestStatus>("pending");
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get("request");

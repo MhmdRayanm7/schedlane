@@ -141,7 +141,7 @@
 .roleOwner {
   color: var(--color-primary);
   background: var(--color-primary-subtle);
-  border-color: rgba(15, 118, 110, 0.2);
+  border-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .roleManager {
@@ -170,7 +170,7 @@
 .statusPending {
   color: var(--color-primary);
   background: var(--color-primary-subtle);
-  border: 1px solid rgba(15, 118, 110, 0.25);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 .statusExpired {

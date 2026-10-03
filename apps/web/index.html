@@ -3,8 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f8f8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Schedlane</title>
+    <script>
+      (() => {
+        try {
+          const key = "schedlane-theme-preference";
+          const pref = localStorage.getItem(key);
+          const dark =
+            pref === "dark" ||
+            ((!pref || pref === "system") &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          const theme = dark ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+          document.documentElement.style.colorScheme = theme;
+          const meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) {
+            meta.content = dark ? "#0f1212" : "#f7f8f8";
+          }
+        } catch {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

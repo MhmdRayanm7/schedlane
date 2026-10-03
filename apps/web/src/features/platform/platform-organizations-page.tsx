@@ -13,6 +13,7 @@ import { FormField } from "@/shared/components/ui/form-field";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { usePageTitle } from "@/shared/lib/page-title";
 import {
   useCreatePlatformOrganization,
   usePlatformOrganizations,
@@ -49,6 +50,7 @@ function State({
 }
 
 export function PlatformOrganizationsPage() {
+  usePageTitle("Organizations");
   const [lifecycle, setLifecycle] =
     useState<PlatformOrganizationLifecycle>("active");
   const [search, setSearch] = useState("");

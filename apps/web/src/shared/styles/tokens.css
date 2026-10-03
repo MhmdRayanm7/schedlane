@@ -1,4 +1,5 @@
-:root {
+:root,
+[data-theme="light"] {
   color-scheme: light;
   --color-background: #f7f8f8;
   --color-surface: #fff;
@@ -13,6 +14,8 @@
   --color-primary-hover: #115e59;
   --color-primary-subtle: #f0fdfa;
   --color-destructive: #b42318;
+  --color-destructive-fill: #b42318;
+  --color-destructive-foreground: #fff;
   --color-destructive-subtle: #fff4f2;
   --color-warning: #7a5a12;
   --color-warning-subtle: #fff8e8;
@@ -42,4 +45,66 @@
   --shadow-menu: 0 8px 24px rgb(24 27 27 / 10%);
   --shadow-dialog:
     0 20px 25px -5px rgb(0 0 0 / 10%), 0 8px 10px -6px rgb(0 0 0 / 10%);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-background: #0f1212;
+  --color-surface: #171b1b;
+  --color-surface-hover: #212726;
+  --color-foreground: #eef2f1;
+  --color-muted-foreground: #94a3a0;
+  --color-subtle-foreground: #6e7d7a;
+  --color-border: #262e2d;
+  --color-border-strong: #364240;
+  --color-primary: #2dd4bf;
+  --color-primary-foreground: #042f2e;
+  --color-primary-hover: #5eead4;
+  --color-primary-subtle: rgb(45 212 191 / 12%);
+  --color-destructive: #f87171;
+  --color-destructive-fill: #dc2626;
+  --color-destructive-foreground: #fff;
+  --color-destructive-subtle: rgb(248 113 113 / 14%);
+  --color-warning: #fbbf24;
+  --color-warning-subtle: rgb(251 191 36 / 14%);
+  --color-focus: #2dd4bf;
+  --color-overlay: rgb(0 0 0 / 60%);
+  --color-overlay-strong: rgb(0 0 0 / 75%);
+  --color-brand-secondary: #99f6e4;
+  --shadow-menu: 0 8px 24px rgb(0 0 0 / 45%), 0 0 0 1px #262e2d;
+  --shadow-dialog:
+    0 20px 25px -5px rgb(0 0 0 / 50%), 0 8px 10px -6px rgb(0 0 0 / 50%),
+    0 0 0 1px #262e2d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-background: #0f1212;
+    --color-surface: #171b1b;
+    --color-surface-hover: #212726;
+    --color-foreground: #eef2f1;
+    --color-muted-foreground: #94a3a0;
+    --color-subtle-foreground: #6e7d7a;
+    --color-border: #262e2d;
+    --color-border-strong: #364240;
+    --color-primary: #2dd4bf;
+    --color-primary-foreground: #042f2e;
+    --color-primary-hover: #5eead4;
+    --color-primary-subtle: rgb(45 212 191 / 12%);
+    --color-destructive: #f87171;
+    --color-destructive-fill: #dc2626;
+    --color-destructive-foreground: #fff;
+    --color-destructive-subtle: rgb(248 113 113 / 14%);
+    --color-warning: #fbbf24;
+    --color-warning-subtle: rgb(251 191 36 / 14%);
+    --color-focus: #2dd4bf;
+    --color-overlay: rgb(0 0 0 / 60%);
+    --color-overlay-strong: rgb(0 0 0 / 75%);
+    --color-brand-secondary: #99f6e4;
+    --shadow-menu: 0 8px 24px rgb(0 0 0 / 45%), 0 0 0 1px #262e2d;
+    --shadow-dialog:
+      0 20px 25px -5px rgb(0 0 0 / 50%), 0 8px 10px -6px rgb(0 0 0 / 50%),
+      0 0 0 1px #262e2d;
+  }
 }

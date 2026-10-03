@@ -50,12 +50,16 @@
   color: var(--color-foreground);
 }
 .destructive {
-  background: var(--color-destructive);
-  color: var(--color-surface);
+  background: var(--color-destructive-fill, var(--color-destructive));
+  color: var(--color-destructive-foreground, #fff);
 }
 .destructive:hover,
 .destructive:active {
-  background: color-mix(in srgb, var(--color-destructive) 90%, black);
+  background: color-mix(
+    in srgb,
+    var(--color-destructive-fill, var(--color-destructive)) 90%,
+    black
+  );
 }
 .destructiveOutline {
   border: 1px solid

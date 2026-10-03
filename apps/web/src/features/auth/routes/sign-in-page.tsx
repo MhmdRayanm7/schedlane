@@ -5,6 +5,7 @@ import { authClient } from "@/shared/auth/auth-client";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
+import { usePageTitle } from "@/shared/lib/page-title";
 import styles from "../auth.module.css";
 import { AuthLayout } from "../components/auth-layout";
 import { safeReturnTo } from "../routing/return-to";
@@ -15,6 +16,7 @@ const verificationErrors: Record<string, string> = {
 };
 
 export function SignInPage() {
+  usePageTitle("Sign In");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");

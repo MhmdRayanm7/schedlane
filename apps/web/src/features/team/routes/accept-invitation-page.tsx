@@ -1,11 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ApiError } from "@/shared/api/api-error";
 import { authClient } from "@/shared/auth/auth-client";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
+import { usePageTitle } from "@/shared/lib/page-title";
+import { ThemeToggle } from "@/shared/theme/theme-toggle";
 import { useAcceptInvitation, useInvitationPreview } from "../hooks/use-team";
 import type { MembershipRole } from "../types";
 import styles from "./accept-invitation.module.css";
@@ -34,7 +36,20 @@ function roleLabel(role: MembershipRole): string {
   }
 }
 
+function InvitationShell({ children }: { children: ReactNode }) {
+  return (
+    <main className={styles.layout}>
+      <header className={styles.topbar}>
+        <BrandLockup className={styles.brand} />
+        <ThemeToggle />
+      </header>
+      <div className={styles.layoutContent}>{children}</div>
+    </main>
+  );
+}
+
 export function AcceptInvitationPage() {
+  usePageTitle("Accept Invitation");
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const location = useLocation();
@@ -133,50 +148,44 @@ export function AcceptInvitationPage() {
   // 1. Missing token state
   if (!token) {
     return (
-      <main className={styles.layout}>
-        <BrandLockup className={styles.brand} />
-        <div className={styles.layoutContent}>
-          <section className={styles.card}>
-            <header className={styles.header}>
-              <h1 className={styles.orgName}>Invalid invitation link</h1>
-              <p className={styles.subtitle}>
-                The invitation link is missing a valid token.
-              </p>
-            </header>
-            <InlineAlert variant="error" className={styles.alert}>
-              Please check the invitation link in your email and try again.
-            </InlineAlert>
-            <div className={styles.footerActions}>
-              <Button
-                variant="outline"
-                className={styles.footerButton}
-                onClick={() => navigate("/app")}
-              >
-                Go to workspace
-              </Button>
-            </div>
-          </section>
-        </div>
-      </main>
+      <InvitationShell>
+        <section className={styles.card}>
+          <header className={styles.header}>
+            <h1 className={styles.orgName}>Invalid invitation link</h1>
+            <p className={styles.subtitle}>
+              The invitation link is missing a valid token.
+            </p>
+          </header>
+          <InlineAlert variant="error" className={styles.alert}>
+            Please check the invitation link in your email and try again.
+          </InlineAlert>
+          <div className={styles.footerActions}>
+            <Button
+              variant="outline"
+              className={styles.footerButton}
+              onClick={() => navigate("/app")}
+            >
+              Go to workspace
+            </Button>
+          </div>
+        </section>
+      </InvitationShell>
     );
   }
 
   // 2. Loading state
   if (previewQuery.isPending) {
     return (
-      <main className={styles.layout}>
-        <BrandLockup className={styles.brand} />
-        <div className={styles.layoutContent}>
-          <section className={styles.card}>
-            <header className={styles.header}>
-              <h1 className={styles.orgName}>Checking invitation…</h1>
-              <p className={styles.subtitle}>
-                Loading invitation details for your account.
-              </p>
-            </header>
-          </section>
-        </div>
-      </main>
+      <InvitationShell>
+        <section className={styles.card}>
+          <header className={styles.header}>
+            <h1 className={styles.orgName}>Checking invitation…</h1>
+            <p className={styles.subtitle}>
+              Loading invitation details for your account.
+            </p>
+          </header>
+        </section>
+      </InvitationShell>
     );
   }
 
@@ -189,42 +198,39 @@ export function AcceptInvitationPage() {
 
     if (isEmailMismatch) {
       return (
-        <main className={styles.layout}>
-          <BrandLockup className={styles.brand} />
-          <div className={styles.layoutContent}>
-            <section className={styles.card}>
-              <header className={styles.header}>
-                <h1 className={styles.orgName}>Wrong account</h1>
-                <p className={styles.subtitle}>
-                  This invitation belongs to another account.
-                </p>
-              </header>
+        <InvitationShell>
+          <section className={styles.card}>
+            <header className={styles.header}>
+              <h1 className={styles.orgName}>Wrong account</h1>
+              <p className={styles.subtitle}>
+                This invitation belongs to another account.
+              </p>
+            </header>
 
-              <InlineAlert variant="warning" className={styles.alert}>
-                This invitation was sent to a different email address. Sign in
-                with the account that received the invitation.
-              </InlineAlert>
+            <InlineAlert variant="warning" className={styles.alert}>
+              This invitation was sent to a different email address. Sign in
+              with the account that received the invitation.
+            </InlineAlert>
 
-              <div className={styles.footerActions}>
-                <Button
-                  onClick={handleUseAnotherAccount}
-                  loading={isSigningOut}
-                  disabled={isSigningOut}
-                  className={styles.footerButton}
-                >
-                  Use another account
-                </Button>
-                <Button
-                  variant="outline"
-                  className={styles.footerButton}
-                  onClick={() => navigate("/app")}
-                >
-                  Go to workspace
-                </Button>
-              </div>
-            </section>
-          </div>
-        </main>
+            <div className={styles.footerActions}>
+              <Button
+                onClick={handleUseAnotherAccount}
+                loading={isSigningOut}
+                disabled={isSigningOut}
+                className={styles.footerButton}
+              >
+                Use another account
+              </Button>
+              <Button
+                variant="outline"
+                className={styles.footerButton}
+                onClick={() => navigate("/app")}
+              >
+                Go to workspace
+              </Button>
+            </div>
+          </section>
+        </InvitationShell>
       );
     }
 
@@ -277,26 +283,23 @@ export function AcceptInvitationPage() {
     }
 
     return (
-      <main className={styles.layout}>
-        <BrandLockup className={styles.brand} />
-        <div className={styles.layoutContent}>
-          <section className={styles.card}>
-            <header className={styles.header}>
-              <h1 className={styles.orgName}>{errorTitle}</h1>
-              <p className={styles.subtitle}>{errorDescription}</p>
-            </header>
-            <div className={styles.footerActions}>
-              <Button
-                variant="outline"
-                className={styles.footerButton}
-                onClick={() => navigate("/app")}
-              >
-                Go to workspace
-              </Button>
-            </div>
-          </section>
-        </div>
-      </main>
+      <InvitationShell>
+        <section className={styles.card}>
+          <header className={styles.header}>
+            <h1 className={styles.orgName}>{errorTitle}</h1>
+            <p className={styles.subtitle}>{errorDescription}</p>
+          </header>
+          <div className={styles.footerActions}>
+            <Button
+              variant="outline"
+              className={styles.footerButton}
+              onClick={() => navigate("/app")}
+            >
+              Go to workspace
+            </Button>
+          </div>
+        </section>
+      </InvitationShell>
     );
   }
 
@@ -304,56 +307,51 @@ export function AcceptInvitationPage() {
   const preview = previewQuery.data;
 
   return (
-    <main className={styles.layout}>
-      <BrandLockup className={styles.brand} />
-      <div className={styles.layoutContent}>
-        <section className={styles.card}>
-          <header className={styles.header}>
-            <p className={styles.subtitle}>You're invited to join</p>
-            <h1 className={styles.orgName}>{preview.organizationName}</h1>
-          </header>
+    <InvitationShell>
+      <section className={styles.card}>
+        <header className={styles.header}>
+          <p className={styles.subtitle}>You're invited to join</p>
+          <h1 className={styles.orgName}>{preview.organizationName}</h1>
+        </header>
 
-          <div className={styles.details}>
-            <div className={styles.roleGroup}>
-              <span className={styles.roleBadge}>
-                {roleLabel(preview.role)}
+        <div className={styles.details}>
+          <div className={styles.roleGroup}>
+            <span className={styles.roleBadge}>{roleLabel(preview.role)}</span>
+            {preview.role === "staff" && preview.resource ? (
+              <span className={styles.resourceDetail}>
+                Resource:{" "}
+                <strong className={styles.resourceName}>
+                  {preview.resource.name}
+                </strong>
               </span>
-              {preview.role === "staff" && preview.resource ? (
-                <span className={styles.resourceDetail}>
-                  Resource:{" "}
-                  <strong className={styles.resourceName}>
-                    {preview.resource.name}
-                  </strong>
-                </span>
-              ) : null}
-            </div>
-
-            <div className={styles.metaGroup}>
-              <span>Invited by {preview.invitedByName}</span>
-              <span>
-                Invitation expires {formatExpiration(preview.expiresAt)}
-              </span>
-            </div>
+            ) : null}
           </div>
 
-          {acceptError ? (
-            <InlineAlert variant="error" className={styles.alert}>
-              {acceptError}
-            </InlineAlert>
-          ) : null}
-
-          <div className={styles.actions}>
-            <Button
-              className={styles.submitButton}
-              onClick={handleAccept}
-              loading={acceptMutation.isPending}
-              disabled={acceptMutation.isPending}
-            >
-              Accept invitation
-            </Button>
+          <div className={styles.metaGroup}>
+            <span>Invited by {preview.invitedByName}</span>
+            <span>
+              Invitation expires {formatExpiration(preview.expiresAt)}
+            </span>
           </div>
-        </section>
-      </div>
-    </main>
+        </div>
+
+        {acceptError ? (
+          <InlineAlert variant="error" className={styles.alert}>
+            {acceptError}
+          </InlineAlert>
+        ) : null}
+
+        <div className={styles.actions}>
+          <Button
+            className={styles.submitButton}
+            onClick={handleAccept}
+            loading={acceptMutation.isPending}
+            disabled={acceptMutation.isPending}
+          >
+            Accept invitation
+          </Button>
+        </div>
+      </section>
+    </InvitationShell>
   );
 }

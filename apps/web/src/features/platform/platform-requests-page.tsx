@@ -20,6 +20,7 @@ import {
   SheetTitle,
 } from "@/shared/components/ui/sheet";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { usePageTitle } from "@/shared/lib/page-title";
 import {
   usePlatformDecision,
   usePlatformRequest,
@@ -324,6 +325,7 @@ function RequestDetails({
 }
 
 export function PlatformRequestsPage() {
+  usePageTitle("Organization Requests");
   const [status, setStatus] = useState<RequestStatus>("pending");
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get("request");

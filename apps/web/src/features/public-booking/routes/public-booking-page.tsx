@@ -9,10 +9,13 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { ApiError } from "@/shared/api/api-error";
+import { BrandLockup } from "@/shared/brand/brand-lockup";
 import { queryErrorDescription } from "@/shared/components/app-state-page";
 import { Button } from "@/shared/components/ui/button";
 import { FormField } from "@/shared/components/ui/form-field";
 import { Input } from "@/shared/components/ui/input";
+import { usePageTitle } from "@/shared/lib/page-title";
+import { ThemeToggle } from "@/shared/theme/theme-toggle";
 import {
   createGuestBooking,
   getBookingContext,
@@ -58,12 +61,13 @@ export function PublicFrame({
   return (
     <div className={styles.page}>
       <header className={styles.topbar}>
-        <span className={styles.wordmark}>
-          schedlane<span className={styles.brandDot}>.</span>
-        </span>
-        {organization ? (
-          <span className={styles.topOrganization}>{organization}</span>
-        ) : null}
+        <BrandLockup />
+        <div className={styles.topbarEnd}>
+          {organization ? (
+            <span className={styles.topOrganization}>{organization}</span>
+          ) : null}
+          <ThemeToggle />
+        </div>
       </header>
       {children}
     </div>
@@ -212,6 +216,8 @@ export function PublicBookingPage() {
     retry: false,
   });
   const context = contextQuery.data;
+  const orgName = context?.organization.name;
+  usePageTitle(orgName ? `${orgName} — Book Appointment` : "Book Appointment");
   const visibleSteps = context
     ? visibleBookingSteps(context.services, serviceId)
     : [];

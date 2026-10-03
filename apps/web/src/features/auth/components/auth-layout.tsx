@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
+import { ThemeToggle } from "@/shared/theme/theme-toggle";
 import styles from "../auth.module.css";
 
 type AuthLayoutProps = {
@@ -11,7 +12,10 @@ type AuthLayoutProps = {
 export function AuthLayout({ children, description, title }: AuthLayoutProps) {
   return (
     <main className={styles.layout}>
-      <BrandLockup className={styles.brand} />
+      <header className={styles.topbar}>
+        <BrandLockup className={styles.brand} />
+        <ThemeToggle />
+      </header>
       <div className={styles.layoutContent}>
         <section className={styles.card}>
           <header className={styles.header}>

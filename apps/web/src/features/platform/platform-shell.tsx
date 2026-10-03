@@ -4,6 +4,7 @@ import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/cn";
+import { ThemeToggle } from "@/shared/theme/theme-toggle";
 import styles from "./platform.module.css";
 import type { PlatformIdentity } from "./types";
 
@@ -42,6 +43,7 @@ export function PlatformShell() {
             <strong>{identity.name}</strong>
             <span>{identity.email}</span>
           </div>
+          <ThemeToggle />
           <Button
             aria-label="Sign out"
             disabled={signOut.isPending}
@@ -56,13 +58,16 @@ export function PlatformShell() {
       <div className={styles.contentColumn}>
         <header className={styles.mobileHeader}>
           <BrandLockup />
-          <nav aria-label="Platform administration">
-            {navigation.map(({ to, label }) => (
-              <NavLink key={to} to={to}>
-                {label}
-              </NavLink>
-            ))}
-          </nav>
+          <div className={styles.mobileActions}>
+            <nav aria-label="Platform administration">
+              {navigation.map(({ to, label }) => (
+                <NavLink key={to} to={to}>
+                  {label}
+                </NavLink>
+              ))}
+            </nav>
+            <ThemeToggle />
+          </div>
         </header>
         <main className={styles.main}>
           <Outlet />

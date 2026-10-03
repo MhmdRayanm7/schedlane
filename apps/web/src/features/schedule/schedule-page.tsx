@@ -4,6 +4,7 @@ import { useOutletContext, useParams } from "react-router";
 import type { OrganizationAccessContext } from "@/features/organizations/components/organization-route-states";
 import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
+import { usePageTitle } from "@/shared/lib/page-title";
 import { useUnsavedChangesGuard } from "@/shared/unsaved-changes/unsaved-changes";
 import { BookingRulesTab } from "./components/booking-rules-tab";
 import { OrganizationWeeklyHours } from "./components/organization-weekly-hours";
@@ -46,6 +47,7 @@ function HoursSkeleton() {
 }
 
 export function SchedulePage() {
+  usePageTitle("Schedule");
   const { currentOrganization } = useOutletContext<OrganizationAccessContext>();
   const { organizationId = "" } = useParams<{ organizationId: string }>();
 

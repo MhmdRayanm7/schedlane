@@ -6,8 +6,16 @@
   background: var(--color-background);
 }
 
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--space-4);
+}
+
 .brand {
-  margin-inline: auto;
+  margin-inline: 0;
 }
 
 .layoutContent {

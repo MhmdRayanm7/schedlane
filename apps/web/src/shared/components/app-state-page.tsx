@@ -5,6 +5,7 @@ import { ApiNetworkError } from "@/shared/api/api-network-error";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/cn";
+import { usePageTitle } from "@/shared/lib/page-title";
 import styles from "./app-state-page.module.css";
 
 type AppStatePageProps = {
@@ -115,6 +116,7 @@ export function NotFoundPage({
   destination?: string;
   actionLabel?: string;
 }) {
+  usePageTitle("Page Not Found");
   return (
     <AppStatePage
       compact={compact}

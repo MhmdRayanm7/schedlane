@@ -4,6 +4,7 @@ import { authClient } from "@/shared/auth/auth-client";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
+import { usePageTitle } from "@/shared/lib/page-title";
 import styles from "../auth.module.css";
 import { AuthLayout } from "../components/auth-layout";
 import { safeReturnTo } from "../routing/return-to";
@@ -13,6 +14,7 @@ type VerifyEmailLocationState = {
 };
 
 export function VerifyEmailPage() {
+  usePageTitle("Verify Email");
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const rawReturnTo = searchParams.get("returnTo");

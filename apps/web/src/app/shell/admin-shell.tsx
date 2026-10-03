@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { cn } from "@/shared/lib/cn";
+import { ThemeDropdownItems } from "@/shared/theme/theme-toggle";
 import { useUnsavedChangesGuard } from "@/shared/unsaved-changes/unsaved-changes";
 import styles from "./admin-shell.module.css";
 
@@ -300,6 +301,7 @@ function Sidebar({
                 {session.user.email}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <ThemeDropdownItems />
               <DropdownMenuItem
                 onSelect={() => requestChange(() => void signOut.signOut())}
               >

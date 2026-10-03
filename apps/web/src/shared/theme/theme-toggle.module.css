@@ -1,0 +1,61 @@
+.group {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast),
+    color var(--duration-fast);
+}
+
+.button:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-foreground);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.active {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}

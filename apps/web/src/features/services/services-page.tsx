@@ -7,6 +7,7 @@ import { PageHeader } from "@/shared/components/page-header";
 import { Button } from "@/shared/components/ui/button";
 import { InlineAlert } from "@/shared/components/ui/inline-alert";
 import { Input } from "@/shared/components/ui/input";
+import { usePageTitle } from "@/shared/lib/page-title";
 import { ServiceDetailsSheet } from "./components/service-details-sheet";
 import { ServiceFormDialog } from "./components/service-form-dialog";
 import { ServiceList } from "./components/service-list";
@@ -96,6 +97,7 @@ function ServicesEmptyState({
 }
 
 export function ServicesPage() {
+  usePageTitle("Services");
   const { currentOrganization } = useOutletContext<OrganizationAccessContext>();
   const { organizationId = "" } = useParams<{ organizationId: string }>();
 

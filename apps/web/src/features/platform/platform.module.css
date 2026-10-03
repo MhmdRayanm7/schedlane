@@ -102,6 +102,11 @@
   display: flex;
   gap: var(--space-3);
 }
+.mobileActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
 .mobileHeader nav a {
   color: var(--color-muted-foreground);
   font-size: 0.8125rem;

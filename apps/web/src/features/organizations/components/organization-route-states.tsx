@@ -8,6 +8,8 @@ import { authClient } from "@/shared/auth/auth-client";
 import { BrandLockup } from "@/shared/brand/brand-lockup";
 import { QueryErrorState } from "@/shared/components/app-state-page";
 import { Button } from "@/shared/components/ui/button";
+import { usePageTitle } from "@/shared/lib/page-title";
+import { ThemeToggle } from "@/shared/theme/theme-toggle";
 import { useOrganizations } from "../hooks/use-organizations";
 import { shouldEnterPlatform } from "../lib/entry-route";
 import { OrganizationOnboarding } from "../onboarding/organization-onboarding";
@@ -33,19 +35,22 @@ function ApplicationFrame({ children }: { children: ReactNode }) {
     <main className={styles.frame}>
       <header className={styles.frameHeader}>
         <BrandLockup />
-        {session ? (
-          <div className={styles.accountControl}>
-            <span>{session.user.email}</span>
-            <Button
-              disabled={signOut.isPending}
-              onClick={() => void signOut.signOut()}
-              size="sm"
-              variant="ghost"
-            >
-              <LogOut aria-hidden="true" className={styles.icon} /> Sign out
-            </Button>
-          </div>
-        ) : null}
+        <div className={styles.accountControl}>
+          <ThemeToggle />
+          {session ? (
+            <>
+              <span>{session.user.email}</span>
+              <Button
+                disabled={signOut.isPending}
+                onClick={() => void signOut.signOut()}
+                size="sm"
+                variant="ghost"
+              >
+                <LogOut aria-hidden="true" className={styles.icon} /> Sign out
+              </Button>
+            </>
+          ) : null}
+        </div>
       </header>
       {signOut.error ? (
         <p className={styles.signOutError} role="alert">
@@ -58,6 +63,7 @@ function ApplicationFrame({ children }: { children: ReactNode }) {
 }
 
 export function OrganizationRequestRoute() {
+  usePageTitle("Request Organization");
   return (
     <ApplicationFrame>
       <OrganizationOnboarding />
