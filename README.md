@@ -149,7 +149,7 @@ flowchart TB
 
   subgraph Cloudflare[Cloudflare Pages]
     Web[React + Vite SPA]
-    Proxy[/api/* proxy]
+    Proxy["/api/* proxy"]
   end
 
   subgraph Northflank[Northflank]
