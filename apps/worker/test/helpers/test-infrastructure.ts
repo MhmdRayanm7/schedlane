@@ -28,6 +28,12 @@ export async function startWorkerTestInfrastructure() {
       .start(),
   ]);
   const pool = new Pool({ connectionString: postgres.getConnectionUri() });
+  const clientShutdowns: Promise<void>[] = [];
+  pool.on("connect", (client) => {
+    clientShutdowns.push(
+      new Promise<void>((resolve) => client.once("end", resolve)),
+    );
+  });
   let rabbitConnection: ChannelModel | undefined;
   let rabbitChannel: Channel | undefined;
 
@@ -143,6 +149,8 @@ export async function startWorkerTestInfrastructure() {
         await rabbitChannel?.close().catch(() => undefined);
         await rabbitConnection?.close().catch(() => undefined);
         await pool.end();
+        // Pool.end() removes idle clients before their sockets finish closing.
+        await Promise.all(clientShutdowns);
         await Promise.allSettled([postgres.stop(), rabbitmq.stop()]);
       },
     };
@@ -150,6 +158,7 @@ export async function startWorkerTestInfrastructure() {
     await rabbitChannel?.close().catch(() => undefined);
     await rabbitConnection?.close().catch(() => undefined);
     await pool.end();
+    await Promise.all(clientShutdowns);
     await Promise.allSettled([postgres.stop(), rabbitmq.stop()]);
     throw error;
   }
