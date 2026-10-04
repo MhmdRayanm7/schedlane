@@ -16,15 +16,24 @@ export async function startTestDatabase() {
     .withStartupTimeout(120_000)
     .start();
   const databaseUrl = container.getConnectionUri();
+  const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+  const clientShutdowns: Promise<void>[] = [];
+  pool.on("connect", (client) => {
+    clientShutdowns.push(
+      new Promise<void>((resolve) => client.once("end", resolve)),
+    );
+  });
   const db = new Kysely<Database>({
     dialect: new PostgresDialect({
-      pool: new Pool({ connectionString: databaseUrl, max: 1 }),
+      pool,
     }),
   });
 
   async function stop() {
     try {
       await db.destroy();
+      // Pool shutdown resolves before idle client sockets finish closing.
+      await Promise.all(clientShutdowns);
     } finally {
       await container.stop();
     }

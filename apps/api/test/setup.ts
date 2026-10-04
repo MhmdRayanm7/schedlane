@@ -17,12 +17,19 @@ vi.stubEnv(
 );
 
 try {
-  const { db } = await import("../src/db.js");
+  const { db, pool } = await import("../src/db.js");
+  const clientShutdowns: Promise<void>[] = [];
+  pool.on("connect", (client) => {
+    clientShutdowns.push(
+      new Promise<void>((resolve) => client.once("end", resolve)),
+    );
+  });
 
   beforeEach(() => testDatabase.reset());
   afterAll(async () => {
     try {
       await db.destroy();
+      await Promise.all(clientShutdowns);
     } finally {
       try {
         await testDatabase.stop();
