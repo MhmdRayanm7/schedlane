@@ -1,6 +1,12 @@
 # Schedlane
 
+[![CI](https://github.com/MhmdRayanm7/schedlane/actions/workflows/ci.yml/badge.svg)](https://github.com/MhmdRayanm7/schedlane/actions/workflows/ci.yml)
+
 Schedlane is a multi-organization appointment scheduling application. Its V1 covers organization onboarding and publication, configurable services and resources, availability, public and manual booking, guest self-service, team access, reminders, scoped booking links, and platform administration.
+
+**[Live app](https://schedlane.pages.dev)** · **[Public booking demo](https://schedlane.pages.dev/book/demo-barbers)**
+
+The portfolio demo, Schedlane Demo Barbers, includes three priced services, two barbers, and weekly hours in Asia/Jerusalem. Admin credentials are private and are not provided as public demo access. Demo appointments are illustrative; no real barber appointment is arranged.
 
 ## V1 capabilities
 
@@ -18,12 +24,52 @@ The monorepo uses React and Vite for the Web application, Fastify and TypeScript
 
 The code follows a functional-core/imperative-shell approach: scheduling calculations are kept deterministic while HTTP, database transactions, locks, queues, and email remain explicit.
 
+```mermaid
+flowchart LR
+  Browser --> Pages[Cloudflare Pages]
+  Pages --> Proxy["/api proxy"]
+  Proxy --> API[Northflank API]
+  API --> DB[(Private PostgreSQL)]
+  DB --> Outbox[Transactional outbox]
+  Outbox -->|Worker dispatches with publisher confirms| MQ[CloudAMQP RabbitMQ]
+  MQ --> Worker[Northflank Worker]
+  Worker --> Resend
+  Worker <-->|Reminders and consumer receipts| DB
+```
+
 ```text
 apps/api       Fastify API, domain/application modules, migrations, fixtures
 apps/web       React/Vite application
 apps/worker    RabbitMQ consumers, outbox dispatcher, reminders, email
 scripts        Local reset and fixture-information commands
 ```
+
+## Engineering highlights
+
+- PostgreSQL exclusion constraints prevent concurrent confirmed bookings from overlapping. Occupancy includes the service and its buffer and uses half-open `[start, occupiedUntil)` ranges, so adjacent bookings remain valid.
+- Strict local calendar dates and Asia/Jerusalem scheduling keep date boundaries and daylight-saving transitions separate from UTC storage.
+- Booking snapshots preserve duration, buffer, price, and cancellation policy when service configuration changes.
+- Booking writes and their outbox events commit in one transaction. The Worker publishes persistent RabbitMQ messages with broker confirms before marking events dispatched.
+- At-least-once delivery uses bounded retries, dead-letter queues, database consumer receipts, advisory locks, and provider idempotency keys. Delivery is not claimed to be exactly once.
+- Guest management capabilities use random 256-bit tokens, SHA-256 lookup hashes, and AES-256-GCM encryption for later email delivery.
+- Explicit tenant filters, composite foreign keys, verified-user checks, and role authorization protect organization data and preserve anti-leak lookup ordering.
+- GitHub Actions checks formatting/lint, forced typechecking, Docker-backed integration tests, and production builds on main and pull requests.
+
+## Tech stack
+
+TypeScript, Node.js 24, React, Vite, Tailwind CSS, Fastify, Better Auth, PostgreSQL 18, Kysely, RabbitMQ, Resend, Vitest, Testcontainers, Biome, pnpm, and Turborepo.
+
+## Screenshots
+
+Live demo views captured for V1:
+
+| Admin bookings · Light | Admin bookings · Dark |
+| --- | --- |
+| ![Admin bookings in Light mode](docs/screenshots/admin-bookings-light.jpg) | ![Admin bookings in Dark mode](docs/screenshots/admin-bookings-dark.jpg) |
+
+| Public booking | Services | Platform Admin |
+| --- | --- | --- |
+| ![Public booking](docs/screenshots/public-booking.jpg) | ![Demo services](docs/screenshots/services.jpg) | ![Platform organization directory](docs/screenshots/platform-admin.jpg) |
 
 ## Prerequisites
 
@@ -119,4 +165,16 @@ Apply all database migrations before starting a new release. The existing livene
 - `GET /health/live`
 - `GET /health/ready` (includes PostgreSQL connectivity)
 
-See [the release checklist](docs/RELEASE_CHECKLIST.md) for the focused pre-release sequence. No cloud deployment or CI/CD configuration is included in this repository.
+## Deployment
+
+The live Web app runs on Cloudflare Pages. Its `/api/*` proxy forwards requests to the Northflank API while keeping authentication cookies on the Pages origin. Northflank runs a separate API and Worker with private PostgreSQL; CloudAMQP provides RabbitMQ, and Resend delivers transactional email. API startup applies migrations before serving requests. CI is defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+See [deployment configuration](docs/deployment.md) and [the release checklist](docs/RELEASE_CHECKLIST.md).
+
+## V1 limitations
+
+- No payments or customer accounts; customers book as guests.
+- No custom domain; the live app uses its Cloudflare Pages address.
+- Free-tier hosting has provider resource and request limits.
+- The Resend test sender restricts delivery to the verified account recipient. Public visitors can explore and book in the demo, but emails to other recipients cannot be delivered until a sender domain is verified.
+- Scheduling uses Asia/Jerusalem and Israeli guest phone validation in V1.

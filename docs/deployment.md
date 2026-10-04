@@ -1,5 +1,8 @@
 # V1 free deployment
 
+Live app: <https://schedlane.pages.dev>. Public portfolio demo:
+<https://schedlane.pages.dev/book/demo-barbers>.
+
 Use Node.js 24 and the pnpm version in `packageManager`. Never upload local
 `.env` files, development data, or seed fixtures.
 
@@ -39,8 +42,8 @@ API-specific values:
 | `HOST` | `0.0.0.0` |
 | `PORT` | `3000` |
 | `BETTER_AUTH_SECRET` | Fresh random secret, at least 32 characters |
-| `BETTER_AUTH_URL` | Final Pages HTTPS origin (auth is proxied to Northflank) |
-| `WEB_ORIGIN` | Final Pages HTTPS origin |
+| `BETTER_AUTH_URL` | `https://schedlane.pages.dev` (auth is proxied to Northflank) |
+| `WEB_ORIGIN` | `https://schedlane.pages.dev` |
 
 Worker-specific values:
 
@@ -49,8 +52,8 @@ Worker-specific values:
 | `RABBITMQ_URL` | Existing CloudAMQP `amqps://` URI |
 | `PLATFORM_NOTIFICATION_EMAIL` | `schedlane.app@gmail.com` |
 | `SUPPORT_EMAIL` | `schedlane.app@gmail.com` |
-| `APP_BASE_URL` | Final Pages HTTPS origin |
-| `GUEST_BOOKING_MANAGEMENT_URL` | Final Pages HTTPS origin plus `/booking/manage` |
+| `APP_BASE_URL` | `https://schedlane.pages.dev` |
+| `GUEST_BOOKING_MANAGEMENT_URL` | `https://schedlane.pages.dev/booking/manage` |
 
 Polling, retry, and batch settings retain their code defaults. Resend's test
 sender only delivers to the verified account recipient; a custom sender domain
@@ -66,8 +69,8 @@ root. Set `NODE_VERSION=24.15.0`, `PNPM_VERSION=11.24.0` and
 pnpm install --frozen-lockfile && pnpm --filter @schedlane/web build
 ```
 
-Output directory: `apps/web/dist`. Set `VITE_API_URL` to the final Pages HTTPS
-origin and `VITE_SUPPORT_EMAIL=schedlane.app@gmail.com` for the production build.
+Output directory: `apps/web/dist`. Set `VITE_API_URL=https://schedlane.pages.dev`
+and `VITE_SUPPORT_EMAIL=schedlane.app@gmail.com` for the production build.
 Set Pages runtime variable `API_ORIGIN` to the Northflank API HTTPS origin.
 Rebuild after changing build variables; redeploy after changing runtime bindings.
 
@@ -81,3 +84,15 @@ invocations to API paths; `_redirects` supports SPA navigation and refreshes.
 Verify API health, all migration logs, worker PostgreSQL and RabbitMQ startup,
 HTTPS pages and nested refreshes, then signup and session requests through Pages.
 Free Pages Functions request quotas apply to proxied API traffic.
+
+## Release operations
+
+The pinned quality gate is `.github/workflows/ci.yml`. Pushes to `main` build the
+Pages application and both Northflank services through their provider integrations.
+Check the deployed commit and health in each provider; a green GitHub Actions run
+alone does not confirm deployment health.
+
+Keep PostgreSQL private, Worker ports closed, and credentials in provider secret
+bindings. Admin credentials are not public demo credentials. Retire QA organizations
+with archive/unpublish/suspension, retain audit-linked users and bookings, and revoke
+temporary Platform Admin grants using `platform_admin.revoked_at`.
